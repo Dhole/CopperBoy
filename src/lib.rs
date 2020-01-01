@@ -442,13 +442,40 @@ impl Core {
     }
 
     /// 49. Compare (CP)
-    // fn op_cp(&mut self, d: u8, r: u8) -> usize {
+    fn op_cp(&mut self, d: u8, r: u8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
 
-    //     self.pc += 1;
-    //     1
-    // }
+        let (r7, rr7, rd7) = (res & 1 << 7, self.regs[r] & 1 << 7, self.regs[d] & 1 << 7);
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = (rr7 != rd7) && (rr7 == r7);
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.h = ((self.regs[r] & 0x0f) > (self.regs[d] & 0x0f));
+        self.status_reg.z = res == 0;
+        self.status_reg.c = c0;
 
-    // TODO: 50. Compare with Carry (CPC)
+        self.pc += 1;
+        1
+    }
+
+    /// 50. Compare with Carry (CPC)
+    fn op_cpc(&mut self, d: u8, r: u8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
+        let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
+
+        let (r7, rr7, rd7) = (res & 1 << 7, self.regs[r] & 1 << 7, self.regs[d] & 1 << 7);
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = (rr7 != rd7) && (rr7 == r7);
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.h =
+            (((self.regs[r] & 0x0f) + self.status_reg.c as u8) > (self.regs[d] & 0x0f));
+        if res != 0 {
+            self.status_reg.z = false;
+        }
+        self.status_reg.c = c0 || c1;
+
+        self.pc += 1;
+        1
+    }
     // TODO: 51. Compare with Immediate (CPI)
     // TODO: 52. Compare Skip if Equal (CPSE)
     // TODO: 53. Decrement (DEC)
@@ -873,5 +900,66 @@ mod tests {
         core.op_com(0);
         assert_eq!(core.regs[0], 0x00);
         assert_status_reg_true!(&core.status_reg, &['z', 'c']);
+    }
+
+    #[test]
+    fn test_op_cp() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0xff;
+        core.regs[1] = 0x01;
+        core.op_cp(0, 1);
+        assert_eq!(core.pc, 0x01);
+        assert_status_reg_true!(&core.status_reg, &['n', 's']);
+
+        core.regs[0] = 0x54;
+        core.regs[1] = 0x54;
+        core.op_cp(0, 1);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+
+        core.regs[0] = 0x11;
+        core.regs[1] = 0x20;
+        core.op_cp(0, 1);
+        assert_status_reg_true!(&core.status_reg, &['c', 's', 'n']);
+
+        core.regs[0] = 0x11;
+        core.regs[1] = 0x22;
+        core.op_cp(0, 1);
+        assert_status_reg_true!(&core.status_reg, &['c', 'h', 's', 'n']);
+
+        core.regs[0] = 0x80;
+        core.regs[1] = 0x70;
+        core.op_cp(0, 1);
+        assert_status_reg_true!(&core.status_reg, &['v', 's']);
+    }
+
+    #[test]
+    fn test_op_cpc() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x54;
+        core.regs[1] = 0x53;
+        core.status_reg.c = true;
+        core.status_reg.z = true;
+        core.op_cpc(0, 1);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+
+        core.regs[0] = 0x11;
+        core.regs[1] = 0x20;
+        core.status_reg.c = true;
+        core.op_cpc(0, 1);
+        assert_status_reg_true!(&core.status_reg, &['c', 's', 'n']);
+
+        core.regs[0] = 0x11;
+        core.regs[1] = 0x21;
+        core.status_reg.c = true;
+        core.op_cpc(0, 1);
+        assert_status_reg_true!(&core.status_reg, &['c', 'h', 's', 'n']);
+
+        core.regs[0] = 0x81;
+        core.regs[1] = 0x70;
+        core.status_reg.c = true;
+        core.op_cpc(0, 1);
+        assert_status_reg_true!(&core.status_reg, &['v', 's']);
     }
 }
