@@ -216,7 +216,7 @@ impl Core {
     }
 
     // Auxiliary function to update some flags in adc and add
-    fn aux_op_add_flags(&mut self, r: u8, d: u8, c: bool, res: u8) {
+    fn aux_op_add_flags(&mut self, d: u8, r: u8, c: bool, res: u8) {
         let (r7, rr7, rd7) = (res & 1 << 7, self.regs[r] & 1 << 7, self.regs[d] & 1 << 7);
         self.status_reg.n = r7 != 0;
         self.status_reg.v = (rr7 == rd7) && (rr7 != r7);
@@ -229,7 +229,7 @@ impl Core {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
         self.status_reg.c = c0 || c1;
-        self.aux_op_add_flags(r, d, self.status_reg.c, res);
+        self.aux_op_add_flags(d, r, self.status_reg.c, res);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -239,7 +239,7 @@ impl Core {
     fn op_add(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         self.status_reg.c = c0;
-        self.aux_op_add_flags(r, d, false, res);
+        self.aux_op_add_flags(d, r, false, res);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -441,15 +441,20 @@ impl Core {
         1
     }
 
+    // Auxiliary function to update some flags in cp and cpc
+    fn aux_op_cp_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
+        let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = (rr7 != rd7) && (rr7 == r7);
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.h = (((b & 0x0f) + c as u8) > (a & 0x0f));
+    }
+
     /// 49. Compare (CP)
     fn op_cp(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
 
-        let (r7, rr7, rd7) = (res & 1 << 7, self.regs[r] & 1 << 7, self.regs[d] & 1 << 7);
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = (rr7 != rd7) && (rr7 == r7);
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.h = ((self.regs[r] & 0x0f) > (self.regs[d] & 0x0f));
+        self.aux_op_cp_flags(self.regs[d], self.regs[r], false, res);
         self.status_reg.z = res == 0;
         self.status_reg.c = c0;
 
@@ -461,13 +466,7 @@ impl Core {
     fn op_cpc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
         let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
-
-        let (r7, rr7, rd7) = (res & 1 << 7, self.regs[r] & 1 << 7, self.regs[d] & 1 << 7);
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = (rr7 != rd7) && (rr7 == r7);
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.h =
-            (((self.regs[r] & 0x0f) + self.status_reg.c as u8) > (self.regs[d] & 0x0f));
+        self.aux_op_cp_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
         if res != 0 {
             self.status_reg.z = false;
         }
@@ -476,11 +475,52 @@ impl Core {
         self.pc += 1;
         1
     }
-    // TODO: 51. Compare with Immediate (CPI)
-    // TODO: 52. Compare Skip if Equal (CPSE)
-    // TODO: 53. Decrement (DEC)
+
+    /// 51. Compare with Immediate (CPI)
+    fn op_cpi(&mut self, d: u8, k: u8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(k);
+
+        self.aux_op_cp_flags(self.regs[d], k, false, res);
+        self.status_reg.z = res == 0;
+        self.status_reg.c = c0;
+
+        self.pc += 1;
+        1
+    }
+
+    /// 52. Compare Skip if Equal (CPSE Rd, Rr)
+    fn op_cpse(&mut self, d: u8, r: u8) -> usize {
+        if self.regs[d] != self.regs[r] {
+            self.pc += 1;
+            1
+        } else {
+            // FIXME: If next instruction is two words, 3 instead of 2.
+            self.pc += 2;
+            2
+        }
+    }
+
+    /// 53. Decrement (DEC Rd)
+    fn op_dec(&mut self, d: u8) -> usize {
+        let (res, _) = self.regs[d].overflowing_sub(1);
+        let r7 = res & 1 << 7;
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = res == 0b01111111;
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.z = res == 0;
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
     // TODO: 54. Data Encryption Standard (DES)
+
     // TODO: 55. Extended Indirect Call to Subroutine (EICALL)
+    // fn op_eicall(&mut self, ) -> usize {
+
+    // }
+
     // TODO: 56. Extended Indirect Jump (EIJMP)
     // TODO: 57. Extended Load Program Memory (ELPM)
     // TODO: 58. Exclusive OR (EOR)
@@ -961,5 +1001,72 @@ mod tests {
         core.status_reg.c = true;
         core.op_cpc(0, 1);
         assert_status_reg_true!(&core.status_reg, &['v', 's']);
+    }
+
+    #[test]
+    fn test_op_cpi() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0xff;
+        core.op_cpi(0, 0x01);
+        assert_eq!(core.pc, 0x01);
+        assert_status_reg_true!(&core.status_reg, &['n', 's']);
+
+        core.regs[0] = 0x54;
+        core.op_cpi(0, 0x54);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+
+        core.regs[0] = 0x11;
+        core.op_cpi(0, 0x20);
+        assert_status_reg_true!(&core.status_reg, &['c', 's', 'n']);
+
+        core.regs[0] = 0x11;
+        core.op_cpi(0, 0x22);
+        assert_status_reg_true!(&core.status_reg, &['c', 'h', 's', 'n']);
+
+        core.regs[0] = 0x80;
+        core.op_cpi(0, 0x70);
+        assert_status_reg_true!(&core.status_reg, &['v', 's']);
+    }
+
+    #[test]
+    fn test_op_cpse() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0xaa;
+        core.regs[1] = 0xbb;
+        core.op_cpse(0, 1);
+        assert_eq!(core.pc, 0x01);
+
+        core.regs[0] = 0xaa;
+        core.regs[1] = 0xaa;
+        core.op_cpse(0, 1);
+        assert_eq!(core.pc, 0x03);
+    }
+
+    #[test]
+    fn test_op_dec() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x21;
+        core.op_dec(0);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x20);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[0] = 0x00;
+        core.op_dec(0);
+        assert_eq!(core.regs[0], 0xff);
+        assert_status_reg_true!(&core.status_reg, &['s', 'n']);
+
+        core.regs[0] = 0x80;
+        core.op_dec(0);
+        assert_eq!(core.regs[0], 0x7f);
+        assert_status_reg_true!(&core.status_reg, &['s', 'v']);
+
+        core.regs[0] = 0x01;
+        core.op_dec(0);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z']);
     }
 }
