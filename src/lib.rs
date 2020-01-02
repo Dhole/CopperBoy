@@ -224,7 +224,7 @@ impl Core {
         self.status_reg.h = ((self.regs[r] & 0x0f) + (self.regs[d] & 0x0f) + c as u8) > 0x0f;
         self.status_reg.z = res == 0;
     }
-    /// 5. Add with Carry (ADC)
+    /// 5. Add with Carry (ADC Rd, Rr) OK
     fn op_adc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
@@ -235,7 +235,7 @@ impl Core {
         self.pc += 1;
         1
     }
-    /// 6. Add without Carry (ADD)
+    /// 6. Add without Carry (ADD Rd, Rr) OK
     fn op_add(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         self.status_reg.c = c0;
@@ -246,7 +246,7 @@ impl Core {
         1
     }
 
-    /// 7. Add Immediate Word (ADIW)
+    /// 7. Add Immediate Word (ADIW Rdl, K) OK
     fn op_adiw(&mut self, d: u8, k: u8) -> usize {
         let ext = self.regs.ext(d);
         let (res, c) = ext.overflowing_add(k as u16);
@@ -262,7 +262,7 @@ impl Core {
         2
     }
 
-    /// 8. Logical AND (AND)
+    /// 8. Logical AND (AND Rd, Rr) OK
     fn op_and(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] & self.regs[r];
         let r7 = res & 1 << 7;
@@ -276,7 +276,7 @@ impl Core {
         1
     }
 
-    /// 9. Logical AND with Immediate (ANDI)
+    /// 9. Logical AND with Immediate (ANDI Rd, K) OK
     fn op_andi(&mut self, d: u8, k: u8) -> usize {
         let res = self.regs[d] & k;
         let r7 = res & 1 << 7;
@@ -290,7 +290,7 @@ impl Core {
         1
     }
 
-    /// 10. Arithmetic Shift Right (ASR)
+    /// 10. Arithmetic Shift Right (ASR Rd) OK
     fn op_asr(&mut self, d: u8) -> usize {
         let res = self.regs[d] >> 1 | self.regs[d] & 1 << 7;
         let r7 = res & 1 << 7;
@@ -305,7 +305,7 @@ impl Core {
         1
     }
 
-    /// 11. Bit Clear in SREG (BCLR)
+    /// 11. Bit Clear in SREG (BCLR s) OK
     fn op_bclr(&mut self, s: u8) -> usize {
         self.status_reg[s] = false;
 
@@ -313,7 +313,7 @@ impl Core {
         1
     }
 
-    /// 12. Bit Load from the T Flag in SREG to a Bit in Register (BLD)
+    /// 12. Bit Load from the T Flag in SREG to a Bit in Register (BLD Rd, b) OK
     fn op_bld(&mut self, d: u8, b: u8) -> usize {
         self.regs[d] &= !(1 << b);
         self.regs[d] |= (self.status_reg.t as u8) << b;
@@ -339,41 +339,41 @@ impl Core {
             1
         }
     }
-    /// 13. Branch if Bit in SREG is Cleared (BRBC)
+    /// 13. Branch if Bit in SREG is Cleared (BRBC s, k) OK
     fn op_brbc(&mut self, s: u8, k: i8) -> usize {
         self.aux_op_branch_if(k, !self.status_reg[s])
     }
-    /// 14. Branch if Bit in SREG is Set (BRBS)
+    /// 14. Branch if Bit in SREG is Set (BRBS s, k) OK
     fn op_brbs(&mut self, s: u8, k: i8) -> usize {
         self.aux_op_branch_if(k, self.status_reg[s])
     }
-    // 15. Branch if Carry Cleared (BRCC) -> BRBC C
-    // 16. Branch if Carry Set (BRCS) -> BRBS C
+    // 15. Branch if Carry Cleared (BRCC k) OK -> BRBC C
+    // 16. Branch if Carry Set (BRCS k) OK -> BRBS C
 
-    /// 17. Break (BREAK)
+    /// 17. Break (BREAK) OK
     fn op_break(&mut self) -> usize {
         unimplemented!();
         1
     }
 
-    // 18. Branch if Equal (BREQ) -> BRBS Z
-    // 19. Branch if Greater or Equal (Signed) (BRGE) -> BRBC S
-    // 20. Branch if Half Carry Flag is Cleared (BRHC) -> BRBC H
-    // 21. Branch if Half Carry Flag is Set (BRHS) -> BRBS H
-    // 22. Branch if Global Interrupt is Disabled (BRID) -> BRBC I
-    // 23. Branch if Global Interrupt is Enabled (BRIE) -> BRBS I
-    // 24. Branch if Lower (Unsigned) (BRLO) -> BRBS C
-    // 25. Branch if Less Than (Signed) (BRLT) -> BRBS S
-    // 26. Branch if Minus (BRMI) -> BRBS N
-    // 27. Branch if Not Equal (BRNE) -> BRBC Z
-    // 28. Branch if Plus (BRPL) -> BRBC N
-    // 29. Branch if Same or Higher (Unsigned) (BRSH) -> BRBC C
-    // 30. Branch if the T Flag is Cleared (BRTC) -> BRBC T
-    // 31. Branch if the T Flag is Set (BRTS) -> BRBS T
-    // 32. Branch if Overflow Cleared (BRVS) -> BRBC V
-    // 33. Branch if Overflow Set (BRVS) -> BRBS V
+    // 18. Branch if Equal (BREQ k) OK -> BRBS Z
+    // 19. Branch if Greater or Equal (Signed) (BRGE k) OK -> BRBC S
+    // 20. Branch if Half Carry Flag is Cleared (BRHC k) OK -> BRBC H
+    // 21. Branch if Half Carry Flag is Set (BRHS k) OK -> BRBS H
+    // 22. Branch if Global Interrupt is Disabled (BRID k) OK -> BRBC I
+    // 23. Branch if Global Interrupt is Enabled (BRIE k) OK -> BRBS I
+    // 24. Branch if Lower (Unsigned) (BRLO k) OK -> BRBS C
+    // 25. Branch if Less Than (Signed) (BRLT k) OK -> BRBS S
+    // 26. Branch if Minus (BRMI k) OK -> BRBS N
+    // 27. Branch if Not Equal (BRNE k) OK -> BRBC Z
+    // 28. Branch if Plus (BRPL k) OK -> BRBC N
+    // 29. Branch if Same or Higher (Unsigned) (BRSH k) OK -> BRBC C
+    // 30. Branch if the T Flag is Cleared (BRTC k) OK -> BRBC T
+    // 31. Branch if the T Flag is Set (BRTS k) OK -> BRBS T
+    // 32. Branch if Overflow Cleared (BRVC k) OK-> BRBC V
+    // 33. Branch if Overflow Set (BRVS k) OK -> BRBS V
 
-    /// 34. Bit Set in SREG (BSET)
+    /// 34. Bit Set in SREG (BSET s) OK
     fn op_bset(&mut self, s: u8) -> usize {
         self.status_reg[s] = true;
 
@@ -381,7 +381,7 @@ impl Core {
         1
     }
 
-    /// 35. Bit Store from Bit in Register to T Flag in SREG (BST)
+    /// 35. Bit Store from Bit in Register to T Flag in SREG (BST Rr, b) OK
     fn op_bst(&mut self, d: u8, b: u8) -> usize {
         self.status_reg.t = (self.regs[d] & (1 << b)) != 0;
 
@@ -389,27 +389,27 @@ impl Core {
         1
     }
 
-    /// 36. Long Call to a Subroutine (CALL)
+    /// 36. Long Call to a Subroutine (CALL k) OK
     fn op_call(&mut self, k: u16) -> usize {
         self.push_u16(self.pc + 2);
         self.pc = k;
         4
     }
 
-    /// 37. Clear Bit in I/O Register (CBI)
+    /// 37. Clear Bit in I/O Register (CBI P, b) OK
     fn op_cbi(&mut self, a: u8, d: u8) -> usize {
         self.io_regs[a as usize] &= !(1 << d);
         self.pc += 1;
         2
     }
 
-    // 38. Clear Bits in Register (CBR) -> ANDI with K complemented
-    // 39. Clear Carry Flag (CLC) -> BCLR C
-    // 40. Clear Half Carry Flag (CLH) -> BCLR H
-    // 41. Clear Global Interrupt Flag (CLI) -> BCLR I
-    // 42. Clear Negative Flag (CLN) -> BCLR N
+    // 38. Clear Bits in Register (CBR Rd, K) OK -> ANDI with K complemented
+    // 39. Clear Carry Flag (CLC) OK -> BCLR C
+    // 40. Clear Half Carry Flag (CLH) OK -> BCLR H
+    // 41. Clear Global Interrupt Flag (CLI) OK -> BCLR I
+    // 42. Clear Negative Flag (CLN) OK -> BCLR N
 
-    /// 43. Clear Register
+    /// 43. Clear Register (CLR Rd) OK
     fn op_clr(&mut self, d: u8) -> usize {
         self.regs[d] = 0;
         self.status_reg.s = false;
@@ -421,12 +421,12 @@ impl Core {
         1
     }
 
-    // 44. Clear Signed Flag (CLS) -> BCLR S
-    // 45. Clear T Flag (CLT) -> BCLR T
-    // 46. Clear Overflow Flag (CLV) -> BCLR V
-    // 47. Clear Zero Flag (CLZ) -> BCLR Z
+    // 44. Clear Signed Flag (CLS) OK -> BCLR S
+    // 45. Clear T Flag (CLT) OK -> BCLR T
+    // 46. Clear Overflow Flag (CLV) OK -> BCLR V
+    // 47. Clear Zero Flag (CLZ) OK -> BCLR Z
 
-    /// 48. One's Complement (COM)
+    /// 48. One's Complement (COM Rd) OK
     fn op_com(&mut self, d: u8) -> usize {
         let (res, _) = 0xffu8.overflowing_sub(self.regs[d]);
         let r7 = res & 1 << 7;
@@ -450,7 +450,7 @@ impl Core {
         self.status_reg.h = (((b & 0x0f) + c as u8) > (a & 0x0f));
     }
 
-    /// 49. Compare (CP)
+    /// 49. Compare (CP Rd, Rr) OK
     fn op_cp(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
 
@@ -462,7 +462,7 @@ impl Core {
         1
     }
 
-    /// 50. Compare with Carry (CPC)
+    /// 50. Compare with Carry (CPC Rd, Rr) OK
     fn op_cpc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
         let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
@@ -476,7 +476,7 @@ impl Core {
         1
     }
 
-    /// 51. Compare with Immediate (CPI)
+    /// 51. Compare with Immediate (CPIRd, K) OK
     fn op_cpi(&mut self, d: u8, k: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(k);
 
@@ -488,7 +488,7 @@ impl Core {
         1
     }
 
-    /// 52. Compare Skip if Equal (CPSE Rd, Rr)
+    /// 52. Compare Skip if Equal (CPSE Rd, Rr) OK
     fn op_cpse(&mut self, d: u8, r: u8) -> usize {
         if self.regs[d] != self.regs[r] {
             self.pc += 1;
@@ -500,7 +500,7 @@ impl Core {
         }
     }
 
-    /// 53. Decrement (DEC Rd)
+    /// 53. Decrement (DEC Rd) OK
     fn op_dec(&mut self, d: u8) -> usize {
         let (res, _) = self.regs[d].overflowing_sub(1);
         let r7 = res & 1 << 7;
@@ -514,86 +514,85 @@ impl Core {
         1
     }
 
-    // TODO: 54. Data Encryption Standard (DES)
+    // 54. Data Encryption Standard (DES) (NOT APPLICABLE)
 
-    // TODO: 55. Extended Indirect Call to Subroutine (EICALL)
-    // fn op_eicall(&mut self, ) -> usize {
+    // TODO: 55. Extended Indirect Call to Subroutine (EICALL) OK
+    // TODO: 56. Extended Indirect Jump (EIJMP) OK
 
-    // }
-
-    // TODO: 56. Extended Indirect Jump (EIJMP)
-    // TODO: 57. Extended Load Program Memory (ELPM)
-    // TODO: 58. Exclusive OR (EOR)
-    // TODO: 59. Fractional Multiply Unsiged (FMUL)
-    // TODO: 60. Fractional Multiply Signed (FMULS)
-    // TODO: 61. Fractional Multiply Signed with Unsigned (FMULSU)
-    // TODO: 62. Indirect Call to Subroutine (ICALL)
-    // TODO: 63. Indirect Jump (IJMP)
-    // TODO: 64. Load an I/O Location to Register (IN)
-    // TODO: 65. Increment (INC)
-    // TODO: 66. Jump (JMP)
-    // TODO: 67. Load and Clear (LAC)
-    // TODO: 68. Load and Set (LAS)
-    // TODO: 69. Load and Toggle (LAT)
-    // TODO: 70. Load Indirect from Data Space to Register using Index X (LD)
-    // TODO: 71. Load Indirect from Data Space to Register using Index Y (LD)
-    // TODO: 72. Load Indirect from Data Space to Register using Index Z (LD)
-    // TODO: 73. Load Immediate (LDI)
-    // TODO: 74. Load Direct from Data Space (LDS)
-    // TODO: 75. Load Direct from Data Space (LDS 16bit)
-    // TODO: 76. Load Program Memory (LPM)
-    // TODO: 77. Logical Shift Left (LSL)
-    // TODO: 78. Logical Shift Right (LSR)
-    // TODO: 79. Copy Register (MOV)
-    // TODO: 80. Copy Register Word (MOVW)
-    // TODO: 81. Multiply Unsiged (MUL)
-    // TODO: 82. Multiply Signed (MULS)
-    // TODO: 83. Multiply Signed with Unsigned (MULSU)
-    // TODO: 84. Two's Complement (NEG)
-    // TODO: 85. No Operation (NOP)
-    // TODO: 86. Logical OR (OR)
-    // TODO: 87. Logical OR with Immediate (ORI)
-    // TODO: 88. Store Register to I/O Location (OUT)
-    // TODO: 89. Pop Register from Stack (POP)
-    // TODO: 90. Push Register on Stack (PUSH)
-    // TODO: 91. Relative Call to Subroutione (RCALL)
-    // TODO: 92. Return from Subroutine (RET)
-    // TODO: 93. Return from Interrupt (RETI)
-    // TODO: 94. Relative Jump (RJMP)
-    // TODO: 95. Rotate Left through Carry (ROL)
-    // TODO: 96. Rotrate Right through Carry (ROR)
-    // TODO: 97. Subtract with Carry (SBC)
-    // TODO: 98. Subtract Immediate with Carry (SBCI)
-    // TODO: 99. Set Bit in I/O Register (SBI)
-    // TODO: 100. Skip if Bit in I/O Register is Cleared (SBIC)
-    // TODO: 101. Skip if Bit in I/O Register is Set (SBIS)
-    // TODO: 102. Subtract Immedaite from Word (SBIW)
-    // TODO: 103. Set Bits in Register (SBR)
-    // TODO: 104. Skip if Bit in Register is Cleared (SBRC)
-    // TODO: 105. Skip if Bit in Register is Set (SBRS)
-    // 106. Set Carry Flag (SEC) -> BSET C
-    // 107. Set Half Carry Flag (SEH) -> BSET H
-    // 108. Set Global Interrupt Flag (SEI) -> BSET I
-    // 109. Set Negative Flag (SEN) -> BSET N
-    // TODO: 110. Set all Bits in Register (SER)
-    // 111. Set Signed Flag (SES) -> BSET S
-    // 112. Set T Flag (SET) -> BSET T
-    // 113. Set Overflow Flag (SEV) -> BSET V
-    // 114. Set Zero Flag (SEZ) -> BSET Z
-    // TODO: 115. SLEEP
-    // TODO: 116. Store Program Memory (SPM)
+    // TODO: 57. Extended Load Program Memory (ELPM Z{+}) OK
+    // TODO: 58. Exclusive OR (EOR, Rd, Rr) OK
+    // TODO: 59. Fractional Multiply Unsiged (FMUL Rd, Rr) OK
+    // TODO: 60. Fractional Multiply Signed (FMULS Rd, Rr) OK
+    // TODO: 61. Fractional Multiply Signed with Unsigned (FMULSU Rd, Rr) OK
+    // TODO: 62. Indirect Call to Subroutine (ICALL) OK
+    // TODO: 63. Indirect Jump (IJMP) OK
+    // TODO: 64. Load an I/O Location to Register (IN Rd, P) OK
+    // TODO: 65. Increment (INC Rd) OK
+    // TODO: 66. Jump (JMP k) OK
+    // 67. Load and Clear (LAC) (NOT APPLICABLE)
+    // 68. Load and Set (LAS) (NOT APPLICABLE)
+    // 69. Load and Toggle (LAT) (NOT APPLICABLE)
+    // TODO: 70. Load Indirect from Data Space to Register using Index X (LD, {-}X{+}) OK
+    // TODO: 71. Load Indirect from Data Space to Register using Index Y (LD, {-}Y{+}) OK
+    // TODO: 72. Load Indirect from Data Space to Register using Index Z (LD, {-}Z{+}) OK
+    // TODO: ??. Load Indirect with Displacement (LDD {Y,Z}+q) OK
+    // TODO: 73. Load Immediate (LDI Rd, K) OK
+    // TODO: 74. Load Direct from Data Space (LDS Rd, k) OK
+    // TODO: 75. Load Direct from Data Space (LDS Rd, k # 16bit) OK
+    // TODO: 76. Load Program Memory (LPM Rd, Z) OK
+    // TODO: 77. Logical Shift Left (LSL Rd) OK
+    // TODO: 78. Logical Shift Right (LSR Rd) OK
+    // TODO: 79. Copy Register (MOV Rd, Rr) OK
+    // TODO: 80. Copy Register Word (MOVW Rd, Rr) OK
+    // TODO: 81. Multiply Unsiged (MUL Rd, Rr) OK
+    // TODO: 82. Multiply Signed (MULS Rd, Rr) OK
+    // TODO: 83. Multiply Signed with Unsigned (MULSU Rd, Rr) OK
+    // TODO: 84. Two's Complement (NEG Rd) OK
+    // TODO: 85. No Operation (NOP) OK
+    // TODO: 86. Logical OR (OR Rd, Rr) OK
+    // TODO: 87. Logical OR with Immediate (ORI Rd, K) OK
+    // TODO: 88. Store Register to I/O Location (OUT P, Rr) OK
+    // TODO: 89. Pop Register from Stack (POP Rd) OK
+    // TODO: 90. Push Register on Stack (PUSH Rr) OK
+    // TODO: 91. Relative Call to Subroutione (RCALL k) OK
+    // TODO: 92. Return from Subroutine (RET) OK
+    // TODO: 93. Return from Interrupt (RETI) OK
+    // TODO: 94. Relative Jump (RJMP k) OK
+    // TODO: 95. Rotate Left through Carry (ROL Rd) OK
+    // TODO: 96. Rotrate Right through Carry (ROR Rd) OK
+    // TODO: 97. Subtract with Carry (SBC Rd, Rr) OK
+    // TODO: 98. Subtract Immediate with Carry (SBCI Rd, K) OK
+    // TODO: 99. Set Bit in I/O Register (SBI P, b) OK
+    // TODO: 100. Skip if Bit in I/O Register is Cleared (SBIC P, b) OK
+    // TODO: 101. Skip if Bit in I/O Register is Set (SBIS P, b) OK
+    // TODO: 102. Subtract Immedaite from Word (SBIW Rdl, K) OK
+    // TODO: 103. Set Bits in Register (SBR Rd, K) OK
+    // TODO: 104. Skip if Bit in Register is Cleared (SBRC Rr, b) OK
+    // TODO: 105. Skip if Bit in Register is Set (SBRS Rr, b) OK
+    // 106. Set Carry Flag (SEC) OK -> BSET C
+    // 107. Set Half Carry Flag (SEH) OK -> BSET H
+    // 108. Set Global Interrupt Flag (SEI) OK -> BSET I
+    // 109. Set Negative Flag (SEN) OK -> BSET N
+    // TODO: 110. Set all Bits in Register (SER Rd) OK
+    // 111. Set Signed Flag (SES) OK -> BSET S
+    // 112. Set T Flag (SET) OK -> BSET T
+    // 113. Set Overflow Flag (SEV) OK -> BSET V
+    // 114. Set Zero Flag (SEZ) OK -> BSET Z
+    // TODO: 115. SLEEP (SLEEP) OK
+    // TODO: 116. Store Program Memory (SPM) OK
     // TODO: 117. Store Program Memory (SPM #2)
-    // TODO: 118. Store Indirect from Register to Data Space using Index X (ST)
-    // TODO: 119. Store Indirect from Register to Data Space using Index Y (ST)
-    // TODO: 120. Store Indirect from Register to Data Space using Index Z (ST)
-    // TODO: 121. Store Direct to Data Space
-    // TODO: 122. Store Direct to Data Space (STS 16bit)
-    // TODO: 123. Subtract without Carry (SUB)
-    // TODO: 124. Subtract Immediate (SUBI)
-    // TODO: 125. Swap Nibbles (SWAP)
-    // TODO: 126. Test for Zero or Minus (TST)
-    // TODO: 127. Watchdog Reset (WDR)
-    // TODO: 128. Exchange (XCH)
+    // TODO: 118. Store Indirect from Register to Data Space using Index X (ST {-}X{+}, Rr) OK
+    // TODO: 119. Store Indirect from Register to Data Space using Index Y (ST {-}Y{+}, Rr) OK
+    // TODO: 120. Store Indirect from Register to Data Space using Index Z (ST {-}Z{+}, Rr) OK
+    // TODO: ???. Store Indirect with Displacement (STD {Y,Z}+q, Rr) OK
+    // TODO: 121. Store Direct to Data Space (STS k, Rr) OK
+    // TODO: 122. Store Direct to Data Space (STS k, Rr # 16bit) OK
+    // TODO: 123. Subtract without Carry (SUB Rd, Rr) OK
+    // TODO: 124. Subtract Immediate (SUBI Rd, K) OK
+    // TODO: 125. Swap Nibbles (SWAP Rd) OK
+    // TODO: 126. Test for Zero or Minus (TST Rd) OK
+    // TODO: 127. Watchdog Reset (WDR) OK
+    // 128. Exchange (XCH) (NOT APPLICABLE)
 }
 
 #[cfg(test)]
