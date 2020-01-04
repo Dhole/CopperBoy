@@ -520,14 +520,42 @@ impl Core {
     // TODO: 56. Extended Indirect Jump (EIJMP) OK
 
     // TODO: 57. Extended Load Program Memory (ELPM Z{+}) OK
-    // TODO: 58. Exclusive OR (EOR, Rd, Rr) OK
+
+    /// 58. Exclusive OR (EOR, Rd, Rr) OK
+    fn op_eor(&mut self, d: u8, r: u8) -> usize {
+        let res = self.regs[d] ^ self.regs[r];
+        let r7 = res & 1 << 7;
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = false;
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.z = res == 0;
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
     // TODO: 59. Fractional Multiply Unsiged (FMUL Rd, Rr) OK
     // TODO: 60. Fractional Multiply Signed (FMULS Rd, Rr) OK
     // TODO: 61. Fractional Multiply Signed with Unsigned (FMULSU Rd, Rr) OK
     // TODO: 62. Indirect Call to Subroutine (ICALL) OK
     // TODO: 63. Indirect Jump (IJMP) OK
     // TODO: 64. Load an I/O Location to Register (IN Rd, P) OK
-    // TODO: 65. Increment (INC Rd) OK
+
+    /// 65. Increment (INC Rd) OK
+    fn op_inc(&mut self, d: u8) -> usize {
+        let (res, _) = self.regs[d].overflowing_add(1);
+        let r7 = res & 1 << 7;
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = res == 0b10000000;
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.z = res == 0;
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
     // TODO: 66. Jump (JMP k) OK
     // 67. Load and Clear (LAC) (NOT APPLICABLE)
     // 68. Load and Set (LAS) (NOT APPLICABLE)
@@ -1065,6 +1093,50 @@ mod tests {
 
         core.regs[0] = 0x01;
         core.op_dec(0);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+    }
+
+    #[test]
+    fn test_op_eor() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x7a;
+        core.regs[1] = 0xb6;
+        core.op_eor(0, 1);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0xcc);
+        assert_status_reg_true!(&core.status_reg, &['n', 's']);
+
+        core.regs[0] = 0x42;
+        core.regs[1] = 0x42;
+        core.op_eor(0, 1);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+    }
+
+    #[test]
+    fn test_op_inc() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x1f;
+        core.op_inc(0);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x20);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[0] = 0x80;
+        core.op_inc(0);
+        assert_eq!(core.regs[0], 0x81);
+        assert_status_reg_true!(&core.status_reg, &['s', 'n']);
+
+        core.regs[0] = 0x7f;
+        core.op_inc(0);
+        assert_eq!(core.regs[0], 0x80);
+        assert_status_reg_true!(&core.status_reg, &['v', 'n']);
+
+        core.regs[0] = 0xff;
+        core.op_inc(0);
         assert_eq!(core.regs[0], 0x00);
         assert_status_reg_true!(&core.status_reg, &['z']);
     }
