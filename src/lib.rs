@@ -292,7 +292,7 @@ impl Core {
 
     /// 10. Arithmetic Shift Right (ASR Rd) OK
     fn op_asr(&mut self, d: u8) -> usize {
-        let res = self.regs[d] >> 1 | self.regs[d] & 1 << 7;
+        let res = self.regs[d] >> 1 | self.regs[d] & (1 << 7);
         let r7 = res & 1 << 7;
         self.status_reg.n = r7 != 0;
         self.status_reg.c = self.regs[d] & 1 != 0;
@@ -556,7 +556,12 @@ impl Core {
         1
     }
 
-    // TODO: 66. Jump (JMP k) OK
+    /// 66. Jump (JMP k) OK
+    fn op_jmp(&mut self, k: u32) -> usize {
+        self.pc = k as u16;
+        3
+    }
+
     // 67. Load and Clear (LAC) (NOT APPLICABLE)
     // 68. Load and Set (LAS) (NOT APPLICABLE)
     // 69. Load and Toggle (LAT) (NOT APPLICABLE)
@@ -564,15 +569,64 @@ impl Core {
     // TODO: 71. Load Indirect from Data Space to Register using Index Y (LD, {-}Y{+}) OK
     // TODO: 72. Load Indirect from Data Space to Register using Index Z (LD, {-}Z{+}) OK
     // TODO: ??. Load Indirect with Displacement (LDD {Y,Z}+q) OK
-    // TODO: 73. Load Immediate (LDI Rd, K) OK
+
+    /// 73. Load Immediate (LDI Rd, K) OK
+    fn op_ldi(&mut self, d: u8, k: u8) -> usize {
+        self.regs[d] = k;
+
+        self.pc += 1;
+        1
+    }
+
     // TODO: 74. Load Direct from Data Space (LDS Rd, k) OK
     // TODO: 75. Load Direct from Data Space (LDS Rd, k # 16bit) OK
     // TODO: 76. Load Program Memory (LPM Rd, Z) OK
-    // TODO: 77. Logical Shift Left (LSL Rd) OK
-    // TODO: 78. Logical Shift Right (LSR Rd) OK
-    // TODO: 79. Copy Register (MOV Rd, Rr) OK
-    // TODO: 80. Copy Register Word (MOVW Rd, Rr) OK
-    // TODO: 81. Multiply Unsiged (MUL Rd, Rr) OK
+
+    // 77. Logical Shift Left (LSL Rd) OK -> ADD Rd, Rd
+
+    /// 78. Logical Shift Right (LSR Rd) OK
+    fn op_lsr(&mut self, d: u8) -> usize {
+        let res = self.regs[d] >> 1;
+        self.status_reg.n = false;
+        self.status_reg.c = self.regs[d] & 1 != 0;
+        self.status_reg.v = self.status_reg.n ^ self.status_reg.c;
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.z = res == 0;
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
+    /// 79. Copy Register (MOV Rd, Rr) OK
+    fn op_mov(&mut self, d: u8, r: u8) -> usize {
+        self.regs[d] = self.regs[r];
+
+        self.pc += 1;
+        1
+    }
+
+    /// 80. Copy Register Word (MOVW Rd, Rr) OK
+    fn op_movw(&mut self, d: u8, r: u8) -> usize {
+        self.regs[d] = self.regs[r];
+        self.regs[d + 1] = self.regs[r + 1];
+
+        self.pc += 1;
+        1
+    }
+    /// 81. Multiply Unsiged (MUL Rd, Rr) OK
+    fn op_mul(&mut self, d: u8, r: u8) -> usize {
+        let res = self.regs[d] as u16 * self.regs[r] as u16;
+        let bytes = res.to_le_bytes();
+        self.regs[0] = bytes[0];
+        self.regs[1] = bytes[1];
+        let r15 = res & 1 << 15;
+        self.status_reg.c = r15 != 0;
+        self.status_reg.z = res == 0;
+
+        self.pc += 1;
+        2
+    }
     // TODO: 82. Multiply Signed (MULS Rd, Rr) OK
     // TODO: 83. Multiply Signed with Unsigned (MULSU Rd, Rr) OK
     // TODO: 84. Two's Complement (NEG Rd) OK
@@ -1138,6 +1192,93 @@ mod tests {
         core.regs[0] = 0xff;
         core.op_inc(0);
         assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+    }
+
+    #[test]
+    fn test_op_jmp() {
+        let mut core = Core::new();
+
+        core.op_jmp(0x0123);
+        assert_eq!(core.pc, 0x0123);
+    }
+
+    #[test]
+    fn test_op_ldi() {
+        let mut core = Core::new();
+
+        core.op_ldi(16, 0xab);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[16], 0xab);
+    }
+
+    #[test]
+    fn test_op_lsr() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x0e;
+        core.op_lsr(0);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x07);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[0] = 0x88;
+        core.op_lsr(0);
+        assert_eq!(core.regs[0], 0x44);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[0] = 0x01;
+        core.op_lsr(0);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z', 'c', 'v', 's']);
+    }
+
+    #[test]
+    fn test_op_mov() {
+        let mut core = Core::new();
+
+        core.regs[1] = 0xab;
+        core.op_mov(0, 1);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0xab);
+    }
+
+    #[test]
+    fn test_op_movw() {
+        let mut core = Core::new();
+
+        core.regs[2] = 0x01;
+        core.regs[3] = 0x23;
+        core.op_movw(0, 2);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x01);
+        assert_eq!(core.regs[1], 0x23);
+    }
+
+    #[test]
+    fn test_op_mul() {
+        let mut core = Core::new();
+
+        core.regs[2] = 0x04;
+        core.regs[3] = 0x03;
+        core.op_mul(2, 3);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x0c);
+        assert_eq!(core.regs[1], 0x00);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[2] = 0xf1;
+        core.regs[3] = 0xf2;
+        core.op_mul(2, 3);
+        assert_eq!(core.regs[0], 0xd2);
+        assert_eq!(core.regs[1], 0xe3);
+        assert_status_reg_true!(&core.status_reg, &['c']);
+
+        core.regs[2] = 0xab;
+        core.regs[3] = 0x00;
+        core.op_mul(2, 3);
+        assert_eq!(core.regs[0], 0x00);
+        assert_eq!(core.regs[1], 0x00);
         assert_status_reg_true!(&core.status_reg, &['z']);
     }
 }
