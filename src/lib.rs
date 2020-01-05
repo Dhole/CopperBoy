@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
@@ -180,6 +182,20 @@ impl Memory {
     }
 }
 
+impl Index<u16> for Memory {
+    type Output = u8;
+
+    fn index(&self, i: u16) -> &u8 {
+        &self.buf[i as usize]
+    }
+}
+
+impl IndexMut<u16> for Memory {
+    fn index_mut(&mut self, i: u16) -> &mut u8 {
+        &mut self.buf[i as usize]
+    }
+}
+
 #[derive(Debug)]
 struct Core {
     /// Status Register
@@ -215,13 +231,19 @@ impl Core {
         self.sp -= 2;
     }
 
+    fn pop_u16(&mut self) -> u16 {
+        self.sp += 2;
+        let v = self.ram.get_u16(self.sp - 1);
+        v
+    }
+
     // Auxiliary function to update some flags in adc and add
-    fn aux_op_add_flags(&mut self, d: u8, r: u8, c: bool, res: u8) {
-        let (r7, rr7, rd7) = (res & 1 << 7, self.regs[r] & 1 << 7, self.regs[d] & 1 << 7);
+    fn aux_op_add_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
+        let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
         self.status_reg.n = r7 != 0;
         self.status_reg.v = (rr7 == rd7) && (rr7 != r7);
         self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.h = ((self.regs[r] & 0x0f) + (self.regs[d] & 0x0f) + c as u8) > 0x0f;
+        self.status_reg.h = ((b & 0x0f) + (a & 0x0f) + c as u8) > 0x0f;
         self.status_reg.z = res == 0;
     }
     /// 5. Add with Carry (ADC Rd, Rr) OK
@@ -229,7 +251,7 @@ impl Core {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
         self.status_reg.c = c0 || c1;
-        self.aux_op_add_flags(d, r, self.status_reg.c, res);
+        self.aux_op_add_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -239,7 +261,7 @@ impl Core {
     fn op_add(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         self.status_reg.c = c0;
-        self.aux_op_add_flags(d, r, false, res);
+        self.aux_op_add_flags(self.regs[d], self.regs[r], false, res);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -325,14 +347,8 @@ impl Core {
     // Auxiliary function to branch if a boolean is true
     fn aux_op_branch_if(&mut self, k: i8, test: bool) -> usize {
         if test {
-            let pc = if k >= 0 {
-                let (pc, _) = self.pc.overflowing_add(k as u16 + 1);
-                pc
-            } else {
-                let (pc, _) = self.pc.overflowing_sub(-k as u16 - 1);
-                pc
-            };
-            self.pc = pc;
+            let (pc, _) = (self.pc as i16).overflowing_add(k as i16 + 1);
+            self.pc = pc as u16;
             2
         } else {
             self.pc += 1;
@@ -627,28 +643,219 @@ impl Core {
         self.pc += 1;
         2
     }
-    // TODO: 82. Multiply Signed (MULS Rd, Rr) OK
-    // TODO: 83. Multiply Signed with Unsigned (MULSU Rd, Rr) OK
-    // TODO: 84. Two's Complement (NEG Rd) OK
-    // TODO: 85. No Operation (NOP) OK
-    // TODO: 86. Logical OR (OR Rd, Rr) OK
-    // TODO: 87. Logical OR with Immediate (ORI Rd, K) OK
+
+    /// 82. Multiply Signed (MULS Rd, Rr) OK
+    fn op_muls(&mut self, d: u8, r: u8) -> usize {
+        let res = self.regs[d] as i8 as i16 * self.regs[r] as i8 as i16;
+        let bytes = res.to_le_bytes();
+        self.regs[0] = bytes[0];
+        self.regs[1] = bytes[1];
+        let r15 = res & 1 << 15;
+        self.status_reg.c = r15 != 0;
+        self.status_reg.z = res == 0;
+
+        self.pc += 1;
+        2
+    }
+
+    /// 83. Multiply Signed with Unsigned (MULSU Rd, Rr) OK
+    fn op_mulsu(&mut self, d: u8, r: u8) -> usize {
+        let res = self.regs[d] as i8 as i16 * self.regs[r] as i16;
+        let bytes = res.to_le_bytes();
+        self.regs[0] = bytes[0];
+        self.regs[1] = bytes[1];
+        let r15 = res & 1 << 15;
+        self.status_reg.c = r15 != 0;
+        self.status_reg.z = res == 0;
+
+        self.pc += 1;
+        2
+    }
+
+    // Auxiliary function to update some flags in subtraction
+    // fn aux_op_sub_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
+    //     let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
+    //     self.status_reg.n = r7 != 0;
+    //     self.status_reg.v = res == 0x80;
+    //     // self.status_reg.v = (rr7 == rd7) && (rr7 != r7);
+    //     self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+    //     self.status_reg.h = (b & 0x0f) + c as u8 > (a & 0x0f);
+    //     self.status_reg.z = res == 0;
+    // }
+
+    /// 84. Two's Complement (NEG Rd) OK
+    fn op_neg(&mut self, d: u8) -> usize {
+        let (res, _) = 0x00u8.overflowing_sub(self.regs[d]);
+        self.status_reg.c = res != 0;
+        let (r7, r3, rd3) = (res & 1 << 7, res & 1 << 3, self.regs[d] & 1 << 3);
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = res == 0x80;
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.h = r3 != 0 && rd3 == 0;
+        self.status_reg.z = res == 0;
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
+    /// 85. No Operation (NOP) OK
+    fn op_nop(&mut self) -> usize {
+        self.pc += 1;
+        1
+    }
+
+    /// 86. Logical OR (OR Rd, Rr) OK
+    fn op_or(&mut self, d: u8, r: u8) -> usize {
+        let res = self.regs[d] | self.regs[r];
+        let r7 = res & 1 << 7;
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = false;
+        self.status_reg.z = res == 0;
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
+    /// 87. Logical OR with Immediate (ORI Rd, K) OK
+    fn op_ori(&mut self, d: u8, k: u8) -> usize {
+        let res = self.regs[d] | k;
+        let r7 = res & 1 << 7;
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = false;
+        self.status_reg.z = res == 0;
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
     // TODO: 88. Store Register to I/O Location (OUT P, Rr) OK
-    // TODO: 89. Pop Register from Stack (POP Rd) OK
-    // TODO: 90. Push Register on Stack (PUSH Rr) OK
-    // TODO: 91. Relative Call to Subroutione (RCALL k) OK
-    // TODO: 92. Return from Subroutine (RET) OK
-    // TODO: 93. Return from Interrupt (RETI) OK
-    // TODO: 94. Relative Jump (RJMP k) OK
-    // TODO: 95. Rotate Left through Carry (ROL Rd) OK
-    // TODO: 96. Rotrate Right through Carry (ROR Rd) OK
-    // TODO: 97. Subtract with Carry (SBC Rd, Rr) OK
-    // TODO: 98. Subtract Immediate with Carry (SBCI Rd, K) OK
+
+    /// 89. Pop Register from Stack (POP Rd) OK
+    fn op_pop(&mut self, d: u8) -> usize {
+        self.sp += 1;
+        self.regs[d] = self.ram[self.sp];
+
+        self.pc += 1;
+        2
+    }
+
+    /// 90. Push Register on Stack (PUSH Rr) OK
+    fn op_push(&mut self, r: u8) -> usize {
+        self.ram[self.sp] = self.regs[r];
+        self.sp -= 1;
+
+        self.pc += 1;
+        2
+    }
+
+    /// 91. Relative Call to Subroutione (RCALL k) OK
+    fn op_rcall(&mut self, k: i16) -> usize {
+        self.push_u16(self.pc + 1);
+        let (pc, _) = (self.pc as i16).overflowing_add(k);
+        self.pc = pc as u16;
+        3
+    }
+
+    /// 92. Return from Subroutine (RET) OK
+    fn op_ret(&mut self) -> usize {
+        let pc = self.pop_u16();
+        self.pc = pc;
+        4
+    }
+
+    /// 93. Return from Interrupt (RETI) OK
+    fn op_reti(&mut self) -> usize {
+        let pc = self.pop_u16();
+        self.status_reg.i = true;
+        self.pc = pc;
+        4
+    }
+
+    /// 94. Relative Jump (RJMP k) OK
+    fn op_rjmp(&mut self, k: i16) -> usize {
+        let (pc, _) = (self.pc as i16).overflowing_add(k);
+        self.pc = pc as u16;
+        2
+    }
+
+    /// 95. Rotate Left through Carry (ROL Rd) OK
+    fn op_rol(&mut self, d: u8) -> usize {
+        let res = self.regs[d] << 1;
+        let res = res | self.status_reg.c as u8;
+        let (r7, rd7, rd3) = (res & 1 << 7, self.regs[d] & 1 << 7, self.regs[d] & 1 << 3);
+        self.status_reg.h = rd3 != 0;
+        self.status_reg.n = r7 != 0;
+        self.status_reg.c = rd7 != 0;
+        self.status_reg.v = self.status_reg.n ^ self.status_reg.c;
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.z = res == 0;
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
+    /// 96. Rotrate Right through Carry (ROR Rd) OK
+    fn op_ror(&mut self, d: u8) -> usize {
+        let res = self.regs[d] >> 1;
+        let res = res | ((self.status_reg.c as u8) << 7);
+        let (r7, rd0) = (res & 1 << 7, self.regs[d] & 1);
+        self.status_reg.n = r7 != 0;
+        self.status_reg.c = rd0 != 0;
+        self.status_reg.v = self.status_reg.n ^ self.status_reg.c;
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.z = res == 0;
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
+    // Auxiliary function to update some flags in subtraction
+    fn aux_op_sub_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
+        let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
+        self.status_reg.n = r7 != 0;
+        self.status_reg.v = (rr7 != rd7) && (rr7 == r7);
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.h = ((a & 0x0f) < (b & 0x0f) + c as u8);
+        if res != 0 {
+            self.status_reg.z = false;
+        }
+    }
+
+    /// 97. Subtract with Carry (SBC Rd, Rr) OK
+    fn op_sbc(&mut self, d: u8, r: u8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
+        let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
+        self.status_reg.c = c0 || c1;
+        self.aux_op_sub_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
+    /// 98. Subtract Immediate with Carry (SBCI Rd, K) OK
+    fn op_sbci(&mut self, d: u8, k: u8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(k);
+        let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
+        self.status_reg.c = c0 || c1;
+        self.aux_op_sub_flags(self.regs[d], k, self.status_reg.c, res);
+        self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+
     // TODO: 99. Set Bit in I/O Register (SBI P, b) OK
     // TODO: 100. Skip if Bit in I/O Register is Cleared (SBIC P, b) OK
     // TODO: 101. Skip if Bit in I/O Register is Set (SBIS P, b) OK
     // TODO: 102. Subtract Immedaite from Word (SBIW Rdl, K) OK
-    // TODO: 103. Set Bits in Register (SBR Rd, K) OK
+
+    // 103. Set Bits in Register (SBR Rd, K) OK -> ORI Rd, K
     // TODO: 104. Skip if Bit in Register is Cleared (SBRC Rr, b) OK
     // TODO: 105. Skip if Bit in Register is Set (SBRS Rr, b) OK
     // 106. Set Carry Flag (SEC) OK -> BSET C
@@ -925,32 +1132,6 @@ mod tests {
         assert_eq!(core.op_brbs(5, -0x05), 2);
         assert_eq!(core.pc, 0x0e);
     }
-
-    // #[test]
-    // fn test_op_brcc() {
-    //     let mut core = Core::new();
-
-    //     core.status_reg.c = true;
-    //     core.op_brcc(1, 0x10);
-    //     assert_eq!(core.pc, 0x01);
-
-    //     core.status_reg.c = false;
-    //     core.op_brcc(1, 0x10);
-    //     assert_eq!(core.pc, 0x12);
-    // }
-
-    // #[test]
-    // fn test_op_brcs() {
-    //     let mut core = Core::new();
-
-    //     core.status_reg.c = false;
-    //     core.op_brcs(1, 0x10);
-    //     assert_eq!(core.pc, 0x01);
-
-    //     core.status_reg.c = true;
-    //     core.op_brcs(1, 0x10);
-    //     assert_eq!(core.pc, 0x12);
-    // }
 
     #[test]
     fn test_op_bset() {
@@ -1259,26 +1440,315 @@ mod tests {
     fn test_op_mul() {
         let mut core = Core::new();
 
-        core.regs[2] = 0x04;
-        core.regs[3] = 0x03;
+        core.regs[2] = 4;
+        core.regs[3] = 3;
         core.op_mul(2, 3);
         assert_eq!(core.pc, 0x01);
-        assert_eq!(core.regs[0], 0x0c);
-        assert_eq!(core.regs[1], 0x00);
+        assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 12);
         assert_status_reg_true!(&core.status_reg, &[]);
 
-        core.regs[2] = 0xf1;
-        core.regs[3] = 0xf2;
+        core.regs[2] = 241;
+        core.regs[3] = 242;
         core.op_mul(2, 3);
-        assert_eq!(core.regs[0], 0xd2);
-        assert_eq!(core.regs[1], 0xe3);
+        assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 58322);
         assert_status_reg_true!(&core.status_reg, &['c']);
 
-        core.regs[2] = 0xab;
-        core.regs[3] = 0x00;
+        core.regs[2] = 171;
+        core.regs[3] = 0;
         core.op_mul(2, 3);
-        assert_eq!(core.regs[0], 0x00);
-        assert_eq!(core.regs[1], 0x00);
+        assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0);
         assert_status_reg_true!(&core.status_reg, &['z']);
+    }
+
+    #[test]
+    fn test_op_muls() {
+        let mut core = Core::new();
+
+        core.regs[2] = -3i8 as u8;
+        core.regs[3] = 4i8 as u8;
+        core.op_muls(2, 3);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(i16::from_le_bytes([core.regs[0], core.regs[1]]), -12);
+        assert_status_reg_true!(&core.status_reg, &['c']);
+
+        core.regs[2] = -81i8 as u8;
+        core.regs[3] = -79i8 as u8;
+        core.op_muls(2, 3);
+        assert_eq!(i16::from_le_bytes([core.regs[0], core.regs[1]]), 6399);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[2] = -23i8 as u8;
+        core.regs[3] = 0i8 as u8;
+        core.op_muls(2, 3);
+        assert_eq!(i16::from_le_bytes([core.regs[0], core.regs[1]]), 0);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+    }
+
+    #[test]
+    fn test_op_mulsu() {
+        let mut core = Core::new();
+
+        core.regs[2] = -3i8 as u8;
+        core.regs[3] = 200;
+        core.op_mulsu(2, 3);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(i16::from_le_bytes([core.regs[0], core.regs[1]]), -600);
+        assert_status_reg_true!(&core.status_reg, &['c']);
+
+        core.regs[2] = 120i8 as u8;
+        core.regs[3] = 234;
+        core.op_mulsu(2, 3);
+        assert_eq!(i16::from_le_bytes([core.regs[0], core.regs[1]]), 28080);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[2] = -23i8 as u8;
+        core.regs[3] = 0 as u8;
+        core.op_mulsu(2, 3);
+        assert_eq!(i16::from_le_bytes([core.regs[0], core.regs[1]]), 0);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+    }
+
+    #[test]
+    fn test_op_neg() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x00;
+        core.op_neg(0);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+
+        core.regs[0] = 0x80;
+        core.op_neg(0);
+        assert_eq!(core.regs[0], 0x80);
+        assert_status_reg_true!(&core.status_reg, &['v', 'n', 'c']);
+
+        core.regs[0] = 0x01;
+        core.op_neg(0);
+        assert_eq!(core.regs[0], 0xff);
+        assert_status_reg_true!(&core.status_reg, &['h', 's', 'n', 'c']);
+    }
+
+    #[test]
+    fn test_op_or() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x12;
+        core.regs[1] = 0x34;
+        core.op_or(0, 1);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x36);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[0] = 0x81;
+        core.regs[1] = 0x65;
+        core.op_or(0, 1);
+        assert_eq!(core.regs[0], 0xe5);
+        assert_status_reg_true!(&core.status_reg, &['n']);
+
+        core.regs[0] = 0x00;
+        core.regs[1] = 0x00;
+        core.op_or(0, 1);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+    }
+
+    #[test]
+    fn test_op_ori() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x12;
+        core.op_ori(0, 0x34);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x36);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[0] = 0x81;
+        core.op_ori(0, 0x65);
+        assert_eq!(core.regs[0], 0xe5);
+        assert_status_reg_true!(&core.status_reg, &['n']);
+
+        core.regs[0] = 0x00;
+        core.op_ori(0, 0x00);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+    }
+
+    #[test]
+    fn test_op_push_pop() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x42;
+        core.op_push(0);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.sp, SRAM_SIZE - 1 - 1);
+        assert_eq!(core.ram[SRAM_SIZE - 1], 0x42);
+
+        core.op_pop(1);
+        assert_eq!(core.pc, 0x02);
+        assert_eq!(core.sp, SRAM_SIZE - 1);
+        assert_eq!(core.regs[1], 0x42);
+    }
+
+    #[test]
+    fn test_op_rcall() {
+        let mut core = Core::new();
+
+        core.pc = 0x01;
+        core.op_rcall(0x0123);
+        assert_eq!(core.pc, 0x0124);
+        assert_eq!(core.sp, (SRAM_SIZE - 1) - 2);
+        assert_eq!(core.ram.get_u16((SRAM_SIZE - 1) - 1), 0x02);
+
+        core.op_rcall(-0x0025);
+        assert_eq!(core.pc, 0x00ff);
+        assert_eq!(core.sp, (SRAM_SIZE - 1) - (2 + 2));
+        assert_eq!(core.ram.get_u16((SRAM_SIZE - 1) - (1 + 2)), 0x0125);
+    }
+
+    #[test]
+    fn test_op_ret() {
+        let mut core = Core::new();
+
+        core.pc = 0x51;
+        core.ram[SRAM_SIZE - 1] = 0x01;
+        core.ram[SRAM_SIZE - 1 - 1] = 0x23;
+        core.sp = SRAM_SIZE - 1 - 2;
+        core.op_ret();
+        assert_eq!(core.pc, 0x0123);
+        assert_eq!(core.sp, SRAM_SIZE - 1);
+    }
+
+    #[test]
+    fn test_op_reti() {
+        let mut core = Core::new();
+
+        core.pc = 0x51;
+        core.ram[SRAM_SIZE - 1] = 0x01;
+        core.ram[SRAM_SIZE - 1 - 1] = 0x23;
+        core.sp = SRAM_SIZE - 1 - 2;
+        core.op_reti();
+        assert_eq!(core.pc, 0x0123);
+        assert_eq!(core.sp, SRAM_SIZE - 1);
+        assert_status_reg_true!(&core.status_reg, &['i']);
+    }
+
+    #[test]
+    fn test_op_rjmp() {
+        let mut core = Core::new();
+
+        core.pc = 0x01;
+        core.op_rjmp(0x0123);
+        assert_eq!(core.pc, 0x0124);
+
+        core.op_rjmp(-0x0025);
+        assert_eq!(core.pc, 0x00ff);
+    }
+
+    #[test]
+    fn test_op_rol() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x00;
+        core.status_reg.c = false;
+        core.op_rol(0);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+
+        core.regs[0] = 0x00;
+        core.status_reg.c = true;
+        core.op_rol(0);
+        assert_eq!(core.regs[0], 0x01);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.regs[0] = 0x90;
+        core.status_reg.c = false;
+        core.op_rol(0);
+        assert_eq!(core.regs[0], 0x20);
+        assert_status_reg_true!(&core.status_reg, &['c', 's', 'v']);
+
+        core.regs[0] = 0x48;
+        core.status_reg.c = false;
+        core.op_rol(0);
+        assert_eq!(core.regs[0], 0x90);
+        assert_status_reg_true!(&core.status_reg, &['n', 'v', 'h']);
+    }
+
+    #[test]
+    fn test_op_ror() {
+        let mut core = Core::new();
+
+        core.regs[0] = 0x00;
+        core.status_reg.c = false;
+        core.op_ror(0);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z']);
+
+        core.regs[0] = 0x00;
+        core.status_reg.c = true;
+        core.op_ror(0);
+        assert_eq!(core.regs[0], 0x80);
+        assert_status_reg_true!(&core.status_reg, &['n', 'v']);
+
+        core.regs[0] = 0x81;
+        core.status_reg.c = false;
+        core.op_ror(0);
+        assert_eq!(core.regs[0], 0x40);
+        assert_status_reg_true!(&core.status_reg, &['c', 's', 'v']);
+    }
+
+    #[test]
+    fn test_op_sbc() {
+        let mut core = Core::new();
+
+        core.status_reg.c = true;
+        core.regs[0] = 0x08;
+        core.regs[1] = 0x04;
+        core.op_sbc(0, 1);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x03);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.status_reg.c = true;
+        core.status_reg.z = true;
+        core.regs[0] = 0x80;
+        core.regs[1] = 0x7f;
+        core.op_sbc(0, 1);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z', 's', 'h', 'v']);
+
+        core.status_reg.c = false;
+        core.regs[0] = 0x00;
+        core.regs[1] = 0x01;
+        core.op_sbc(0, 1);
+        assert_eq!(core.regs[0], 0xff);
+        assert_status_reg_true!(&core.status_reg, &['s', 'n', 'c', 'h']);
+    }
+
+    #[test]
+    fn test_op_sbci() {
+        let mut core = Core::new();
+
+        core.status_reg.c = true;
+        core.regs[0] = 0x08;
+        core.op_sbci(0, 0x04);
+        assert_eq!(core.pc, 0x01);
+        assert_eq!(core.regs[0], 0x03);
+        assert_status_reg_true!(&core.status_reg, &[]);
+
+        core.status_reg.c = true;
+        core.status_reg.z = true;
+        core.regs[0] = 0x80;
+        core.op_sbci(0, 0x7f);
+        assert_eq!(core.regs[0], 0x00);
+        assert_status_reg_true!(&core.status_reg, &['z', 's', 'h', 'v']);
+
+        core.status_reg.c = false;
+        core.regs[0] = 0x00;
+        core.op_sbci(0, 0x01);
+        assert_eq!(core.regs[0], 0xff);
+        assert_status_reg_true!(&core.status_reg, &['s', 'n', 'c', 'h']);
     }
 }
