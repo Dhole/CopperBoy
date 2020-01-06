@@ -355,9 +355,51 @@ impl Core {
         1
     }
 
-    // TODO: 59. Fractional Multiply Unsiged (FMUL Rd, Rr) OK
-    // TODO: 60. Fractional Multiply Signed (FMULS Rd, Rr) OK
-    // TODO: 61. Fractional Multiply Signed with Unsigned (FMULSU Rd, Rr) OK
+    /// 59. Fractional Multiply Unsiged (FMUL Rd, Rr) OK
+    fn op_fmul(&mut self, d: u8, r: u8) -> usize {
+        let res = self.regs[d] as u16 * self.regs[r] as u16;
+        let r16 = res & 1 << 15;
+        let res = res << 1;
+        self.status_reg.c = r16 != 0;
+        self.status_reg.z = res == 0;
+        let bytes = res.to_le_bytes();
+        self.regs[0] = bytes[0];
+        self.regs[1] = bytes[1];
+
+        self.pc += 1;
+        2
+    }
+
+    /// 60. Fractional Multiply Signed (FMULS Rd, Rr) OK
+    fn op_fmuls(&mut self, d: u8, r: u8) -> usize {
+        let res = self.regs[d] as i8 as i16 * self.regs[r] as i8 as i16;
+        let r16 = res & 1 << 15;
+        let res = res << 1;
+        self.status_reg.c = r16 != 0;
+        self.status_reg.z = res == 0;
+        let bytes = res.to_le_bytes();
+        self.regs[0] = bytes[0];
+        self.regs[1] = bytes[1];
+
+        self.pc += 1;
+        2
+    }
+
+    /// 61. Fractional Multiply Signed with Unsigned (FMULSU Rd, Rr) OK
+    fn op_fmulsu(&mut self, d: u8, r: u8) -> usize {
+        let res = self.regs[d] as i8 as i16 * self.regs[r] as i16;
+        let r16 = res & 1 << 15;
+        let res = res << 1;
+        self.status_reg.c = r16 != 0;
+        self.status_reg.z = res == 0;
+        let bytes = res.to_le_bytes();
+        self.regs[0] = bytes[0];
+        self.regs[1] = bytes[1];
+
+        self.pc += 1;
+        2
+    }
+
     // TODO: 62. Indirect Call to Subroutine (ICALL) OK
     // TODO: 63. Indirect Jump (IJMP) OK
     // TODO: 64. Load an I/O Location to Register (IN Rd, a) OK

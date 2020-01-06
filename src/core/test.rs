@@ -463,6 +463,102 @@ fn test_op_eor() {
 }
 
 #[test]
+fn test_op_fmul() {
+    let mut core = Core::new();
+
+    core.regs[16] = 0x62;
+    core.regs[17] = 0x53;
+    core.op_fmul(16, 17);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x3f8c);
+    assert_status_reg_true!(&core.status_reg, &[]);
+
+    core.regs[16] = 0xa3;
+    core.regs[17] = 0xf5;
+    core.op_fmul(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x37fe);
+    assert_status_reg_true!(&core.status_reg, &['c']);
+
+    core.regs[16] = 0;
+    core.regs[17] = 0;
+    core.op_fmul(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x0000);
+    assert_status_reg_true!(&core.status_reg, &['z']);
+}
+
+#[test]
+fn test_op_fmuls() {
+    let mut core = Core::new();
+
+    core.regs[16] = 0x62;
+    core.regs[17] = 0x53;
+    core.op_fmuls(16, 17);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x3f8c);
+    assert_status_reg_true!(&core.status_reg, &[]);
+
+    core.regs[16] = 0xa3;
+    core.regs[17] = 0xf5;
+    core.op_fmuls(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x07fe);
+    assert_status_reg_true!(&core.status_reg, &[]);
+
+    core.regs[16] = 0;
+    core.regs[17] = 0;
+    core.op_fmuls(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x0000);
+    assert_status_reg_true!(&core.status_reg, &['z']);
+
+    core.regs[16] = 0x80;
+    core.regs[17] = 0x80;
+    core.op_fmuls(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x8000);
+    assert_status_reg_true!(&core.status_reg, &[]);
+
+    core.regs[16] = 0xff;
+    core.regs[17] = 0x01;
+    core.op_fmuls(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0xfffe);
+    assert_status_reg_true!(&core.status_reg, &['c']);
+}
+
+#[test]
+fn test_op_fmulsu() {
+    let mut core = Core::new();
+
+    core.regs[16] = 0x62;
+    core.regs[17] = 0x53;
+    core.op_fmulsu(16, 17);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x3f8c);
+    assert_status_reg_true!(&core.status_reg, &[]);
+
+    core.regs[16] = 0xa3;
+    core.regs[17] = 0xf5;
+    core.op_fmulsu(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x4dfe);
+    assert_status_reg_true!(&core.status_reg, &['c']);
+
+    core.regs[16] = 0;
+    core.regs[17] = 0;
+    core.op_fmulsu(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x0000);
+    assert_status_reg_true!(&core.status_reg, &['z']);
+
+    core.regs[16] = 0x80;
+    core.regs[17] = 0x80;
+    core.op_fmulsu(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0x8000);
+    assert_status_reg_true!(&core.status_reg, &['c']);
+
+    core.regs[16] = 0xff;
+    core.regs[17] = 0x01;
+    core.op_fmulsu(16, 17);
+    assert_eq!(u16::from_le_bytes([core.regs[0], core.regs[1]]), 0xfffe);
+    assert_status_reg_true!(&core.status_reg, &['c']);
+}
+
+#[test]
 fn test_op_inc() {
     let mut core = Core::new();
 
