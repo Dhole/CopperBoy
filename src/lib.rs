@@ -539,8 +539,8 @@ enum Op {
     Break,
     Bset { s: u8 },
     Bst { d: u8, b: u8 },
-    Call { k: u16 },
-    Cbi { a: u8, d: u8 },
+    Call { k: u32 },
+    Cbi { a: u8, b: u8 },
     Clr { d: u8 },
     Com { d: u8 },
     Cp { d: u8, r: u8 },
@@ -607,89 +607,249 @@ enum Op {
 fn decode(w0: u16, w1: u16) -> Op {
     match w0 {
         _ if (w0 & OPCODE_OP_ADC_MASK) == OPCODE_OP_ADC_BITS => Op::Adc {
-            r: ((w0 & 0b0000_0010_0000_0000 >> 5) | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
         },
-        // _ if (w0 & OPCODE_OP_ADD_MASK) == OPCODE_OP_ADD_BITS => {},
-        // _ if (w0 & OPCODE_OP_ADIW_MASK) == OPCODE_OP_ADIW_BITS => {},
-        // _ if (w0 & OPCODE_OP_AND_MASK) == OPCODE_OP_AND_BITS => {},
-        // _ if (w0 & OPCODE_OP_ANDI_MASK) == OPCODE_OP_ANDI_BITS => {},
-        // _ if (w0 & OPCODE_OP_ASR_MASK) == OPCODE_OP_ASR_BITS => {},
-        // _ if (w0 & OPCODE_OP_BCLR_MASK) == OPCODE_OP_BCLR_BITS => {},
-        // _ if (w0 & OPCODE_OP_BLD_MASK) == OPCODE_OP_BLD_BITS => {},
-        // _ if (w0 & OPCODE_OP_BRBC_MASK) == OPCODE_OP_BRBC_BITS => {},
-        // _ if (w0 & OPCODE_OP_BRBS_MASK) == OPCODE_OP_BRBS_BITS => {},
-        // _ if (w0 & OPCODE_OP_BREAK_MASK) == OPCODE_OP_BREAK_BITS => {},
-        // _ if (w0 & OPCODE_OP_BSET_MASK) == OPCODE_OP_BSET_BITS => {},
-        // _ if (w0 & OPCODE_OP_BST_MASK) == OPCODE_OP_BST_BITS => {},
-        // _ if (w0 & OPCODE_OP_CALL_MASK) == OPCODE_OP_CALL_BITS => {},
-        // _ if (w0 & OPCODE_OP_CBI_MASK) == OPCODE_OP_CBI_BITS => {},
-        // _ if (w0 & OPCODE_OP_CLR_MASK) == OPCODE_OP_CLR_BITS => {},
-        // _ if (w0 & OPCODE_OP_COM_MASK) == OPCODE_OP_COM_BITS => {},
-        // _ if (w0 & OPCODE_OP_CP_MASK) == OPCODE_OP_CP_BITS => {},
-        // _ if (w0 & OPCODE_OP_CPC_MASK) == OPCODE_OP_CPC_BITS => {},
-        // _ if (w0 & OPCODE_OP_CPI_MASK) == OPCODE_OP_CPI_BITS => {},
-        // _ if (w0 & OPCODE_OP_CPSE_MASK) == OPCODE_OP_CPSE_BITS => {},
-        // _ if (w0 & OPCODE_OP_DEC_MASK) == OPCODE_OP_DEC_BITS => {},
-        // _ if (w0 & OPCODE_OP_EICALL_MASK) == OPCODE_OP_EICALL_BITS => {},
-        // _ if (w0 & OPCODE_OP_EIJMP_MASK) == OPCODE_OP_EIJMP_BITS => {},
-        // _ if (w0 & OPCODE_OP_ELPM_MASK) == OPCODE_OP_ELPM_BITS => {},
-        // _ if (w0 & OPCODE_OP_EOR_MASK) == OPCODE_OP_EOR_BITS => {},
-        // _ if (w0 & OPCODE_OP_FMUL_MASK) == OPCODE_OP_FMUL_BITS => {},
-        // _ if (w0 & OPCODE_OP_FMULS_MASK) == OPCODE_OP_FMULS_BITS => {},
-        // _ if (w0 & OPCODE_OP_FMULSU_MASK) == OPCODE_OP_FMULSU_BITS => {},
-        // _ if (w0 & OPCODE_OP_ICALL_MASK) == OPCODE_OP_ICALL_BITS => {},
-        // _ if (w0 & OPCODE_OP_IJMP_MASK) == OPCODE_OP_IJMP_BITS => {},
-        // _ if (w0 & OPCODE_OP_IN_MASK) == OPCODE_OP_IN_BITS => {},
-        // _ if (w0 & OPCODE_OP_INC_MASK) == OPCODE_OP_INC_BITS => {},
-        // _ if (w0 & OPCODE_OP_JMP_MASK) == OPCODE_OP_JMP_BITS => {},
-        // _ if (w0 & OPCODE_OP_LD_MASK) == OPCODE_OP_LD_BITS => {},
-        // _ if (w0 & OPCODE_OP_LDI_MASK) == OPCODE_OP_LDI_BITS => {},
-        // _ if (w0 & OPCODE_OP_LDS_MASK) == OPCODE_OP_LDS_BITS => {},
-        // _ if (w0 & OPCODE_OP_LDS16_MASK) == OPCODE_OP_LDS16_BITS => {},
-        // _ if (w0 & OPCODE_OP_LPM_MASK) == OPCODE_OP_LPM_BITS => {},
-        // _ if (w0 & OPCODE_OP_LSR_MASK) == OPCODE_OP_LSR_BITS => {},
-        // _ if (w0 & OPCODE_OP_MOV_MASK) == OPCODE_OP_MOV_BITS => {},
-        // _ if (w0 & OPCODE_OP_MOVW_MASK) == OPCODE_OP_MOVW_BITS => {},
-        // _ if (w0 & OPCODE_OP_MUL_MASK) == OPCODE_OP_MUL_BITS => {},
-        // _ if (w0 & OPCODE_OP_MULS_MASK) == OPCODE_OP_MULS_BITS => {},
-        // _ if (w0 & OPCODE_OP_MULSU_MASK) == OPCODE_OP_MULSU_BITS => {},
-        // _ if (w0 & OPCODE_OP_NEG_MASK) == OPCODE_OP_NEG_BITS => {},
-        // _ if (w0 & OPCODE_OP_NOP_MASK) == OPCODE_OP_NOP_BITS => {},
-        // _ if (w0 & OPCODE_OP_OR_MASK) == OPCODE_OP_OR_BITS => {},
-        // _ if (w0 & OPCODE_OP_ORI_MASK) == OPCODE_OP_ORI_BITS => {},
-        // _ if (w0 & OPCODE_OP_OUT_MASK) == OPCODE_OP_OUT_BITS => {},
-        // _ if (w0 & OPCODE_OP_POP_MASK) == OPCODE_OP_POP_BITS => {},
-        // _ if (w0 & OPCODE_OP_PUSH_MASK) == OPCODE_OP_PUSH_BITS => {},
-        // _ if (w0 & OPCODE_OP_RCALL_MASK) == OPCODE_OP_RCALL_BITS => {},
-        // _ if (w0 & OPCODE_OP_RET_MASK) == OPCODE_OP_RET_BITS => {},
-        // _ if (w0 & OPCODE_OP_RETI_MASK) == OPCODE_OP_RETI_BITS => {},
-        // _ if (w0 & OPCODE_OP_RJMP_MASK) == OPCODE_OP_RJMP_BITS => {},
-        // _ if (w0 & OPCODE_OP_ROR_MASK) == OPCODE_OP_ROR_BITS => {},
-        // _ if (w0 & OPCODE_OP_SBC_MASK) == OPCODE_OP_SBC_BITS => {},
-        // _ if (w0 & OPCODE_OP_SBCI_MASK) == OPCODE_OP_SBCI_BITS => {},
-        // _ if (w0 & OPCODE_OP_SBI_MASK) == OPCODE_OP_SBI_BITS => {},
-        // _ if (w0 & OPCODE_OP_SBIC_MASK) == OPCODE_OP_SBIC_BITS => {},
-        // _ if (w0 & OPCODE_OP_SBIS_MASK) == OPCODE_OP_SBIS_BITS => {},
-        // _ if (w0 & OPCODE_OP_SBIW_MASK) == OPCODE_OP_SBIW_BITS => {},
-        // _ if (w0 & OPCODE_OP_SBRC_MASK) == OPCODE_OP_SBRC_BITS => {},
-        // _ if (w0 & OPCODE_OP_SBRS_MASK) == OPCODE_OP_SBRS_BITS => {},
-        // _ if (w0 & OPCODE_OP_SER_MASK) == OPCODE_OP_SER_BITS => {},
-        // _ if (w0 & OPCODE_OP_SLEEP_MASK) == OPCODE_OP_SLEEP_BITS => {},
-        // _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => {},
-        // _ if (w0 & OPCODE_OP_SPM2_MASK) == OPCODE_OP_SPM2_BITS => {},
-        // _ if (w0 & OPCODE_OP_ST_MASK) == OPCODE_OP_ST_BITS => {},
-        // _ if (w0 & OPCODE_OP_STS_MASK) == OPCODE_OP_STS_BITS => {},
-        // _ if (w0 & OPCODE_OP_STS16_MASK) == OPCODE_OP_STS16_BITS => {},
-        // _ if (w0 & OPCODE_OP_SUB_MASK) == OPCODE_OP_SUB_BITS => {},
-        // _ if (w0 & OPCODE_OP_SUBI_MASK) == OPCODE_OP_SUBI_BITS => {},
-        // _ if (w0 & OPCODE_OP_ST_MASK) == OPCODE_OP_ST_BITS => {},
-        // _ if (w0 & OPCODE_OP_STS_MASK) == OPCODE_OP_STS_BITS => {},
-        // _ if (w0 & OPCODE_OP_STS16_MASK) == OPCODE_OP_STS16_BITS => {},
-        // _ if (w0 & OPCODE_OP_SUB_MASK) == OPCODE_OP_SUB_BITS => {},
-        // _ if (w0 & OPCODE_OP_SUBI_MASK) == OPCODE_OP_SUBI_BITS => {},
-        // _ if (w0 & OPCODE_OP_SWAP_MASK) == OPCODE_OP_SWAP_BITS => {},
-        // _ if (w0 & OPCODE_OP_WDR_MASK) == OPCODE_OP_WDR_BITS => {},
+        _ if (w0 & OPCODE_OP_ADD_MASK) == OPCODE_OP_ADD_BITS => Op::Add {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_ADIW_MASK) == OPCODE_OP_ADIW_BITS => Op::Adiw {
+            k: ((w0 & 0b0000_0000_1100_0000) >> 2 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0000_0011_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_AND_MASK) == OPCODE_OP_AND_BITS => Op::And {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_ANDI_MASK) == OPCODE_OP_ANDI_BITS => Op::Andi {
+            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_ASR_MASK) == OPCODE_OP_ASR_BITS => Op::Asr {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_BCLR_MASK) == OPCODE_OP_BCLR_BITS => Op::Bclr {
+            s: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_BLD_MASK) == OPCODE_OP_BLD_BITS => Op::Bld {
+            b: (w0 & 0b0000_0000_0000_0111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_BRBC_MASK) == OPCODE_OP_BRBC_BITS => Op::Brbc {
+            k: ((w0 & 0b0000_0011_1111_1000) >> 2) as i8,
+            s: (w0 & 0b0000_0000_0000_0111) as u8,
+        },
+        _ if (w0 & OPCODE_OP_BRBS_MASK) == OPCODE_OP_BRBS_BITS => Op::Brbs {
+            k: ((w0 & 0b0000_0011_1111_1000) >> 2) as i8,
+            s: (w0 & 0b0000_0000_0000_0111) as u8,
+        },
+        _ if (w0 & OPCODE_OP_BREAK_MASK) == OPCODE_OP_BREAK_BITS => Op::Break,
+        _ if (w0 & OPCODE_OP_BSET_MASK) == OPCODE_OP_BSET_BITS => Op::Bset {
+            s: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_BST_MASK) == OPCODE_OP_BST_BITS => Op::Bst {
+            b: (w0 & 0b0000_0000_0000_0111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_CALL_MASK) == OPCODE_OP_CALL_BITS => Op::Call {
+            k: ((w0 & 0b0000_0001_1111_0000) as u32 >> 3 | (w0 & 0b0000_0000_0000_0001) as u32)
+                >> 16
+                | (w1 as u32),
+        },
+        _ if (w0 & OPCODE_OP_CBI_MASK) == OPCODE_OP_CBI_BITS => Op::Cbi {
+            b: (w0 & 0b0000_0000_0000_0111) as u8,
+            a: ((w0 & 0b0000_0000_1111_1000) >> 2) as u8,
+        },
+        _ if (w0 & OPCODE_OP_CLR_MASK) == OPCODE_OP_CLR_BITS => Op::Clr {
+            d: (w0 & 0b0000_0011_1111_1111) as u8,
+        },
+        _ if (w0 & OPCODE_OP_COM_MASK) == OPCODE_OP_COM_BITS => Op::Com {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_CP_MASK) == OPCODE_OP_CP_BITS => Op::Cp {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_CPC_MASK) == OPCODE_OP_CPC_BITS => Op::Cpc {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_CPI_MASK) == OPCODE_OP_CPI_BITS => Op::Cpi {
+            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_CPSE_MASK) == OPCODE_OP_CPSE_BITS => Op::Cpse {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_DEC_MASK) == OPCODE_OP_DEC_BITS => Op::Dec {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_EICALL_MASK) == OPCODE_OP_EICALL_BITS => Op::Eicall,
+        _ if (w0 & OPCODE_OP_EIJMP_MASK) == OPCODE_OP_EIJMP_BITS => Op::Eijmp,
+        _ if (w0 & OPCODE_OP_EOR_MASK) == OPCODE_OP_EOR_BITS => Op::Eor {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_FMUL_MASK) == OPCODE_OP_FMUL_BITS => Op::Fmul {
+            r: (w0 & 0b0000_0000_0000_0111) as u8,
+            d: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_FMULS_MASK) == OPCODE_OP_FMULS_BITS => Op::Fmuls {
+            r: (w0 & 0b0000_0000_0000_0111) as u8,
+            d: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_FMULSU_MASK) == OPCODE_OP_FMULSU_BITS => Op::Fmulsu {
+            r: (w0 & 0b0000_0000_0000_0111) as u8,
+            d: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_ICALL_MASK) == OPCODE_OP_ICALL_BITS => Op::Icall,
+        _ if (w0 & OPCODE_OP_IJMP_MASK) == OPCODE_OP_IJMP_BITS => Op::Ijmp,
+        _ if (w0 & OPCODE_OP_IN_MASK) == OPCODE_OP_IN_BITS => Op::In {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+            a: ((w0 & 0b0000_0110_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+        },
+        _ if (w0 & OPCODE_OP_INC_MASK) == OPCODE_OP_INC_BITS => Op::Inc {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_JMP_MASK) == OPCODE_OP_JMP_BITS => Op::Jmp {
+            k: ((w0 & 0b0000_0001_1111_0000) as u32 >> 3 | (w0 & 0b0000_0000_0000_0001) as u32)
+                >> 16
+                | (w1 as u32),
+        },
+        _ if (w0 & OPCODE_OP_LDI_MASK) == OPCODE_OP_LDI_BITS => Op::Ldi {
+            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        },
+        // TODO
+        // _ if (w0 & OPCODE_OP_LDS_MASK) == OPCODE_OP_LDS_BITS => Op::Lds {
+        //     d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        // },
+        // TODO
+        // _ if (w0 & OPCODE_OP_LDS16_MASK) == OPCODE_OP_LDS16_BITS => Op::Lds16 {
+        //     k: ((w0 & 0b0000_0111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+        //     d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        // },
+        _ if (w0 & OPCODE_OP_LSR_MASK) == OPCODE_OP_LSR_BITS => Op::Lsr {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_MOV_MASK) == OPCODE_OP_MOV_BITS => Op::Mov {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_MOVW_MASK) == OPCODE_OP_MOVW_BITS => Op::Movw {
+            r: (w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_MUL_MASK) == OPCODE_OP_MUL_BITS => Op::Mul {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_MULS_MASK) == OPCODE_OP_MULS_BITS => Op::Muls {
+            r: (w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_MULSU_MASK) == OPCODE_OP_MULSU_BITS => Op::Mulsu {
+            r: (w0 & 0b0000_0000_0000_0111) as u8,
+            d: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_NEG_MASK) == OPCODE_OP_NEG_BITS => Op::Neg {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_NOP_MASK) == OPCODE_OP_NOP_BITS => Op::Nop,
+        _ if (w0 & OPCODE_OP_OR_MASK) == OPCODE_OP_OR_BITS => Op::Or {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_ORI_MASK) == OPCODE_OP_ORI_BITS => Op::Ori {
+            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        },
+        // TODO
+        // _ if (w0 & OPCODE_OP_OUT_MASK) == OPCODE_OP_OUT_BITS => Op::Out {
+        //     r: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        //     a: ((w0 & 0b0000_0110_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+        // },
+        _ if (w0 & OPCODE_OP_POP_MASK) == OPCODE_OP_POP_BITS => Op::Pop {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_PUSH_MASK) == OPCODE_OP_PUSH_BITS => Op::Push {
+            r: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_RCALL_MASK) == OPCODE_OP_RCALL_BITS => Op::Rcall {
+            k: (w0 & 0b0000_1111_1111_1111) as i16,
+        },
+        _ if (w0 & OPCODE_OP_RET_MASK) == OPCODE_OP_RET_BITS => Op::Ret,
+        _ if (w0 & OPCODE_OP_RETI_MASK) == OPCODE_OP_RETI_BITS => Op::Reti,
+        _ if (w0 & OPCODE_OP_RJMP_MASK) == OPCODE_OP_RJMP_BITS => Op::Rjmp {
+            k: (w0 & 0b0000_1111_1111_1111) as i16,
+        },
+        _ if (w0 & OPCODE_OP_ROR_MASK) == OPCODE_OP_ROR_BITS => Op::Ror {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_SBC_MASK) == OPCODE_OP_SBC_BITS => Op::Sbc {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_SBCI_MASK) == OPCODE_OP_SBCI_BITS => Op::Sbci {
+            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        },
+        // TODO
+        // _ if (w0 & OPCODE_OP_SBI_MASK) == OPCODE_OP_SBI_BITS => Op::Sbi {
+        //     b: (w0 & 0b0000_0000_0000_0111) as u8,
+        //     a: ((w0 & 0b0000_0000_1111_1000) >> 2) as u8,
+        // },
+        // TODO
+        // _ if (w0 & OPCODE_OP_SBIC_MASK) == OPCODE_OP_SBIC_BITS => Op::Sbic {
+        //     b: (w0 & 0b0000_0000_0000_0111) as u8,
+        //     a: ((w0 & 0b0000_0000_1111_1000) >> 2) as u8,
+        // },
+        // TODO
+        // _ if (w0 & OPCODE_OP_SBIS_MASK) == OPCODE_OP_SBIS_BITS => Op::Sbis {
+        //     b: (w0 & 0b0000_0000_0000_0111) as u8,
+        //     a: ((w0 & 0b0000_0000_1111_1000) >> 2) as u8,
+        // },
+        // TODO
+        // _ if (w0 & OPCODE_OP_SBIW_MASK) == OPCODE_OP_SBIW_BITS => Op::Sbiw {
+        //     k: ((w0 & 0b0000_0000_1100_0000) >> 2 | w0 & 0b0000_0000_0000_1111) as u8,
+        //     d: ((w0 & 0b0000_0000_0011_0000) >> 3) as u8,
+        // },
+        _ if (w0 & OPCODE_OP_SBRC_MASK) == OPCODE_OP_SBRC_BITS => Op::Sbrc {
+            b: (w0 & 0b0000_0000_0000_0111) as u8,
+            r: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_SBRS_MASK) == OPCODE_OP_SBRS_BITS => Op::Sbrs {
+            b: (w0 & 0b0000_0000_0000_0111) as u8,
+            r: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_SER_MASK) == OPCODE_OP_SER_BITS => Op::Ser {
+            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_SLEEP_MASK) == OPCODE_OP_SLEEP_BITS => Op::Sleep,
+        _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => Op::Spm,
+        // TODO
+        //_ if (w0 & OPCODE_OP_STS_MASK) == OPCODE_OP_STS_BITS => Op::Sts {
+        //    d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        //},
+        // TODO
+        //_ if (w0 & OPCODE_OP_STS16_MASK) == OPCODE_OP_STS16_BITS => Op::Sts16 {
+        //    k: ((w0 & 0b0000_0111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+        //    d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        //},
+        _ if (w0 & OPCODE_OP_SUB_MASK) == OPCODE_OP_SUB_BITS => Op::Sub {
+            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_SUBI_MASK) == OPCODE_OP_SUBI_BITS => Op::Subi {
+            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_SWAP_MASK) == OPCODE_OP_SWAP_BITS => Op::Swap {
+            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
+        },
+        _ if (w0 & OPCODE_OP_WDR_MASK) == OPCODE_OP_WDR_BITS => Op::Wdr,
         _ => unreachable!(),
     }
 }

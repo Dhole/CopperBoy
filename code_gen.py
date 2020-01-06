@@ -1,135 +1,5 @@
 #!/usr/bin/env python3
 
-#mnemonics = """ADC
-#ADD
-#ADIW
-#AND
-#ANDI
-#ASR
-#BCLR
-#BLD
-#BRBC
-#BRBS
-##BRCC
-##BRCS
-#BREAK
-##BREQ
-##BRGE
-##BRHC
-##BRHS
-##BRID
-##BRIE
-##BRLO
-##BRLT
-##BRMI
-##BRNE
-##BRPL
-##BRSH
-##BRTC
-##BRTS
-##BRVC
-##BRVS
-#BSET
-#BST
-#CALL
-#CBI
-##CBR
-##CLC
-##CLH
-##CLI
-##CLN
-#CLR
-##CLS
-##CLT
-##CLV
-##CLZ
-#COM
-#CP
-#CPC
-#CPI
-#CPSE
-#DEC
-#EICALL
-#EIJMP
-#ELPM
-#EOR
-#FMUL
-#FMULS
-#FMULSU
-#ICALL
-#IJMP
-#IN
-#INC
-#JMP
-#LD
-##LDD
-#LDI
-#LDS
-#LDS16
-#LPM
-##LSL
-#LSR
-#MOV
-#MOVW
-#MUL
-#MULS
-#MULSU
-#NEG
-#NOP
-#OR
-#ORI
-#OUT
-#POP
-#PUSH
-#RCALL
-#RET
-#RETI
-#RJMP
-##ROL
-#ROR
-#SBC
-#SBCI
-#SBI
-#SBIC
-#SBIS
-#SBIW
-##SBR
-#SBRC
-#SBRS
-##SEC
-##SEH
-##SEI
-##SEN
-#SER
-##SES
-##SET
-##SEV
-##SEZ
-#SLEEP
-#SPM
-#SPM2
-#ST
-##STD
-#STS
-#STS16
-#SUB
-#SUBI
-#ST
-##STD
-#STS
-#STS16
-#SUB
-#SUBI
-#SWAP
-##TST
-#WDR"""
-#
-#for mnemonic in mnemonics.split('\n'):
-#    if mnemonic[0] == '#':
-#        continue
-#    print(f'  _ if (w0 & OPCODE_OP_{mnemonic}_MASK) == OPCODE_OP_{mnemonic} => {{}},')
-
-
 instructions = """
    5 ADC    0001_11rd_dddd_rrrr
    6 ADD    0000_11rd_dddd_rrrr
@@ -184,7 +54,7 @@ instructions = """
   87 ORI    0110_KKKK_dddd_KKKK
   88 OUT    1011_1AAr_rrrr_AAAA
   89 POP    1001_000d_dddd_1111
-  90 PUSH   1001_001d_dddd_1111
+  90 PUSH   1001_001r_rrrr_1111
   91 RCALL  1101_kkkk_kkkk_kkkk
   92 RET    1001_0101_0000_1000
   93 RETI   1001_0101_0001_1000
@@ -232,6 +102,7 @@ for inst in instructions.split('\n'):
     vars_masked = ''.join([b if b in ['0', '1', '_'] else 'x' for b in w0])
     bits = vars_masked.replace('x', '0')
     mask = vars_masked.replace('0', '1').replace('x', '0')
+    print(f'// {num}')
     print(f'const OPCODE_OP_{mnemonic}_BITS: u16 = 0b{bits};')
     print(f'const OPCODE_OP_{mnemonic}_MASK: u16 = 0b{mask};')
     print()
@@ -261,13 +132,13 @@ def build_arg_decoder(arg, w0):
     for mask in masks[::-1]:
         if mask[-1] == 15:
             parts.append(f'w0 & {build_mask(mask)}')
-            last = mask[0]
         else:
             shift = last - mask[-1] - 1
             parts.append(f'(w0 & {build_mask(mask)}) >> {shift}')
+        last = mask[0]
     return ' | '.join(parts[::-1])
 
-print('match v {')
+print('match w0 {')
 for inst in instructions.split('\n'):
     if len(inst) == 0 or inst[0] == '#':
         continue
@@ -276,24 +147,19 @@ for inst in instructions.split('\n'):
     args = set([b for b in w0])
     args = args.difference(set(['0', '1', '_']))
 
-    # print(w0) # DBG
-
     args_decoder = {}
     for arg in args:
-        # print(arg) # DBG
         args_decoder[arg] = build_arg_decoder(arg, w0)
-    # print() # DBG
 
-
-    print(f'  _ if (w0 & OPCODE_OP_{mnemonic}_MASK) == OPCODE_OP_{mnemonic} => {{')
+    print(f'  _ if (w0 & OPCODE_OP_{mnemonic}_MASK) == OPCODE_OP_{mnemonic}_BITS => {{')
     if len(args) == 0:
-        print(f'    {mnemonic.title()}')
+        print(f'    Op::{mnemonic.title()}')
     else:
-        print(f'    {mnemonic.title()} {{')
+        print(f'    Op::{mnemonic.title()} {{')
         for arg in args:
-            print(f'      {arg}: {args_decoder[arg]},')
+            print(f'      {arg}: ({args_decoder[arg]}) as u8,')
         print('    }')
     print('  },')
 
-print('  _ => unreachable(),')
+print('  _ => unreachable!(),')
 print('}')

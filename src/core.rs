@@ -216,9 +216,9 @@ impl Core {
         4
     }
 
-    /// 37. Clear Bit in I/O Register (CBI P, b) OK
-    fn op_cbi(&mut self, a: u8, d: u8) -> usize {
-        self.io_regs[a as usize] &= !(1 << d);
+    /// 37. Clear Bit in I/O Register (CBI A, b) OK
+    fn op_cbi(&mut self, a: u8, b: u8) -> usize {
+        self.io_regs[a as usize] &= !(1 << b);
         self.pc += 1;
         2
     }
