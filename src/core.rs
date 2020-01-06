@@ -753,7 +753,7 @@ impl Core {
     }
 
     // 126. Test for Zero or Minus (TST Rd) OK -> AND Rd, Rd
-    // 127. Watchdog Reset (WDR) OK
+    /// 127. Watchdog Reset (WDR) OK
     fn op_wdr(&mut self) {
         unimplemented!();
         // self.pc += 1;
