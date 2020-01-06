@@ -360,7 +360,7 @@ impl Core {
     // TODO: 61. Fractional Multiply Signed with Unsigned (FMULSU Rd, Rr) OK
     // TODO: 62. Indirect Call to Subroutine (ICALL) OK
     // TODO: 63. Indirect Jump (IJMP) OK
-    // TODO: 64. Load an I/O Location to Register (IN Rd, P) OK
+    // TODO: 64. Load an I/O Location to Register (IN Rd, a) OK
 
     /// 65. Increment (INC Rd) OK
     fn op_inc(&mut self, d: u8) -> usize {
@@ -585,22 +585,22 @@ impl Core {
         2
     }
 
-    /// 95. Rotate Left through Carry (ROL Rd) OK
-    fn op_rol(&mut self, d: u8) -> usize {
-        let res = self.regs[d] << 1;
-        let res = res | self.status_reg.c as u8;
-        let (r7, rd7, rd3) = (res & 1 << 7, self.regs[d] & 1 << 7, self.regs[d] & 1 << 3);
-        self.status_reg.h = rd3 != 0;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.c = rd7 != 0;
-        self.status_reg.v = self.status_reg.n ^ self.status_reg.c;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
-        self.regs[d] = res;
+    // 95. Rotate Left through Carry (ROL Rd) OK -> ADC Rd, Rd
+    // fn op_rol(&mut self, d: u8) -> usize {
+    //     let res = self.regs[d] << 1;
+    //     let res = res | self.status_reg.c as u8;
+    //     let (r7, rd7, rd3) = (res & 1 << 7, self.regs[d] & 1 << 7, self.regs[d] & 1 << 3);
+    //     self.status_reg.h = rd3 != 0;
+    //     self.status_reg.n = r7 != 0;
+    //     self.status_reg.c = rd7 != 0;
+    //     self.status_reg.v = self.status_reg.n ^ self.status_reg.c;
+    //     self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+    //     self.status_reg.z = res == 0;
+    //     self.regs[d] = res;
 
-        self.pc += 1;
-        1
-    }
+    //     self.pc += 1;
+    //     1
+    // }
 
     /// 96. Rotrate Right through Carry (ROR Rd) OK
     fn op_ror(&mut self, d: u8) -> usize {

@@ -757,35 +757,35 @@ fn test_op_rjmp() {
     assert_eq!(core.pc, 0x00ff);
 }
 
-#[test]
-fn test_op_rol() {
-    let mut core = Core::new();
-
-    core.regs[0] = 0x00;
-    core.status_reg.c = false;
-    core.op_rol(0);
-    assert_eq!(core.pc, 0x01);
-    assert_eq!(core.regs[0], 0x00);
-    assert_status_reg_true!(&core.status_reg, &['z']);
-
-    core.regs[0] = 0x00;
-    core.status_reg.c = true;
-    core.op_rol(0);
-    assert_eq!(core.regs[0], 0x01);
-    assert_status_reg_true!(&core.status_reg, &[]);
-
-    core.regs[0] = 0x90;
-    core.status_reg.c = false;
-    core.op_rol(0);
-    assert_eq!(core.regs[0], 0x20);
-    assert_status_reg_true!(&core.status_reg, &['c', 's', 'v']);
-
-    core.regs[0] = 0x48;
-    core.status_reg.c = false;
-    core.op_rol(0);
-    assert_eq!(core.regs[0], 0x90);
-    assert_status_reg_true!(&core.status_reg, &['n', 'v', 'h']);
-}
+// #[test]
+// fn test_op_rol() {
+//     let mut core = Core::new();
+//
+//     core.regs[0] = 0x00;
+//     core.status_reg.c = false;
+//     core.op_rol(0);
+//     assert_eq!(core.pc, 0x01);
+//     assert_eq!(core.regs[0], 0x00);
+//     assert_status_reg_true!(&core.status_reg, &['z']);
+//
+//     core.regs[0] = 0x00;
+//     core.status_reg.c = true;
+//     core.op_rol(0);
+//     assert_eq!(core.regs[0], 0x01);
+//     assert_status_reg_true!(&core.status_reg, &[]);
+//
+//     core.regs[0] = 0x90;
+//     core.status_reg.c = false;
+//     core.op_rol(0);
+//     assert_eq!(core.regs[0], 0x20);
+//     assert_status_reg_true!(&core.status_reg, &['c', 's', 'v']);
+//
+//     core.regs[0] = 0x48;
+//     core.status_reg.c = false;
+//     core.op_rol(0);
+//     assert_eq!(core.regs[0], 0x90);
+//     assert_status_reg_true!(&core.status_reg, &['n', 'v', 'h']);
+// }
 
 #[test]
 fn test_op_ror() {
