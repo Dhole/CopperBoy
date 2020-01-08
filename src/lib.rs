@@ -629,7 +629,7 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_ADIW_MASK) == OPCODE_OP_ADIW_BITS => Self::Adiw {
                 k: ((w0 & 0b0000_0000_1100_0000) >> 2 | w0 & 0b0000_0000_0000_1111) as u8,
-                d: ((w0 & 0b0000_0000_0011_0000) >> 4) as u8,
+                d: ((w0 & 0b0000_0000_0011_0000) >> 4) as u8 + 24,
             },
             _ if (w0 & OPCODE_OP_AND_MASK) == OPCODE_OP_AND_BITS => Self::And {
                 r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
@@ -637,7 +637,7 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_ANDI_MASK) == OPCODE_OP_ANDI_BITS => Self::Andi {
                 k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_ASR_MASK) == OPCODE_OP_ASR_BITS => Self::Asr {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
@@ -650,11 +650,11 @@ impl Op {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
             _ if (w0 & OPCODE_OP_BRBC_MASK) == OPCODE_OP_BRBC_BITS => Self::Brbc {
-                k: ((w0 & 0b0000_0011_1111_1000) >> 3) as i8,
+                k: ((w0 & 0b0000_0011_1111_1000) >> 3) as i8 - 64,
                 s: (w0 & 0b0000_0000_0000_0111) as u8,
             },
             _ if (w0 & OPCODE_OP_BRBS_MASK) == OPCODE_OP_BRBS_BITS => Self::Brbs {
-                k: ((w0 & 0b0000_0011_1111_1000) >> 3) as i8,
+                k: ((w0 & 0b0000_0011_1111_1000) >> 3) as i8 - 64,
                 s: (w0 & 0b0000_0000_0000_0111) as u8,
             },
             _ if (w0 & OPCODE_OP_BREAK_MASK) == OPCODE_OP_BREAK_BITS => Self::Break,
@@ -690,7 +690,7 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_CPI_MASK) == OPCODE_OP_CPI_BITS => Self::Cpi {
                 k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_CPSE_MASK) == OPCODE_OP_CPSE_BITS => Self::Cpse {
                 r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
@@ -706,16 +706,16 @@ impl Op {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
             _ if (w0 & OPCODE_OP_FMUL_MASK) == OPCODE_OP_FMUL_BITS => Self::Fmul {
-                r: (w0 & 0b0000_0000_0000_0111) as u8,
-                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+                r: (w0 & 0b0000_0000_0000_0111) as u8 + 16,
+                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_FMULS_MASK) == OPCODE_OP_FMULS_BITS => Self::Fmuls {
-                r: (w0 & 0b0000_0000_0000_0111) as u8,
-                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+                r: (w0 & 0b0000_0000_0000_0111) as u8 + 16,
+                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_FMULSU_MASK) == OPCODE_OP_FMULSU_BITS => Self::Fmulsu {
-                r: (w0 & 0b0000_0000_0000_0111) as u8,
-                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+                r: (w0 & 0b0000_0000_0000_0111) as u8 + 16,
+                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_ICALL_MASK) == OPCODE_OP_ICALL_BITS => Self::Icall,
             _ if (w0 & OPCODE_OP_IJMP_MASK) == OPCODE_OP_IJMP_BITS => Self::Ijmp,
@@ -733,7 +733,7 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_LDI_MASK) == OPCODE_OP_LDI_BITS => Self::Ldi {
                 k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
             },
             // TODO
             // _ if (w0 & OPCODE_OP_LDS_MASK) == OPCODE_OP_LDS_BITS => Self::Lds {
@@ -760,12 +760,12 @@ impl Op {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
             _ if (w0 & OPCODE_OP_MULS_MASK) == OPCODE_OP_MULS_BITS => Self::Muls {
-                r: (w0 & 0b0000_0000_0000_1111) as u8,
-                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+                r: (w0 & 0b0000_0000_0000_1111) as u8 + 16,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_MULSU_MASK) == OPCODE_OP_MULSU_BITS => Self::Mulsu {
-                r: (w0 & 0b0000_0000_0000_0111) as u8,
-                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+                r: (w0 & 0b0000_0000_0000_0111) as u8 + 16,
+                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_NEG_MASK) == OPCODE_OP_NEG_BITS => Self::Neg {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
@@ -777,7 +777,7 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_ORI_MASK) == OPCODE_OP_ORI_BITS => Self::Ori {
                 k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
             },
             // TODO
             // _ if (w0 & OPCODE_OP_OUT_MASK) == OPCODE_OP_OUT_BITS => Self::Out {
@@ -791,12 +791,12 @@ impl Op {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
             _ if (w0 & OPCODE_OP_RCALL_MASK) == OPCODE_OP_RCALL_BITS => Self::Rcall {
-                k: (w0 & 0b0000_1111_1111_1111) as _,
+                k: (w0 & 0b0000_1111_1111_1111) as i16 - 2048,
             },
             _ if (w0 & OPCODE_OP_RET_MASK) == OPCODE_OP_RET_BITS => Self::Ret,
             _ if (w0 & OPCODE_OP_RETI_MASK) == OPCODE_OP_RETI_BITS => Self::Reti,
             _ if (w0 & OPCODE_OP_RJMP_MASK) == OPCODE_OP_RJMP_BITS => Self::Rjmp {
-                k: (w0 & 0b0000_1111_1111_1111) as i16,
+                k: (w0 & 0b0000_1111_1111_1111) as i16 - 2048,
             },
             _ if (w0 & OPCODE_OP_ROR_MASK) == OPCODE_OP_ROR_BITS => Self::Ror {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
@@ -807,7 +807,7 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_SBCI_MASK) == OPCODE_OP_SBCI_BITS => Self::Sbci {
                 k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
             },
             // TODO
             // _ if (w0 & OPCODE_OP_SBI_MASK) == OPCODE_OP_SBI_BITS => Self::Sbi {
@@ -838,7 +838,7 @@ impl Op {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
             _ if (w0 & OPCODE_OP_SER_MASK) == OPCODE_OP_SER_BITS => Self::Ser {
-                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_SLEEP_MASK) == OPCODE_OP_SLEEP_BITS => Self::Sleep,
             _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => Self::Spm,
@@ -857,7 +857,7 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_SUBI_MASK) == OPCODE_OP_SUBI_BITS => Self::Subi {
                 k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_SWAP_MASK) == OPCODE_OP_SWAP_BITS => Self::Swap {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
@@ -976,3 +976,90 @@ impl<'a> fmt::Display for OpAddr<'a> {
 }
 
 pub mod core;
+
+mod int_vec {
+    const RESET: u16 = 0x0000;
+    const INT0: u16 = 0x0002;
+    const INT1: u16 = 0x0004;
+    const INT2: u16 = 0x0006;
+    const INT3: u16 = 0x0008;
+    const INT6: u16 = 0x000e;
+    const PCINT0: u16 = 0x0012;
+    const USB_GENERAL: u16 = 0x0014;
+    const USB_ENDPOINT: u16 = 0x0016;
+    const WDT: u16 = 0x0018;
+    const TIMER1_CAPT_: u16 = 0x0020;
+    const TIMER1_COMPA: u16 = 0x0022;
+    const TIMER1_COMPB: u16 = 0x0024;
+    const TIMER1_COMPC: u16 = 0x0026;
+    const TIMER1_OVF: u16 = 0x0028;
+    const TIMER2_COMPA: u16 = 0x002a;
+    const TIMER2_COMPB: u16 = 0x002c;
+    const TIMER2_OVF: u16 = 0x002e;
+    const SPI_STC: u16 = 0x0030;
+    const USART1_RX: u16 = 0x0032;
+    const USART2_UDRE: u16 = 0x0034;
+    const USART1_TX: u16 = 0x0036;
+    const ANALOG_COMP: u16 = 0x0038;
+    const ADC: u16 = 0x003a;
+    const EE_READY: u16 = 0x003c;
+    const TIMER3_CAPT: u16 = 0x003e;
+    const TIMER3_COMPA: u16 = 0x0040;
+    const TIMER3_COMPB: u16 = 0x0042;
+    const TIMER3_COMPC: u16 = 0x0044;
+    const TIMER3_OVF: u16 = 0x0046;
+    const TWI: u16 = 0x0048;
+    const STM_READY: u16 = 0x004a;
+    const TIMER4_COMPA: u16 = 0x004c;
+    const TIMER4_COMPB: u16 = 0x004e;
+    const TIMER4_COMPD: u16 = 0x0050;
+    const TIMER4_OVF: u16 = 0x0052;
+    const TIMER4_FPF: u16 = 0x0054;
+}
+
+mod io_regs {
+    const PINB: u16 = 0x23;
+    const DDRB: u16 = 0x24;
+    const PORTB: u16 = 0x25;
+    const PINC: u16 = 0x26;
+    const DDRC: u16 = 0x27;
+    const PORTC: u16 = 0x28;
+    const PIND: u16 = 0x29;
+    const DDRD: u16 = 0x2a;
+    const PORTD: u16 = 0x2b;
+    const PINE: u16 = 0x2c;
+    const DDRE: u16 = 0x2d;
+    const PORTE: u16 = 0x2e;
+    const PINF: u16 = 0x2f;
+    const DDRF: u16 = 0x30;
+    const PORTF: u16 = 0x31;
+
+    const TIFR1: u16 = 0x35;
+    const TIFR0: u16 = 0x36;
+
+    const TIFR3: u16 = 0x38;
+    const TIFR4: u16 = 0x39;
+
+    const PCIFR: u16 = 0x3b;
+    const EIFR: u16 = 0x3c;
+    const EIMSK: u16 = 0x3d;
+    const GPIOR0: u16 = 0x3e;
+    const EECR: u16 = 0x3f;
+    const EEDR: u16 = 0x40;
+    const EEARL: u16 = 0x41;
+    const EEARH: u16 = 0x42;
+    const GTCCR: u16 = 0x43;
+    const TCCR0A: u16 = 0x44;
+    const TCCR0B: u16 = 0x45;
+    const TCNT0: u16 = 0x46;
+    const OCR0A: u16 = 0x47;
+    const OCR0B: u16 = 0x48;
+    const PLLCSR: u16 = 0x49;
+    const GPIOR1: u16 = 0x4a;
+    const GPIOR2: u16 = 0x4b;
+    const SPCR: u16 = 0x4c;
+    const SPSR: u16 = 0x4d;
+    const SPDR: u16 = 0x4e;
+
+    // TODO: Continue
+}
