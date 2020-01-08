@@ -128,7 +128,7 @@ def build_arg_decoder(arg, w0):
         masks.append(mask)
 
     parts = []
-    last = 15
+    last = 16
     for mask in masks[::-1]:
         if mask[-1] == 15:
             parts.append(f'w0 & {build_mask(mask)}')

@@ -525,7 +525,8 @@ const OPCODE_OP_SWAP_MASK: u16 = 0b1111_1110_0000_1111;
 const OPCODE_OP_WDR_BITS: u16 = 0b1001_0101_1010_1000;
 const OPCODE_OP_WDR_MASK: u16 = 0b1111_1111_1111_1111;
 
-enum Op {
+#[derive(Debug)]
+pub enum Op {
     Adc { d: u8, r: u8 },
     Add { d: u8, r: u8 },
     Adiw { d: u8, k: u8 },
@@ -602,255 +603,375 @@ enum Op {
     Subi { d: u8, k: u8 },
     Swap { d: u8 },
     Wdr,
+    Unimplemented, // TODO: Delete this once all the ops are done
 }
 
-fn decode(w0: u16, w1: u16) -> Op {
-    match w0 {
-        _ if (w0 & OPCODE_OP_ADC_MASK) == OPCODE_OP_ADC_BITS => Op::Adc {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_ADD_MASK) == OPCODE_OP_ADD_BITS => Op::Add {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_ADIW_MASK) == OPCODE_OP_ADIW_BITS => Op::Adiw {
-            k: ((w0 & 0b0000_0000_1100_0000) >> 2 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0000_0011_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_AND_MASK) == OPCODE_OP_AND_BITS => Op::And {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_ANDI_MASK) == OPCODE_OP_ANDI_BITS => Op::Andi {
-            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_ASR_MASK) == OPCODE_OP_ASR_BITS => Op::Asr {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_BCLR_MASK) == OPCODE_OP_BCLR_BITS => Op::Bclr {
-            s: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_BLD_MASK) == OPCODE_OP_BLD_BITS => Op::Bld {
-            b: (w0 & 0b0000_0000_0000_0111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_BRBC_MASK) == OPCODE_OP_BRBC_BITS => Op::Brbc {
-            k: ((w0 & 0b0000_0011_1111_1000) >> 2) as i8,
-            s: (w0 & 0b0000_0000_0000_0111) as u8,
-        },
-        _ if (w0 & OPCODE_OP_BRBS_MASK) == OPCODE_OP_BRBS_BITS => Op::Brbs {
-            k: ((w0 & 0b0000_0011_1111_1000) >> 2) as i8,
-            s: (w0 & 0b0000_0000_0000_0111) as u8,
-        },
-        _ if (w0 & OPCODE_OP_BREAK_MASK) == OPCODE_OP_BREAK_BITS => Op::Break,
-        _ if (w0 & OPCODE_OP_BSET_MASK) == OPCODE_OP_BSET_BITS => Op::Bset {
-            s: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_BST_MASK) == OPCODE_OP_BST_BITS => Op::Bst {
-            b: (w0 & 0b0000_0000_0000_0111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_CALL_MASK) == OPCODE_OP_CALL_BITS => Op::Call {
-            k: ((w0 & 0b0000_0001_1111_0000) as u32 >> 3 | (w0 & 0b0000_0000_0000_0001) as u32)
-                >> 16
-                | (w1 as u32),
-        },
-        _ if (w0 & OPCODE_OP_CBI_MASK) == OPCODE_OP_CBI_BITS => Op::Cbi {
-            b: (w0 & 0b0000_0000_0000_0111) as u8,
-            a: ((w0 & 0b0000_0000_1111_1000) >> 2) as u8,
-        },
-        _ if (w0 & OPCODE_OP_CLR_MASK) == OPCODE_OP_CLR_BITS => Op::Clr {
-            d: (w0 & 0b0000_0011_1111_1111) as u8,
-        },
-        _ if (w0 & OPCODE_OP_COM_MASK) == OPCODE_OP_COM_BITS => Op::Com {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_CP_MASK) == OPCODE_OP_CP_BITS => Op::Cp {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_CPC_MASK) == OPCODE_OP_CPC_BITS => Op::Cpc {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_CPI_MASK) == OPCODE_OP_CPI_BITS => Op::Cpi {
-            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_CPSE_MASK) == OPCODE_OP_CPSE_BITS => Op::Cpse {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_DEC_MASK) == OPCODE_OP_DEC_BITS => Op::Dec {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_EICALL_MASK) == OPCODE_OP_EICALL_BITS => Op::Eicall,
-        _ if (w0 & OPCODE_OP_EIJMP_MASK) == OPCODE_OP_EIJMP_BITS => Op::Eijmp,
-        _ if (w0 & OPCODE_OP_EOR_MASK) == OPCODE_OP_EOR_BITS => Op::Eor {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_FMUL_MASK) == OPCODE_OP_FMUL_BITS => Op::Fmul {
-            r: (w0 & 0b0000_0000_0000_0111) as u8,
-            d: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_FMULS_MASK) == OPCODE_OP_FMULS_BITS => Op::Fmuls {
-            r: (w0 & 0b0000_0000_0000_0111) as u8,
-            d: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_FMULSU_MASK) == OPCODE_OP_FMULSU_BITS => Op::Fmulsu {
-            r: (w0 & 0b0000_0000_0000_0111) as u8,
-            d: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_ICALL_MASK) == OPCODE_OP_ICALL_BITS => Op::Icall,
-        _ if (w0 & OPCODE_OP_IJMP_MASK) == OPCODE_OP_IJMP_BITS => Op::Ijmp,
-        _ if (w0 & OPCODE_OP_IN_MASK) == OPCODE_OP_IN_BITS => Op::In {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-            a: ((w0 & 0b0000_0110_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-        },
-        _ if (w0 & OPCODE_OP_INC_MASK) == OPCODE_OP_INC_BITS => Op::Inc {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_JMP_MASK) == OPCODE_OP_JMP_BITS => Op::Jmp {
-            k: ((w0 & 0b0000_0001_1111_0000) as u32 >> 3 | (w0 & 0b0000_0000_0000_0001) as u32)
-                >> 16
-                | (w1 as u32),
-        },
-        _ if (w0 & OPCODE_OP_LDI_MASK) == OPCODE_OP_LDI_BITS => Op::Ldi {
-            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        },
-        // TODO
-        // _ if (w0 & OPCODE_OP_LDS_MASK) == OPCODE_OP_LDS_BITS => Op::Lds {
-        //     d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        // },
-        // TODO
-        // _ if (w0 & OPCODE_OP_LDS16_MASK) == OPCODE_OP_LDS16_BITS => Op::Lds16 {
-        //     k: ((w0 & 0b0000_0111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-        //     d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        // },
-        _ if (w0 & OPCODE_OP_LSR_MASK) == OPCODE_OP_LSR_BITS => Op::Lsr {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_MOV_MASK) == OPCODE_OP_MOV_BITS => Op::Mov {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_MOVW_MASK) == OPCODE_OP_MOVW_BITS => Op::Movw {
-            r: (w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_MUL_MASK) == OPCODE_OP_MUL_BITS => Op::Mul {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_MULS_MASK) == OPCODE_OP_MULS_BITS => Op::Muls {
-            r: (w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_MULSU_MASK) == OPCODE_OP_MULSU_BITS => Op::Mulsu {
-            r: (w0 & 0b0000_0000_0000_0111) as u8,
-            d: ((w0 & 0b0000_0000_0111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_NEG_MASK) == OPCODE_OP_NEG_BITS => Op::Neg {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_NOP_MASK) == OPCODE_OP_NOP_BITS => Op::Nop,
-        _ if (w0 & OPCODE_OP_OR_MASK) == OPCODE_OP_OR_BITS => Op::Or {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_ORI_MASK) == OPCODE_OP_ORI_BITS => Op::Ori {
-            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        },
-        // TODO
-        // _ if (w0 & OPCODE_OP_OUT_MASK) == OPCODE_OP_OUT_BITS => Op::Out {
-        //     r: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        //     a: ((w0 & 0b0000_0110_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-        // },
-        _ if (w0 & OPCODE_OP_POP_MASK) == OPCODE_OP_POP_BITS => Op::Pop {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_PUSH_MASK) == OPCODE_OP_PUSH_BITS => Op::Push {
-            r: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_RCALL_MASK) == OPCODE_OP_RCALL_BITS => Op::Rcall {
-            k: (w0 & 0b0000_1111_1111_1111) as i16,
-        },
-        _ if (w0 & OPCODE_OP_RET_MASK) == OPCODE_OP_RET_BITS => Op::Ret,
-        _ if (w0 & OPCODE_OP_RETI_MASK) == OPCODE_OP_RETI_BITS => Op::Reti,
-        _ if (w0 & OPCODE_OP_RJMP_MASK) == OPCODE_OP_RJMP_BITS => Op::Rjmp {
-            k: (w0 & 0b0000_1111_1111_1111) as i16,
-        },
-        _ if (w0 & OPCODE_OP_ROR_MASK) == OPCODE_OP_ROR_BITS => Op::Ror {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_SBC_MASK) == OPCODE_OP_SBC_BITS => Op::Sbc {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_SBCI_MASK) == OPCODE_OP_SBCI_BITS => Op::Sbci {
-            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        },
-        // TODO
-        // _ if (w0 & OPCODE_OP_SBI_MASK) == OPCODE_OP_SBI_BITS => Op::Sbi {
-        //     b: (w0 & 0b0000_0000_0000_0111) as u8,
-        //     a: ((w0 & 0b0000_0000_1111_1000) >> 2) as u8,
-        // },
-        // TODO
-        // _ if (w0 & OPCODE_OP_SBIC_MASK) == OPCODE_OP_SBIC_BITS => Op::Sbic {
-        //     b: (w0 & 0b0000_0000_0000_0111) as u8,
-        //     a: ((w0 & 0b0000_0000_1111_1000) >> 2) as u8,
-        // },
-        // TODO
-        // _ if (w0 & OPCODE_OP_SBIS_MASK) == OPCODE_OP_SBIS_BITS => Op::Sbis {
-        //     b: (w0 & 0b0000_0000_0000_0111) as u8,
-        //     a: ((w0 & 0b0000_0000_1111_1000) >> 2) as u8,
-        // },
-        // TODO
-        // _ if (w0 & OPCODE_OP_SBIW_MASK) == OPCODE_OP_SBIW_BITS => Op::Sbiw {
-        //     k: ((w0 & 0b0000_0000_1100_0000) >> 2 | w0 & 0b0000_0000_0000_1111) as u8,
-        //     d: ((w0 & 0b0000_0000_0011_0000) >> 3) as u8,
-        // },
-        _ if (w0 & OPCODE_OP_SBRC_MASK) == OPCODE_OP_SBRC_BITS => Op::Sbrc {
-            b: (w0 & 0b0000_0000_0000_0111) as u8,
-            r: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_SBRS_MASK) == OPCODE_OP_SBRS_BITS => Op::Sbrs {
-            b: (w0 & 0b0000_0000_0000_0111) as u8,
-            r: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_SER_MASK) == OPCODE_OP_SER_BITS => Op::Ser {
-            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_SLEEP_MASK) == OPCODE_OP_SLEEP_BITS => Op::Sleep,
-        _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => Op::Spm,
-        // TODO
-        //_ if (w0 & OPCODE_OP_STS_MASK) == OPCODE_OP_STS_BITS => Op::Sts {
-        //    d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        //},
-        // TODO
-        //_ if (w0 & OPCODE_OP_STS16_MASK) == OPCODE_OP_STS16_BITS => Op::Sts16 {
-        //    k: ((w0 & 0b0000_0111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-        //    d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        //},
-        _ if (w0 & OPCODE_OP_SUB_MASK) == OPCODE_OP_SUB_BITS => Op::Sub {
-            r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_SUBI_MASK) == OPCODE_OP_SUBI_BITS => Op::Subi {
-            k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
-            d: ((w0 & 0b0000_0000_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_SWAP_MASK) == OPCODE_OP_SWAP_BITS => Op::Swap {
-            d: ((w0 & 0b0000_0001_1111_0000) >> 3) as u8,
-        },
-        _ if (w0 & OPCODE_OP_WDR_MASK) == OPCODE_OP_WDR_BITS => Op::Wdr,
-        _ => unreachable!(),
+impl Op {
+    pub fn words(&self) -> u8 {
+        match self {
+            Self::Call { .. } => 2,
+            Self::Jmp { .. } => 2,
+            // Lds => 2, // TODO
+            // Sts => 2, // TODO
+            _ => 1,
+        }
+    }
+
+    pub fn decode(w0: u16, w1: u16) -> Self {
+        match w0 {
+            _ if (w0 & OPCODE_OP_ADC_MASK) == OPCODE_OP_ADC_BITS => Self::Adc {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_ADD_MASK) == OPCODE_OP_ADD_BITS => Self::Add {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_ADIW_MASK) == OPCODE_OP_ADIW_BITS => Self::Adiw {
+                k: ((w0 & 0b0000_0000_1100_0000) >> 2 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0000_0011_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_AND_MASK) == OPCODE_OP_AND_BITS => Self::And {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_ANDI_MASK) == OPCODE_OP_ANDI_BITS => Self::Andi {
+                k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_ASR_MASK) == OPCODE_OP_ASR_BITS => Self::Asr {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_BCLR_MASK) == OPCODE_OP_BCLR_BITS => Self::Bclr {
+                s: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_BLD_MASK) == OPCODE_OP_BLD_BITS => Self::Bld {
+                b: (w0 & 0b0000_0000_0000_0111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_BRBC_MASK) == OPCODE_OP_BRBC_BITS => Self::Brbc {
+                k: ((w0 & 0b0000_0011_1111_1000) >> 3) as i8,
+                s: (w0 & 0b0000_0000_0000_0111) as u8,
+            },
+            _ if (w0 & OPCODE_OP_BRBS_MASK) == OPCODE_OP_BRBS_BITS => Self::Brbs {
+                k: ((w0 & 0b0000_0011_1111_1000) >> 3) as i8,
+                s: (w0 & 0b0000_0000_0000_0111) as u8,
+            },
+            _ if (w0 & OPCODE_OP_BREAK_MASK) == OPCODE_OP_BREAK_BITS => Self::Break,
+            _ if (w0 & OPCODE_OP_BSET_MASK) == OPCODE_OP_BSET_BITS => Self::Bset {
+                s: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_BST_MASK) == OPCODE_OP_BST_BITS => Self::Bst {
+                b: (w0 & 0b0000_0000_0000_0111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_CALL_MASK) == OPCODE_OP_CALL_BITS => Self::Call {
+                k: ((w0 & 0b0000_0001_1111_0000) as u32 >> 4 | (w0 & 0b0000_0000_0000_0001) as u32)
+                    >> 16
+                    | (w1 as u32),
+            },
+            _ if (w0 & OPCODE_OP_CBI_MASK) == OPCODE_OP_CBI_BITS => Self::Cbi {
+                b: (w0 & 0b0000_0000_0000_0111) as u8,
+                a: ((w0 & 0b0000_0000_1111_1000) >> 3) as u8,
+            },
+            _ if (w0 & OPCODE_OP_CLR_MASK) == OPCODE_OP_CLR_BITS => Self::Clr {
+                d: (w0 & 0b0000_0011_1111_1111) as u8,
+            },
+            _ if (w0 & OPCODE_OP_COM_MASK) == OPCODE_OP_COM_BITS => Self::Com {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_CP_MASK) == OPCODE_OP_CP_BITS => Self::Cp {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_CPC_MASK) == OPCODE_OP_CPC_BITS => Self::Cpc {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_CPI_MASK) == OPCODE_OP_CPI_BITS => Self::Cpi {
+                k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_CPSE_MASK) == OPCODE_OP_CPSE_BITS => Self::Cpse {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_DEC_MASK) == OPCODE_OP_DEC_BITS => Self::Dec {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_EICALL_MASK) == OPCODE_OP_EICALL_BITS => Self::Eicall,
+            _ if (w0 & OPCODE_OP_EIJMP_MASK) == OPCODE_OP_EIJMP_BITS => Self::Eijmp,
+            _ if (w0 & OPCODE_OP_EOR_MASK) == OPCODE_OP_EOR_BITS => Self::Eor {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_FMUL_MASK) == OPCODE_OP_FMUL_BITS => Self::Fmul {
+                r: (w0 & 0b0000_0000_0000_0111) as u8,
+                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_FMULS_MASK) == OPCODE_OP_FMULS_BITS => Self::Fmuls {
+                r: (w0 & 0b0000_0000_0000_0111) as u8,
+                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_FMULSU_MASK) == OPCODE_OP_FMULSU_BITS => Self::Fmulsu {
+                r: (w0 & 0b0000_0000_0000_0111) as u8,
+                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_ICALL_MASK) == OPCODE_OP_ICALL_BITS => Self::Icall,
+            _ if (w0 & OPCODE_OP_IJMP_MASK) == OPCODE_OP_IJMP_BITS => Self::Ijmp,
+            _ if (w0 & OPCODE_OP_IN_MASK) == OPCODE_OP_IN_BITS => Self::In {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                a: ((w0 & 0b0000_0110_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            },
+            _ if (w0 & OPCODE_OP_INC_MASK) == OPCODE_OP_INC_BITS => Self::Inc {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_JMP_MASK) == OPCODE_OP_JMP_BITS => Self::Jmp {
+                k: ((w0 & 0b0000_0001_1111_0000) as u32 >> 4 | (w0 & 0b0000_0000_0000_0001) as u32)
+                    >> 16
+                    | (w1 as u32),
+            },
+            _ if (w0 & OPCODE_OP_LDI_MASK) == OPCODE_OP_LDI_BITS => Self::Ldi {
+                k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            },
+            // TODO
+            // _ if (w0 & OPCODE_OP_LDS_MASK) == OPCODE_OP_LDS_BITS => Self::Lds {
+            //     d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            // },
+            // TODO
+            // _ if (w0 & OPCODE_OP_LDS16_MASK) == OPCODE_OP_LDS16_BITS => Self::Lds16 {
+            //     k: ((w0 & 0b0000_0111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+            //     d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            // },
+            _ if (w0 & OPCODE_OP_LSR_MASK) == OPCODE_OP_LSR_BITS => Self::Lsr {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_MOV_MASK) == OPCODE_OP_MOV_BITS => Self::Mov {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_MOVW_MASK) == OPCODE_OP_MOVW_BITS => Self::Movw {
+                r: (w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_MUL_MASK) == OPCODE_OP_MUL_BITS => Self::Mul {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_MULS_MASK) == OPCODE_OP_MULS_BITS => Self::Muls {
+                r: (w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_MULSU_MASK) == OPCODE_OP_MULSU_BITS => Self::Mulsu {
+                r: (w0 & 0b0000_0000_0000_0111) as u8,
+                d: ((w0 & 0b0000_0000_0111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_NEG_MASK) == OPCODE_OP_NEG_BITS => Self::Neg {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_NOP_MASK) == OPCODE_OP_NOP_BITS => Self::Nop,
+            _ if (w0 & OPCODE_OP_OR_MASK) == OPCODE_OP_OR_BITS => Self::Or {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_ORI_MASK) == OPCODE_OP_ORI_BITS => Self::Ori {
+                k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            },
+            // TODO
+            // _ if (w0 & OPCODE_OP_OUT_MASK) == OPCODE_OP_OUT_BITS => Self::Out {
+            //     r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            //     a: ((w0 & 0b0000_0110_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+            // },
+            _ if (w0 & OPCODE_OP_POP_MASK) == OPCODE_OP_POP_BITS => Self::Pop {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_PUSH_MASK) == OPCODE_OP_PUSH_BITS => Self::Push {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_RCALL_MASK) == OPCODE_OP_RCALL_BITS => Self::Rcall {
+                k: (w0 & 0b0000_1111_1111_1111) as _,
+            },
+            _ if (w0 & OPCODE_OP_RET_MASK) == OPCODE_OP_RET_BITS => Self::Ret,
+            _ if (w0 & OPCODE_OP_RETI_MASK) == OPCODE_OP_RETI_BITS => Self::Reti,
+            _ if (w0 & OPCODE_OP_RJMP_MASK) == OPCODE_OP_RJMP_BITS => Self::Rjmp {
+                k: (w0 & 0b0000_1111_1111_1111) as i16,
+            },
+            _ if (w0 & OPCODE_OP_ROR_MASK) == OPCODE_OP_ROR_BITS => Self::Ror {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_SBC_MASK) == OPCODE_OP_SBC_BITS => Self::Sbc {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_SBCI_MASK) == OPCODE_OP_SBCI_BITS => Self::Sbci {
+                k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            },
+            // TODO
+            // _ if (w0 & OPCODE_OP_SBI_MASK) == OPCODE_OP_SBI_BITS => Self::Sbi {
+            //     b: (w0 & 0b0000_0000_0000_0111) as u8,
+            //     a: ((w0 & 0b0000_0000_1111_1000) >> 3) as u8,
+            // },
+            // TODO
+            // _ if (w0 & OPCODE_OP_SBIC_MASK) == OPCODE_OP_SBIC_BITS => Self::Sbic {
+            //     b: (w0 & 0b0000_0000_0000_0111) as u8,
+            //     a: ((w0 & 0b0000_0000_1111_1000) >> 3) as u8,
+            // },
+            // TODO
+            // _ if (w0 & OPCODE_OP_SBIS_MASK) == OPCODE_OP_SBIS_BITS => Self::Sbis {
+            //     b: (w0 & 0b0000_0000_0000_0111) as u8,
+            //     a: ((w0 & 0b0000_0000_1111_1000) >> 3) as u8,
+            // },
+            // TODO
+            // _ if (w0 & OPCODE_OP_SBIW_MASK) == OPCODE_OP_SBIW_BITS => Self::Sbiw {
+            //     k: ((w0 & 0b0000_0000_1100_0000) >> 3 | w0 & 0b0000_0000_0000_1111) as u8,
+            //     d: ((w0 & 0b0000_0000_0011_0000) >> 4) as u8,
+            // },
+            _ if (w0 & OPCODE_OP_SBRC_MASK) == OPCODE_OP_SBRC_BITS => Self::Sbrc {
+                b: (w0 & 0b0000_0000_0000_0111) as u8,
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_SBRS_MASK) == OPCODE_OP_SBRS_BITS => Self::Sbrs {
+                b: (w0 & 0b0000_0000_0000_0111) as u8,
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_SER_MASK) == OPCODE_OP_SER_BITS => Self::Ser {
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_SLEEP_MASK) == OPCODE_OP_SLEEP_BITS => Self::Sleep,
+            _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => Self::Spm,
+            // TODO
+            //_ if (w0 & OPCODE_OP_STS_MASK) == OPCODE_OP_STS_BITS => Self::Sts {
+            //    d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            //},
+            // TODO
+            //_ if (w0 & OPCODE_OP_STS16_MASK) == OPCODE_OP_STS16_BITS => Self::Sts16 {
+            //    k: ((w0 & 0b0000_0111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+            //    d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            //},
+            _ if (w0 & OPCODE_OP_SUB_MASK) == OPCODE_OP_SUB_BITS => Self::Sub {
+                r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_SUBI_MASK) == OPCODE_OP_SUBI_BITS => Self::Subi {
+                k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
+                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_SWAP_MASK) == OPCODE_OP_SWAP_BITS => Self::Swap {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+            },
+            _ if (w0 & OPCODE_OP_WDR_MASK) == OPCODE_OP_WDR_BITS => Self::Wdr,
+            _ => Self::Unimplemented,
+            // _ => unreachable!(),
+        }
+    }
+}
+
+pub struct OpAddr<'a> {
+    pub op: &'a Op,
+    pub addr: u16,
+}
+
+impl<'a> fmt::Display for OpAddr<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self.op {
+            Op::Adc { d, r } => write!(f, "ADC R{}, R{}", d, r),
+            Op::Add { d, r } => write!(f, "ADD R{}, R{}", d, r),
+            Op::Adiw { d, k } => write!(f, "ADIW R{}, {}", d, k),
+            Op::And { d, r } => write!(f, "AND R{}, R{}", d, r),
+            Op::Andi { d, k } => write!(f, "ANDI R{}, {}", d, k),
+            Op::Asr { d } => write!(f, "ASR R{}", d),
+            Op::Bclr { s } => write!(f, "BCLR {}", s),
+            Op::Bld { d, b } => write!(f, "BLD R{}, {}", d, b),
+            Op::Brbc { s, k } => {
+                let (addr, _) = (self.addr as i16).overflowing_add(1);
+                let (addr, _) = (addr as i16).overflowing_add(k as i16);
+                write!(f, "BRBC {}, 0x{:04x}; k={}", s, addr as u16, k)
+            }
+            Op::Brbs { s, k } => {
+                let (addr, _) = (self.addr as i16).overflowing_add(1);
+                let (addr, _) = (addr as i16).overflowing_add(k as i16);
+                write!(f, "BRBS {}, 0x{:04x}; k={}", s, addr as u16, k)
+            }
+            Op::Break => write!(f, "BREAK"),
+            Op::Bset { s } => write!(f, "BSET {}", s),
+            Op::Bst { d, b } => write!(f, "BST R{}, {}", d, b),
+            Op::Call { k } => write!(f, "CALL 0x{:04x}", k),
+            Op::Cbi { a, b } => write!(f, "CBI {}, {}", a, b),
+            Op::Clr { d } => write!(f, "CLR R{}", d),
+            Op::Com { d } => write!(f, "COM R{}", d),
+            Op::Cp { d, r } => write!(f, "CP R{}, R{}", d, r),
+            Op::Cpc { d, r } => write!(f, "CPC R{}, R{}", d, r),
+            Op::Cpi { d, k } => write!(f, "CPI R{}, {}", d, k),
+            Op::Cpse { d, r } => write!(f, "CPSE R{}, R{}", d, r),
+            Op::Dec { d } => write!(f, "DEC R{}", d),
+            Op::Eicall => write!(f, "EICALL"),
+            Op::Eijmp => write!(f, "EIJMP"),
+            // Elpm, // TODO
+            Op::Eor { d, r } => write!(f, "EOR R{}, R{}", d, r),
+            Op::Fmul { d, r } => write!(f, "FMUL R{}, R{}", d, r),
+            Op::Fmuls { d, r } => write!(f, "FMULS R{}, R{}", d, r),
+            Op::Fmulsu { d, r } => write!(f, "FMULSU R{}, R{}", d, r),
+            Op::Icall => write!(f, "ICALL"),
+            Op::Ijmp => write!(f, "IJMP"),
+            Op::In { d, a } => write!(f, "IN R{}, {}", d, a),
+            Op::Inc { d } => write!(f, "INC R{}", d),
+            Op::Jmp { k } => write!(f, "JMP 0x{:04x}", k),
+            // Ld, // TODO
+            Op::Ldi { d, k } => write!(f, "LDI R{}, {}", d, k),
+            // Lds,   // TODO
+            // Lds16, // TODO
+            // Lpm,   // TODO
+            Op::Lsr { d } => write!(f, "LSR R{}", d),
+            Op::Mov { d, r } => write!(f, "MOV R{}, R{}", d, r),
+            Op::Movw { d, r } => write!(f, "MOVW R{}, R{}", d, r),
+            Op::Mul { d, r } => write!(f, "MUL R{}, R{}", d, r),
+            Op::Muls { d, r } => write!(f, "MULS R{}, R{}", d, r),
+            Op::Mulsu { d, r } => write!(f, "MULSU R{}, R{}", d, r),
+            Op::Neg { d } => write!(f, "NEG R{}", d),
+            Op::Nop => write!(f, "NOP"),
+            Op::Or { d, r } => write!(f, "OR R{}, R{}", d, r),
+            Op::Ori { d, k } => write!(f, "ORI R{}, {}", d, k),
+            // Out, // TODO
+            Op::Pop { d } => write!(f, "POP R{}", d),
+            Op::Push { r } => write!(f, "PUSH R{}", r),
+            Op::Rcall { k } => {
+                let (addr, _) = (self.addr as i16).overflowing_add(1);
+                let (addr, _) = (addr as i16).overflowing_add(k);
+                write!(f, "RCALL 0x{:04x}; k={}", addr as u16, k)
+            }
+            Op::Ret => write!(f, "RET"),
+            Op::Reti => write!(f, "RETI"),
+            Op::Rjmp { k } => {
+                let (addr, _) = (self.addr as i16).overflowing_add(1);
+                let (addr, _) = (addr as i16).overflowing_add(k);
+                write!(f, "RJMP {}; k={}", addr, k)
+            }
+            Op::Ror { d } => write!(f, "ROR R{}", d),
+            Op::Sbc { d, r } => write!(f, "SCB R{}, R{}", d, r),
+            Op::Sbci { d, k } => write!(f, "SBCI R{}, {}", d, k),
+            // Sbi,  // TODO
+            // Sbic, // TODO
+            // Sbis, // TODO
+            // Sbiw, // TODO
+            Op::Sbrc { r, b } => write!(f, "SBRC R{}, {}", r, b),
+            Op::Sbrs { r, b } => write!(f, "SBRS R{}, {}", r, b),
+            Op::Ser { d } => write!(f, "SER R{}", d),
+            Op::Sleep => write!(f, "SLEEP"),
+            // Spm,   // TODO
+            // Spm2,  // TODO
+            // St,    // TODO
+            // Sts,   // TODO
+            // Sts16, // TODO
+            Op::Sub { d, r } => write!(f, "SUB R{}, R{}", d, r),
+            Op::Subi { d, k } => write!(f, "SUBI R{}, {}", d, k),
+            Op::Swap { d } => write!(f, "SWAP R{}", d),
+            Op::Wdr => write!(f, "WDR"),
+            Op::Unimplemented => write!(f, "UNIMPLEMENTED!"), // TODO: Delete once all ops are done
+            _ => unreachable!(),
+        }
     }
 }
 
