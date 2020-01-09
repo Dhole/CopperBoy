@@ -1,5 +1,7 @@
 use super::*;
 
+const SRAM_END: u16 = SRAM_ADDR + SRAM_SIZE;
+
 fn new_status_reg_true(list: &[char]) -> StatusRegister {
     let mut status_reg = StatusRegister::new();
     for c in list {
@@ -275,8 +277,8 @@ fn test_op_call() {
     core.pc = 0x01;
     core.op_call(0x0123);
     assert_eq!(core.pc, 0x0123);
-    assert_eq!(core.sp, (SRAM_SIZE - 1) - 2);
-    assert_eq!(core.ram.get_u16((SRAM_SIZE - 1) - 1), 0x03);
+    assert_eq!(core.sp, (SRAM_END - 1) - 2);
+    assert_eq!(core.data_load_u16((SRAM_END - 1) - 1), 0x03);
 }
 
 #[test]
@@ -789,12 +791,12 @@ fn test_op_push_pop() {
     core.regs[0] = 0x42;
     core.op_push(0);
     assert_eq!(core.pc, 0x01);
-    assert_eq!(core.sp, SRAM_SIZE - 1 - 1);
-    assert_eq!(core.ram[SRAM_SIZE - 1], 0x42);
+    assert_eq!(core.sp, SRAM_END - 1 - 1);
+    assert_eq!(core.data_load(SRAM_END - 1), 0x42);
 
     core.op_pop(1);
     assert_eq!(core.pc, 0x02);
-    assert_eq!(core.sp, SRAM_SIZE - 1);
+    assert_eq!(core.sp, SRAM_END - 1);
     assert_eq!(core.regs[1], 0x42);
 }
 
@@ -805,13 +807,13 @@ fn test_op_rcall() {
     core.pc = 0x01;
     core.op_rcall(0x0123);
     assert_eq!(core.pc, 0x0124);
-    assert_eq!(core.sp, (SRAM_SIZE - 1) - 2);
-    assert_eq!(core.ram.get_u16((SRAM_SIZE - 1) - 1), 0x02);
+    assert_eq!(core.sp, (SRAM_END - 1) - 2);
+    assert_eq!(core.data_load_u16((SRAM_END - 1) - 1), 0x02);
 
     core.op_rcall(-0x0025);
     assert_eq!(core.pc, 0x00ff);
-    assert_eq!(core.sp, (SRAM_SIZE - 1) - (2 + 2));
-    assert_eq!(core.ram.get_u16((SRAM_SIZE - 1) - (1 + 2)), 0x0125);
+    assert_eq!(core.sp, (SRAM_END - 1) - (2 + 2));
+    assert_eq!(core.data_load_u16((SRAM_END - 1) - (1 + 2)), 0x0125);
 }
 
 #[test]
@@ -819,12 +821,11 @@ fn test_op_ret() {
     let mut core = Core::new();
 
     core.pc = 0x51;
-    core.ram[SRAM_SIZE - 1] = 0x01;
-    core.ram[SRAM_SIZE - 1 - 1] = 0x23;
-    core.sp = SRAM_SIZE - 1 - 2;
+    core.data_store_u16(SRAM_END - 1 - 1, 0x0123);
+    core.sp = SRAM_END - 1 - 2;
     core.op_ret();
     assert_eq!(core.pc, 0x0123);
-    assert_eq!(core.sp, SRAM_SIZE - 1);
+    assert_eq!(core.sp, SRAM_END - 1);
 }
 
 #[test]
@@ -832,12 +833,11 @@ fn test_op_reti() {
     let mut core = Core::new();
 
     core.pc = 0x51;
-    core.ram[SRAM_SIZE - 1] = 0x01;
-    core.ram[SRAM_SIZE - 1 - 1] = 0x23;
-    core.sp = SRAM_SIZE - 1 - 2;
+    core.data_store_u16(SRAM_END - 1 - 1, 0x0123);
+    core.sp = SRAM_END - 1 - 2;
     core.op_reti();
     assert_eq!(core.pc, 0x0123);
-    assert_eq!(core.sp, SRAM_SIZE - 1);
+    assert_eq!(core.sp, SRAM_END - 1);
     assert_status_reg_true!(&core.status_reg, &['i']);
 }
 

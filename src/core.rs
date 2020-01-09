@@ -1,6 +1,107 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(PartialEq)]
+struct StatusRegister {
+    /// Global Interrupt Enable
+    i: bool,
+    /// Bit Copy Storage
+    t: bool,
+    /// Half Carry Flag
+    h: bool,
+    /// Sign Bit
+    s: bool,
+    /// Two's Complement Overflow Flag
+    v: bool,
+    /// Negative Flag
+    n: bool,
+    /// Zero Flag
+    z: bool,
+    /// Carry Flag
+    c: bool,
+}
+
+impl Index<u8> for StatusRegister {
+    type Output = bool;
+
+    fn index(&self, i: u8) -> &bool {
+        match i {
+            0 => &self.c,
+            1 => &self.z,
+            2 => &self.n,
+            3 => &self.v,
+            4 => &self.s,
+            5 => &self.h,
+            6 => &self.t,
+            7 => &self.i,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl IndexMut<u8> for StatusRegister {
+    fn index_mut(&mut self, i: u8) -> &mut bool {
+        match i {
+            0 => &mut self.c,
+            1 => &mut self.z,
+            2 => &mut self.n,
+            3 => &mut self.v,
+            4 => &mut self.s,
+            5 => &mut self.h,
+            6 => &mut self.t,
+            7 => &mut self.i,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl fmt::Debug for StatusRegister {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "StatusRegister {{ i: {}, t: {}, h: {}, s: {}, v: {}, n: {}, z: {}, c: {} }}",
+            self.i as u8,
+            self.t as u8,
+            self.h as u8,
+            self.s as u8,
+            self.v as u8,
+            self.n as u8,
+            self.z as u8,
+            self.c as u8
+        )
+    }
+}
+
+impl StatusRegister {
+    fn new() -> Self {
+        Self {
+            i: false,
+            t: false,
+            h: false,
+            s: false,
+            v: false,
+            n: false,
+            z: false,
+            c: false,
+        }
+    }
+
+    fn as_u8(&self) -> u8 {
+        (self.i as u8) << 7
+            | (self.t as u8) << 6
+            | (self.h as u8) << 5
+            | (self.s as u8) << 4
+            | (self.v as u8) << 3
+            | (self.n as u8) << 2
+            | (self.z as u8) << 1
+            | (self.c as u8) << 0
+    }
+}
+
+pub const SRAM_SIZE: u16 = 0x0a00;
+pub const SRAM_ADDR: u16 = 0x0100;
+pub const DATA_SIZE: u16 = 0x0b00;
+pub const PROGRAM_SIZE: u16 = 0x8000;
+
 struct Core {
     /// Status Register
     status_reg: StatusRegister,
@@ -12,11 +113,11 @@ struct Core {
     pc: u16,
     /// Stack Pointer
     sp: u16,
-    /// Memory
-    ram: Memory,
+    /// SRAM
+    sram: [u8; SRAM_SIZE as usize],
+    /// Program Memory
+    program: [u8; PROGRAM_SIZE as usize],
 }
-
-pub const SRAM_SIZE: u16 = 0x0b00;
 
 impl Core {
     fn new() -> Self {
@@ -25,20 +126,56 @@ impl Core {
             io_regs: vec![0; 64],
             status_reg: StatusRegister::new(),
             pc: 0,
-            ram: Memory::new(SRAM_SIZE),
-            sp: SRAM_SIZE - 1,
+            sram: [0; SRAM_SIZE as usize],
+            program: [0; PROGRAM_SIZE as usize],
+            sp: SRAM_ADDR + SRAM_SIZE - 1,
         }
     }
 
+    fn data_load(&self, addr: u16) -> u8 {
+        if addr >= SRAM_ADDR {
+            self.sram[(addr - SRAM_ADDR) as usize]
+        } else {
+            match addr {
+                io_regs::SPL => (self.sp & 0x00ff) as u8,
+                io_regs::SPH => ((self.sp & 0xff00) >> 8) as u8,
+                io_regs::SREG => self.status_reg.as_u8(),
+                _ => unimplemented!(),
+            }
+        }
+    }
+
+    fn data_load_u16(&self, addr: u16) -> u16 {
+        u16::from_le_bytes([self.data_load(addr), self.data_load(addr + 1)])
+    }
+
+    fn data_store(&mut self, addr: u16, v: u8) {
+        if addr >= SRAM_ADDR {
+            self.sram[(addr - SRAM_ADDR) as usize] = v;
+        } else {
+            unimplemented!();
+        }
+    }
+
+    fn data_store_u16(&mut self, addr: u16, v: u16) {
+        let bytes = v.to_le_bytes();
+        self.data_store(addr, bytes[0]);
+        self.data_store(addr + 1, bytes[1]);
+    }
+
     fn push_u16(&mut self, v: u16) {
-        self.ram.set_u16(self.sp - 1, v);
+        let bytes = v.to_le_bytes();
+        self.sram[(self.sp - SRAM_ADDR - 1) as usize] = bytes[0];
+        self.sram[(self.sp - SRAM_ADDR) as usize] = bytes[1];
         self.sp -= 2;
     }
 
     fn pop_u16(&mut self) -> u16 {
         self.sp += 2;
-        let v = self.ram.get_u16(self.sp - 1);
-        v
+        u16::from_le_bytes([
+            self.sram[(self.sp - SRAM_ADDR - 1) as usize],
+            self.sram[(self.sp - SRAM_ADDR) as usize],
+        ])
     }
 
     // Auxiliary function to update some flags in adc and add
@@ -582,7 +719,7 @@ impl Core {
     /// 89. Pop Register from Stack (POP Rd) OK
     fn op_pop(&mut self, d: u8) -> usize {
         self.sp += 1;
-        self.regs[d] = self.ram[self.sp];
+        self.regs[d] = self.sram[(self.sp - SRAM_ADDR) as usize];
 
         self.pc += 1;
         2
@@ -590,7 +727,7 @@ impl Core {
 
     /// 90. Push Register on Stack (PUSH Rr) OK
     fn op_push(&mut self, r: u8) -> usize {
-        self.ram[self.sp] = self.regs[r];
+        self.sram[(self.sp - SRAM_ADDR) as usize] = self.regs[r];
         self.sp -= 1;
 
         self.pc += 1;

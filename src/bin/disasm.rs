@@ -4,7 +4,7 @@ use std::io::{self, BufRead};
 
 use hex;
 
-use avremu::{Op, OpAddr};
+use avremu::opcodes::{Op, OpAddr};
 
 fn decode_hex_line(line: &str) -> Result<Option<(u16, Vec<u8>)>, hex::FromHexError> {
     let line = line.as_bytes();
