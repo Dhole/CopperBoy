@@ -96,10 +96,17 @@ const OPCODE_OP_EICALL_MASK: u16 = 0b1111_1111_1111_1111;
 const OPCODE_OP_EIJMP_BITS: u16 = 0b1001_0100_0001_1001;
 const OPCODE_OP_EIJMP_MASK: u16 = 0b1111_1111_1111_1111;
 
-// TODO
 // 57
-const OPCODE_OP_ELPM_BITS: u16 = 0b0000_0000_0000_0000;
-const OPCODE_OP_ELPM_MASK: u16 = 0b0000_0000_0000_0000;
+const OPCODE_OP_ELPMR0_BITS: u16 = 0b1001_0101_1101_1000;
+const OPCODE_OP_ELPMR0_MASK: u16 = 0b1111_1111_1111_1111;
+
+// 57
+const OPCODE_OP_ELPM_BITS: u16 = 0b1001_0000_0000_0110;
+const OPCODE_OP_ELPM_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 57
+const OPCODE_OP_ELPMINC_BITS: u16 = 0b1001_0000_0000_0111;
+const OPCODE_OP_ELPMINC_MASK: u16 = 0b1111_1110_0000_1111;
 
 // 58
 const OPCODE_OP_EOR_BITS: u16 = 0b0010_0100_0000_0000;
@@ -185,10 +192,17 @@ const OPCODE_OP_LDS_MASK: u16 = 0b1111_1110_0000_1111;
 const OPCODE_OP_LDS16_BITS: u16 = 0b1010_0000_0000_0000;
 const OPCODE_OP_LDS16_MASK: u16 = 0b1111_1000_0000_0000;
 
-// TODO
 // 76
-const OPCODE_OP_LPM_BITS: u16 = 0b0000_0000_0000_0000;
-const OPCODE_OP_LPM_MASK: u16 = 0b0000_0000_0000_0000;
+const OPCODE_OP_LPMR0_BITS: u16 = 0b1001_0101_1100_1000;
+const OPCODE_OP_LPMR0_MASK: u16 = 0b1111_1111_1111_1111;
+
+// 76
+const OPCODE_OP_LPM_BITS: u16 = 0b1001_0000_0000_0100;
+const OPCODE_OP_LPM_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 76
+const OPCODE_OP_LPMINC_BITS: u16 = 0b1001_0000_0000_0101;
+const OPCODE_OP_LPMINC_MASK: u16 = 0b1111_1110_0000_1111;
 
 // 78
 const OPCODE_OP_LSR_BITS: u16 = 0b1001_0100_0000_0110;
@@ -306,10 +320,9 @@ const OPCODE_OP_SLEEP_MASK: u16 = 0b1111_1111_1111_1111;
 const OPCODE_OP_SPM_BITS: u16 = 0b1001_0101_1110_1000;
 const OPCODE_OP_SPM_MASK: u16 = 0b1111_1111_1111_1111;
 
-// TODO
 // 117
-const OPCODE_OP_SPM2_BITS: u16 = 0b0000_0000_0000_0000;
-const OPCODE_OP_SPM2_MASK: u16 = 0b0000_0000_0000_0000;
+const OPCODE_OP_SPM2_BITS: u16 = 0b1001_0101_1111_1000;
+const OPCODE_OP_SPM2_MASK: u16 = 0b1111_1111_1111_1111;
 
 // 118
 const OPCODE_OP_STX_BITS: u16 = 0b1001_0010_0000_1100;
@@ -422,7 +435,8 @@ pub enum Op {
     Dec { d: u8 },
     Eicall,
     Eijmp,
-    Elpm, // TODO
+    Elpmr0,
+    Elpm { d: u8, inc: bool },
     Eor { d: u8, r: u8 },
     Fmul { d: u8, r: u8 },
     Fmuls { d: u8, r: u8 },
@@ -436,7 +450,8 @@ pub enum Op {
     Ldi { d: u8, k: u8 },
     Lds,   // TODO
     Lds16, // TODO
-    Lpm,   // TODO
+    Lpmr0,
+    Lpm { d: u8, inc: bool },
     Lsr { d: u8 },
     Mov { d: u8, r: u8 },
     Movw { d: u8, r: u8 },
@@ -465,8 +480,8 @@ pub enum Op {
     Sbrs { r: u8, b: u8 },
     Ser { d: u8 },
     Sleep,
-    Spm,                                        // TODO
-    Spm2,                                       // TODO
+    Spm,
+    Spm2,
     St { r: u8, idx: LdStIndex, ext: LdStExt }, // TODO
     Sts,                                        // TODO
     Sts16,                                      // TODO
@@ -572,6 +587,15 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_EICALL_MASK) == OPCODE_OP_EICALL_BITS => Self::Eicall,
             _ if (w0 & OPCODE_OP_EIJMP_MASK) == OPCODE_OP_EIJMP_BITS => Self::Eijmp,
+            _ if (w0 & OPCODE_OP_ELPMR0_MASK) == OPCODE_OP_ELPMR0_BITS => Op::Elpmr0,
+            _ if (w0 & OPCODE_OP_ELPM_MASK) == OPCODE_OP_ELPM_BITS => Op::Elpm {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                inc: false,
+            },
+            _ if (w0 & OPCODE_OP_ELPMINC_MASK) == OPCODE_OP_ELPMINC_BITS => Op::Elpm {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                inc: true,
+            },
             _ if (w0 & OPCODE_OP_EOR_MASK) == OPCODE_OP_EOR_BITS => Self::Eor {
                 r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
@@ -668,6 +692,15 @@ impl Op {
             //     k: ((w0 & 0b0000_0111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
             //     d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8,
             // },
+            _ if (w0 & OPCODE_OP_LPMR0_MASK) == OPCODE_OP_LPMR0_BITS => Op::Lpmr0,
+            _ if (w0 & OPCODE_OP_LPM_MASK) == OPCODE_OP_LPM_BITS => Op::Lpm {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                inc: false,
+            },
+            _ if (w0 & OPCODE_OP_LPMINC_MASK) == OPCODE_OP_LPMINC_BITS => Op::Lpm {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                inc: true,
+            },
             _ if (w0 & OPCODE_OP_LSR_MASK) == OPCODE_OP_LSR_BITS => Self::Lsr {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
@@ -765,7 +798,8 @@ impl Op {
                 d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
             },
             _ if (w0 & OPCODE_OP_SLEEP_MASK) == OPCODE_OP_SLEEP_BITS => Self::Sleep,
-            _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => Self::Spm,
+            _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => Op::Spm,
+            _ if (w0 & OPCODE_OP_SPM2_MASK) == OPCODE_OP_SPM2_BITS => Op::Spm2,
             _ if (w0 & OPCODE_OP_STX_MASK) == OPCODE_OP_STX_BITS => Op::St {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
                 idx: LdStIndex::X,
@@ -886,7 +920,14 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::Dec { d } => write!(f, "DEC R{}", d),
             Op::Eicall => write!(f, "EICALL"),
             Op::Eijmp => write!(f, "EIJMP"),
-            // Elpm, // TODO
+            Op::Elpmr0 => write!(f, "ELPM"),
+            Op::Elpm { d, inc } => {
+                write!(f, "ELPM R{}, Z", d)?;
+                if inc {
+                    write!(f, "+")?;
+                }
+                Ok(())
+            }
             Op::Eor { d, r } => write!(f, "EOR R{}, R{}", d, r),
             Op::Fmul { d, r } => write!(f, "FMUL R{}, R{}", d, r),
             Op::Fmuls { d, r } => write!(f, "FMULS R{}, R{}", d, r),
@@ -949,8 +990,8 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::Sbrs { r, b } => write!(f, "SBRS R{}, {}", r, b),
             Op::Ser { d } => write!(f, "SER R{}", d),
             Op::Sleep => write!(f, "SLEEP"),
-            // Spm,   // TODO
-            // Spm2,  // TODO
+            Op::Spm => write!(f, "SPM"),
+            Op::Spm2 => write!(f, "SPM Z+"),
             Op::St {
                 r,
                 ref idx,
