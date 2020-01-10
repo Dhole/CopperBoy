@@ -78,9 +78,15 @@ instructions = """
  115 SLEEP  1001_0101_1000_1000
  116 SPM    1001_0101_1110_1000
 #117 SPM2   0000_0000_0000_0000
-#118 STX    0000_0000_0000_0000
-#119 STY    0000_0000_0000_0000
-#120 STZ    0000_0000_0000_0000
+ 118 STX    1001_001r_rrrr_1100
+ 118 STXINC 1001_001r_rrrr_1101
+ 118 STXDEC 1001_001r_rrrr_1111
+ 119 STYINC 1001_001r_rrrr_1001
+ 119 STYDEC 1001_001r_rrrr_1010
+ 119 STYADQ 10q0_qq1r_rrrr_1qqq
+ 120 STZINC 1001_001r_rrrr_0001
+ 120 STZDEC 1001_001r_rrrr_0010
+ 120 STZADQ 10q0_qq1r_rrrr_0qqq
  121 STS    1001_001d_dddd_0000 kkkk_kkkk_kkkk_kkkk
  122 STS16  1010_1kkk_dddd_kkkk
  123 SUB    0001_10rd_dddd_rrrr
@@ -134,14 +140,14 @@ def build_arg_decoder(arg, w0):
         masks.append(mask)
 
     parts = []
-    last = 16
+    acc = 0
     for mask in masks[::-1]:
         if mask[-1] == 15:
             parts.append(f'w0 & {build_mask(mask)}')
         else:
-            shift = last - mask[-1] - 1
+            shift = 15 - mask[-1] - acc
             parts.append(f'(w0 & {build_mask(mask)}) >> {shift}')
-        last = mask[0]
+        acc = acc + (mask[-1] + 1 - mask[0])
     return ' | '.join(parts[::-1])
 
 print('match w0 {')

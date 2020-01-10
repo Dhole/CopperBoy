@@ -311,20 +311,41 @@ const OPCODE_OP_SPM_MASK: u16 = 0b1111_1111_1111_1111;
 const OPCODE_OP_SPM2_BITS: u16 = 0b0000_0000_0000_0000;
 const OPCODE_OP_SPM2_MASK: u16 = 0b0000_0000_0000_0000;
 
-// TODO
 // 118
-const OPCODE_OP_STX_BITS: u16 = 0b0000_0000_0000_0000;
-const OPCODE_OP_STX_MASK: u16 = 0b0000_0000_0000_0000;
+const OPCODE_OP_STX_BITS: u16 = 0b1001_0010_0000_1100;
+const OPCODE_OP_STX_MASK: u16 = 0b1111_1110_0000_1111;
 
-// TODO
+// 118
+const OPCODE_OP_STXINC_BITS: u16 = 0b1001_0010_0000_1101;
+const OPCODE_OP_STXINC_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 118
+const OPCODE_OP_STXDEC_BITS: u16 = 0b1001_0010_0000_1111;
+const OPCODE_OP_STXDEC_MASK: u16 = 0b1111_1110_0000_1111;
+
 // 119
-const OPCODE_OP_STY_BITS: u16 = 0b0000_0000_0000_0000;
-const OPCODE_OP_STY_MASK: u16 = 0b0000_0000_0000_0000;
+const OPCODE_OP_STYINC_BITS: u16 = 0b1001_0010_0000_1001;
+const OPCODE_OP_STYINC_MASK: u16 = 0b1111_1110_0000_1111;
 
-// TODO
+// 119
+const OPCODE_OP_STYDEC_BITS: u16 = 0b1001_0010_0000_1010;
+const OPCODE_OP_STYDEC_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 119
+const OPCODE_OP_STYADQ_BITS: u16 = 0b1000_0010_0000_1000;
+const OPCODE_OP_STYADQ_MASK: u16 = 0b1101_0010_0000_1000;
+
 // 120
-const OPCODE_OP_STZ_BITS: u16 = 0b0000_0000_0000_0000;
-const OPCODE_OP_STZ_MASK: u16 = 0b0000_0000_0000_0000;
+const OPCODE_OP_STZINC_BITS: u16 = 0b1001_0010_0000_0001;
+const OPCODE_OP_STZINC_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 120
+const OPCODE_OP_STZDEC_BITS: u16 = 0b1001_0010_0000_0010;
+const OPCODE_OP_STZDEC_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 120
+const OPCODE_OP_STZADQ_BITS: u16 = 0b1000_0010_0000_0000;
+const OPCODE_OP_STZADQ_MASK: u16 = 0b1101_0010_0000_1000;
 
 // 121
 const OPCODE_OP_STS_BITS: u16 = 0b1001_0010_0000_0000;
@@ -351,13 +372,13 @@ const OPCODE_OP_WDR_BITS: u16 = 0b1001_0101_1010_1000;
 const OPCODE_OP_WDR_MASK: u16 = 0b1111_1111_1111_1111;
 
 #[derive(Debug)]
-pub enum LdIndex {
+pub enum LdStIndex {
     X,
     Y,
     Z,
 }
 
-impl fmt::Display for LdIndex {
+impl fmt::Display for LdStIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::X => write!(f, "X"),
@@ -368,7 +389,7 @@ impl fmt::Display for LdIndex {
 }
 
 #[derive(Debug)]
-pub enum LdExt {
+pub enum LdStExt {
     None,
     PostInc,
     PreDec,
@@ -411,7 +432,7 @@ pub enum Op {
     In { d: u8, a: u8 },
     Inc { d: u8 },
     Jmp { k: u32 },
-    Ld { d: u8, idx: LdIndex, ext: LdExt }, // NOTE: Review undefined Rd combinations
+    Ld { d: u8, idx: LdStIndex, ext: LdStExt }, // NOTE: Review undefined Rd combinations
     Ldi { d: u8, k: u8 },
     Lds,   // TODO
     Lds16, // TODO
@@ -444,11 +465,11 @@ pub enum Op {
     Sbrs { r: u8, b: u8 },
     Ser { d: u8 },
     Sleep,
-    Spm,   // TODO
-    Spm2,  // TODO
-    St,    // TODO
-    Sts,   // TODO
-    Sts16, // TODO
+    Spm,                                        // TODO
+    Spm2,                                       // TODO
+    St { r: u8, idx: LdStIndex, ext: LdStExt }, // TODO
+    Sts,                                        // TODO
+    Sts16,                                      // TODO
     Sub { d: u8, r: u8 },
     Subi { d: u8, k: u8 },
     Swap { d: u8 },
@@ -583,56 +604,56 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_LDX_MASK) == OPCODE_OP_LDX_BITS => Op::Ld {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdIndex::X,
-                ext: LdExt::None,
+                idx: LdStIndex::X,
+                ext: LdStExt::None,
             },
             _ if (w0 & OPCODE_OP_LDXINC_MASK) == OPCODE_OP_LDXINC_BITS => Op::Ld {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdIndex::X,
-                ext: LdExt::PostInc,
+                idx: LdStIndex::X,
+                ext: LdStExt::PostInc,
             },
             _ if (w0 & OPCODE_OP_LDXDEC_MASK) == OPCODE_OP_LDXDEC_BITS => Op::Ld {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdIndex::X,
-                ext: LdExt::PreDec,
+                idx: LdStIndex::X,
+                ext: LdStExt::PreDec,
             },
             _ if (w0 & OPCODE_OP_LDYINC_MASK) == OPCODE_OP_LDYINC_BITS => Op::Ld {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdIndex::Y,
-                ext: LdExt::PostInc,
+                idx: LdStIndex::Y,
+                ext: LdStExt::PostInc,
             },
             _ if (w0 & OPCODE_OP_LDYDEC_MASK) == OPCODE_OP_LDYDEC_BITS => Op::Ld {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdIndex::Y,
-                ext: LdExt::PreDec,
+                idx: LdStIndex::Y,
+                ext: LdStExt::PreDec,
             },
             _ if (w0 & OPCODE_OP_LDYADQ_MASK) == OPCODE_OP_LDYADQ_BITS => Op::Ld {
-                ext: LdExt::PostAdd(
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::Y,
+                ext: LdStExt::PostAdd(
                     ((w0 & 0b0010_0000_0000_0000) >> 4
                         | (w0 & 0b0000_1100_0000_0000) >> 7
                         | w0 & 0b0000_0000_0000_0111) as u8,
                 ),
-                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdIndex::Y,
             },
             _ if (w0 & OPCODE_OP_LDZINC_MASK) == OPCODE_OP_LDZINC_BITS => Op::Ld {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdIndex::Z,
-                ext: LdExt::PostInc,
+                idx: LdStIndex::Z,
+                ext: LdStExt::PostInc,
             },
             _ if (w0 & OPCODE_OP_LDZDEC_MASK) == OPCODE_OP_LDZDEC_BITS => Op::Ld {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdIndex::Z,
-                ext: LdExt::PreDec,
+                idx: LdStIndex::Z,
+                ext: LdStExt::PreDec,
             },
             _ if (w0 & OPCODE_OP_LDZADQ_MASK) == OPCODE_OP_LDZADQ_BITS => Op::Ld {
-                ext: LdExt::PostAdd(
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::Z,
+                ext: LdStExt::PostAdd(
                     ((w0 & 0b0010_0000_0000_0000) >> 4
                         | (w0 & 0b0000_1100_0000_0000) >> 7
                         | w0 & 0b0000_0000_0000_0111) as u8,
                 ),
-                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdIndex::Z,
             },
             _ if (w0 & OPCODE_OP_LDI_MASK) == OPCODE_OP_LDI_BITS => Self::Ldi {
                 k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
@@ -745,6 +766,59 @@ impl Op {
             },
             _ if (w0 & OPCODE_OP_SLEEP_MASK) == OPCODE_OP_SLEEP_BITS => Self::Sleep,
             _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => Self::Spm,
+            _ if (w0 & OPCODE_OP_STX_MASK) == OPCODE_OP_STX_BITS => Op::St {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::X,
+                ext: LdStExt::None,
+            },
+            _ if (w0 & OPCODE_OP_STXINC_MASK) == OPCODE_OP_STXINC_BITS => Op::St {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::X,
+                ext: LdStExt::PostInc,
+            },
+            _ if (w0 & OPCODE_OP_STXDEC_MASK) == OPCODE_OP_STXDEC_BITS => Op::St {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::X,
+                ext: LdStExt::PreDec,
+            },
+            _ if (w0 & OPCODE_OP_STYINC_MASK) == OPCODE_OP_STYINC_BITS => Op::St {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::Y,
+                ext: LdStExt::PostInc,
+            },
+            _ if (w0 & OPCODE_OP_STYDEC_MASK) == OPCODE_OP_STYDEC_BITS => Op::St {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::Y,
+                ext: LdStExt::PreDec,
+            },
+            _ if (w0 & OPCODE_OP_STYADQ_MASK) == OPCODE_OP_STYADQ_BITS => Op::St {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::Y,
+                ext: LdStExt::PostAdd(
+                    ((w0 & 0b0010_0000_0000_0000) >> 4
+                        | (w0 & 0b0000_1100_0000_0000) >> 7
+                        | w0 & 0b0000_0000_0000_0111) as u8,
+                ),
+            },
+            _ if (w0 & OPCODE_OP_STZINC_MASK) == OPCODE_OP_STZINC_BITS => Op::St {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::Z,
+                ext: LdStExt::PostInc,
+            },
+            _ if (w0 & OPCODE_OP_STZDEC_MASK) == OPCODE_OP_STZDEC_BITS => Op::St {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::Z,
+                ext: LdStExt::PreDec,
+            },
+            _ if (w0 & OPCODE_OP_STZADQ_MASK) == OPCODE_OP_STZADQ_BITS => Op::St {
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdStIndex::Z,
+                ext: LdStExt::PostAdd(
+                    ((w0 & 0b0010_0000_0000_0000) >> 4
+                        | (w0 & 0b0000_1100_0000_0000) >> 7
+                        | w0 & 0b0000_0000_0000_0111) as u8,
+                ),
+            },
             // TODO
             //_ if (w0 & OPCODE_OP_STS_MASK) == OPCODE_OP_STS_BITS => Self::Sts {
             //    d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
@@ -829,10 +903,10 @@ impl<'a> fmt::Display for OpAddr<'a> {
             } => {
                 write!(f, "LD R{}, ", d)?;
                 match ext {
-                    LdExt::None => write!(f, "{}", idx),
-                    LdExt::PostInc => write!(f, "{}+", idx),
-                    LdExt::PreDec => write!(f, "-{}", idx),
-                    LdExt::PostAdd(q) => write!(f, "{}+{}", idx, q),
+                    LdStExt::None => write!(f, "{}", idx),
+                    LdStExt::PostInc => write!(f, "{}+", idx),
+                    LdStExt::PreDec => write!(f, "-{}", idx),
+                    LdStExt::PostAdd(q) => write!(f, "{}+{}", idx, q),
                 }
             }
             Op::Ldi { d, k } => write!(f, "LDI R{}, {}", d, k),
@@ -877,7 +951,19 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::Sleep => write!(f, "SLEEP"),
             // Spm,   // TODO
             // Spm2,  // TODO
-            // St,    // TODO
+            Op::St {
+                r,
+                ref idx,
+                ref ext,
+            } => {
+                write!(f, "ST R{}, ", r)?;
+                match ext {
+                    LdStExt::None => write!(f, "{}", idx),
+                    LdStExt::PostInc => write!(f, "{}+", idx),
+                    LdStExt::PreDec => write!(f, "-{}", idx),
+                    LdStExt::PostAdd(q) => write!(f, "{}+{}", idx, q),
+                }
+            }
             // Sts,   // TODO
             // Sts16, // TODO
             Op::Sub { d, r } => write!(f, "SUB R{}, R{}", d, r),
