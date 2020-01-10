@@ -85,6 +85,19 @@ impl StatusRegister {
         }
     }
 
+    fn from_u8(v: u8) -> Self {
+        Self {
+            i: ((v & 1) << 7) != 0,
+            t: ((v & 1) << 6) != 0,
+            h: ((v & 1) << 5) != 0,
+            s: ((v & 1) << 4) != 0,
+            v: ((v & 1) << 3) != 0,
+            n: ((v & 1) << 2) != 0,
+            z: ((v & 1) << 1) != 0,
+            c: ((v & 1) << 0) != 0,
+        }
+    }
+
     fn as_u8(&self) -> u8 {
         (self.i as u8) << 7
             | (self.t as u8) << 6
@@ -119,6 +132,24 @@ struct Core {
     program: [u8; PROGRAM_SIZE as usize],
 }
 
+fn get_hi(v: u16) -> u8 {
+    ((v & 0xff00) >> 8) as u8
+}
+
+fn get_lo(v: u16) -> u8 {
+    (v & 0x00ff) as u8
+}
+
+fn set_hi(v: &mut u16, hi: u8) {
+    *v &= 0x00ff;
+    *v |= (hi as u16) << 8;
+}
+
+fn set_lo(v: &mut u16, lo: u8) {
+    *v &= 0xff00;
+    *v |= lo as u16;
+}
+
 impl Core {
     fn new() -> Self {
         Self {
@@ -137,8 +168,8 @@ impl Core {
             self.sram[(addr - SRAM_ADDR) as usize]
         } else {
             match addr {
-                io_regs::SPL => (self.sp & 0x00ff) as u8,
-                io_regs::SPH => ((self.sp & 0xff00) >> 8) as u8,
+                io_regs::SPL => get_lo(self.sp),
+                io_regs::SPH => get_hi(self.sp),
                 io_regs::SREG => self.status_reg.as_u8(),
                 _ => unimplemented!(),
             }
@@ -153,7 +184,12 @@ impl Core {
         if addr >= SRAM_ADDR {
             self.sram[(addr - SRAM_ADDR) as usize] = v;
         } else {
-            unimplemented!();
+            match addr {
+                io_regs::SPL => set_lo(&mut self.sp, v),
+                io_regs::SPH => set_hi(&mut self.sp, v),
+                io_regs::SREG => self.status_reg = StatusRegister::from_u8(v),
+                _ => unimplemented!(),
+            }
         }
     }
 

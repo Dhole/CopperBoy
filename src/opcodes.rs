@@ -137,20 +137,41 @@ const OPCODE_OP_INC_MASK: u16 = 0b1111_1110_0000_1111;
 const OPCODE_OP_JMP_BITS: u16 = 0b1001_0100_0000_1100;
 const OPCODE_OP_JMP_MASK: u16 = 0b1111_1110_0000_1110;
 
-// TODO
 // 70
-const OPCODE_OP_LDX_BITS: u16 = 0b0000_0000_0000_0000;
-const OPCODE_OP_LDX_MASK: u16 = 0b0000_0000_0000_0000;
+const OPCODE_OP_LDX_BITS: u16 = 0b1001_0000_0000_1100;
+const OPCODE_OP_LDX_MASK: u16 = 0b1111_1110_0000_1111;
 
-// TODO
+// 70
+const OPCODE_OP_LDXINC_BITS: u16 = 0b1001_0000_0000_1101;
+const OPCODE_OP_LDXINC_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 70
+const OPCODE_OP_LDXDEC_BITS: u16 = 0b1001_0000_0000_1111;
+const OPCODE_OP_LDXDEC_MASK: u16 = 0b1111_1110_0000_1111;
+
 // 71
-const OPCODE_OP_LDY_BITS: u16 = 0b0000_0000_0000_0000;
-const OPCODE_OP_LDY_MASK: u16 = 0b0000_0000_0000_0000;
+const OPCODE_OP_LDYINC_BITS: u16 = 0b1001_0000_0000_1001;
+const OPCODE_OP_LDYINC_MASK: u16 = 0b1111_1110_0000_1111;
 
-// TODO
+// 71
+const OPCODE_OP_LDYDEC_BITS: u16 = 0b1001_0000_0000_1010;
+const OPCODE_OP_LDYDEC_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 71
+const OPCODE_OP_LDYADQ_BITS: u16 = 0b1000_0000_0000_1000;
+const OPCODE_OP_LDYADQ_MASK: u16 = 0b1101_0010_0000_1000;
+
 // 72
-const OPCODE_OP_LDZ_BITS: u16 = 0b0000_0000_0000_0000;
-const OPCODE_OP_LDZ_MASK: u16 = 0b0000_0000_0000_0000;
+const OPCODE_OP_LDZINC_BITS: u16 = 0b1001_0000_0000_0001;
+const OPCODE_OP_LDZINC_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 72
+const OPCODE_OP_LDZDEC_BITS: u16 = 0b1001_0000_0000_0010;
+const OPCODE_OP_LDZDEC_MASK: u16 = 0b1111_1110_0000_1111;
+
+// 72
+const OPCODE_OP_LDZADQ_BITS: u16 = 0b1000_0000_0000_0000;
+const OPCODE_OP_LDZADQ_MASK: u16 = 0b1101_0010_0000_1000;
 
 // 73
 const OPCODE_OP_LDI_BITS: u16 = 0b1110_0000_0000_0000;
@@ -330,6 +351,31 @@ const OPCODE_OP_WDR_BITS: u16 = 0b1001_0101_1010_1000;
 const OPCODE_OP_WDR_MASK: u16 = 0b1111_1111_1111_1111;
 
 #[derive(Debug)]
+pub enum LdIndex {
+    X,
+    Y,
+    Z,
+}
+
+impl fmt::Display for LdIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::X => write!(f, "X"),
+            Self::Y => write!(f, "Y"),
+            Self::Z => write!(f, "Z"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum LdExt {
+    None,
+    PostInc,
+    PreDec,
+    PostAdd(u8),
+}
+
+#[derive(Debug)]
 pub enum Op {
     Adc { d: u8, r: u8 },
     Add { d: u8, r: u8 },
@@ -365,7 +411,7 @@ pub enum Op {
     In { d: u8, a: u8 },
     Inc { d: u8 },
     Jmp { k: u32 },
-    Ld, // TODO
+    Ld { d: u8, idx: LdIndex, ext: LdExt }, // NOTE: Review undefined Rd combinations
     Ldi { d: u8, k: u8 },
     Lds,   // TODO
     Lds16, // TODO
@@ -534,6 +580,59 @@ impl Op {
                 k: ((w0 & 0b0000_0001_1111_0000) as u32 >> 4 | (w0 & 0b0000_0000_0000_0001) as u32)
                     >> 16
                     | (w1 as u32),
+            },
+            _ if (w0 & OPCODE_OP_LDX_MASK) == OPCODE_OP_LDX_BITS => Op::Ld {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdIndex::X,
+                ext: LdExt::None,
+            },
+            _ if (w0 & OPCODE_OP_LDXINC_MASK) == OPCODE_OP_LDXINC_BITS => Op::Ld {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdIndex::X,
+                ext: LdExt::PostInc,
+            },
+            _ if (w0 & OPCODE_OP_LDXDEC_MASK) == OPCODE_OP_LDXDEC_BITS => Op::Ld {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdIndex::X,
+                ext: LdExt::PreDec,
+            },
+            _ if (w0 & OPCODE_OP_LDYINC_MASK) == OPCODE_OP_LDYINC_BITS => Op::Ld {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdIndex::Y,
+                ext: LdExt::PostInc,
+            },
+            _ if (w0 & OPCODE_OP_LDYDEC_MASK) == OPCODE_OP_LDYDEC_BITS => Op::Ld {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdIndex::Y,
+                ext: LdExt::PreDec,
+            },
+            _ if (w0 & OPCODE_OP_LDYADQ_MASK) == OPCODE_OP_LDYADQ_BITS => Op::Ld {
+                ext: LdExt::PostAdd(
+                    ((w0 & 0b0010_0000_0000_0000) >> 4
+                        | (w0 & 0b0000_1100_0000_0000) >> 7
+                        | w0 & 0b0000_0000_0000_0111) as u8,
+                ),
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdIndex::Y,
+            },
+            _ if (w0 & OPCODE_OP_LDZINC_MASK) == OPCODE_OP_LDZINC_BITS => Op::Ld {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdIndex::Z,
+                ext: LdExt::PostInc,
+            },
+            _ if (w0 & OPCODE_OP_LDZDEC_MASK) == OPCODE_OP_LDZDEC_BITS => Op::Ld {
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdIndex::Z,
+                ext: LdExt::PreDec,
+            },
+            _ if (w0 & OPCODE_OP_LDZADQ_MASK) == OPCODE_OP_LDZADQ_BITS => Op::Ld {
+                ext: LdExt::PostAdd(
+                    ((w0 & 0b0010_0000_0000_0000) >> 4
+                        | (w0 & 0b0000_1100_0000_0000) >> 7
+                        | w0 & 0b0000_0000_0000_0111) as u8,
+                ),
+                d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
+                idx: LdIndex::Z,
             },
             _ if (w0 & OPCODE_OP_LDI_MASK) == OPCODE_OP_LDI_BITS => Self::Ldi {
                 k: ((w0 & 0b0000_1111_0000_0000) >> 4 | w0 & 0b0000_0000_0000_1111) as u8,
@@ -723,7 +822,19 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::In { d, a } => write!(f, "IN R{}, {}", d, a),
             Op::Inc { d } => write!(f, "INC R{}", d),
             Op::Jmp { k } => write!(f, "JMP 0x{:04x}", k),
-            // Ld, // TODO
+            Op::Ld {
+                d,
+                ref idx,
+                ref ext,
+            } => {
+                write!(f, "LD R{}, ", d)?;
+                match ext {
+                    LdExt::None => write!(f, "{}", idx),
+                    LdExt::PostInc => write!(f, "{}+", idx),
+                    LdExt::PreDec => write!(f, "-{}", idx),
+                    LdExt::PostAdd(q) => write!(f, "{}+{}", idx, q),
+                }
+            }
             Op::Ldi { d, k } => write!(f, "LDI R{}, {}", d, k),
             // Lds,   // TODO
             // Lds16, // TODO

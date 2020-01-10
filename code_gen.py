@@ -35,9 +35,15 @@ instructions = """
   64 IN     1011_0AAd_dddd_AAAA
   65 INC    1001_010d_dddd_0011
   66 JMP    1001_010k_kkkk_110k kkkk_kkkk_kkkk_kkkk
-# 70 LDX    0000_0000_0000_0000
-# 71 LDY    0000_0000_0000_0000
-# 72 LDZ    0000_0000_0000_0000
+  70 LDX    1001_000d_dddd_1100
+  70 LDXINC 1001_000d_dddd_1101
+  70 LDXDEC 1001_000d_dddd_1111
+  71 LDYINC 1001_000d_dddd_1001
+  71 LDYDEC 1001_000d_dddd_1010
+  71 LDYADQ 10q0_qq0d_dddd_1qqq
+  72 LDZINC 1001_000d_dddd_0001
+  72 LDZDEC 1001_000d_dddd_0010
+  72 LDZADQ 10q0_qq0d_dddd_0qqq
   73 LDI    1110_KKKK_dddd_KKKK
   74 LDS    1001_000d_dddd_0000 kkkk_kkkk_kkkk_kkkk
   75 LDS16  1010_0kkk_dddd_kkkk
