@@ -48,7 +48,6 @@ instructions = """
   72 LDZADQ 10q0_qq0d_dddd_0qqq
   73 LDI    1110_KKKK_dddd_KKKK
   74 LDS    1001_000d_dddd_0000 kkkk_kkkk_kkkk_kkkk
-  75 LDS16  1010_0kkk_dddd_kkkk
   76 LPMR0  1001_0101_1100_1000
   76 LPM    1001_000d_dddd_0100
   76 LPMINC 1001_000d_dddd_0101
@@ -91,8 +90,7 @@ instructions = """
  120 STZINC 1001_001r_rrrr_0001
  120 STZDEC 1001_001r_rrrr_0010
  120 STZADQ 10q0_qq1r_rrrr_0qqq
- 121 STS    1001_001d_dddd_0000 kkkk_kkkk_kkkk_kkkk
- 122 STS16  1010_1kkk_dddd_kkkk
+ 121 STS    1001_001r_rrrr_0000 kkkk_kkkk_kkkk_kkkk
  123 SUB    0001_10rd_dddd_rrrr
  124 SUBI   0101_KKKK_dddd_KKKK
  125 SWAP   1001_010d_dddd_0010

@@ -614,7 +614,7 @@ impl Core {
     }
 
     // TODO: 74. Load Direct from Data Space (LDS Rd, k) OK
-    // TODO: 75. Load Direct from Data Space (LDS Rd, k # 16bit) OK
+    // 75. Load Direct from Data Space (LDS Rd, k ; 16bit) (NOT APPLICABLE)
     // TODO: 76. Load Program Memory (LPM Rd, Z) OK
 
     // 77. Logical Shift Left (LSL Rd) OK -> ADD Rd, Rd
@@ -932,7 +932,7 @@ impl Core {
     // TODO: 120. Store Indirect from Register to Data Space using Index Z (ST {-}Z{+}, Rr) OK
     // TODO: ???. Store Indirect with Displacement (STD {Y,Z}+q, Rr) OK
     // TODO: 121. Store Direct to Data Space (STS k, Rr) OK
-    // TODO: 122. Store Direct to Data Space (STS k, Rr # 16bit) OK
+    // 122. Store Direct to Data Space (STS k, Rr ; 16bit) (NOT APPLICABLE)
 
     /// 123. Subtract without Carry (SUB Rd, Rr) OK
     fn op_sub(&mut self, d: u8, r: u8) -> usize {
