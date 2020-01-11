@@ -204,6 +204,9 @@ struct Core {
     sram: [u8; SRAM_SIZE as usize],
     /// Program Memory
     program: [u8; PROGRAM_SIZE as usize],
+    /// Set if the previos instruction branched.  This flag is used to know if the instruction
+    /// ahead must be fetched.
+    branch: bool,
 }
 
 fn get_hi(v: u16) -> u8 {
@@ -234,7 +237,14 @@ impl Core {
             sram: [0; SRAM_SIZE as usize],
             program: [0; PROGRAM_SIZE as usize],
             sp: SRAM_ADDR + SRAM_SIZE - 1,
+            branch: false,
         }
+    }
+
+    /// Instruction used to populate the Program Memory Space.  Simulates flashing the flash
+    /// memory.
+    fn flash(&mut self, addr: u16, v: u8) {
+        self.program[addr as usize] = v;
     }
 
     fn data_load(&self, addr: u16) -> u8 {
@@ -1029,7 +1039,21 @@ impl Core {
         }
     }
 
-    // TODO: 102. Subtract Immedaite from Word (SBIW Rdl, K) OK
+    /// 102. Subtract Immedaite from Word (SBIW Rdl, K) OK
+    fn op_sbiw(&mut self, d: u8, k: u8) -> usize {
+        let ext = self.regs.ext(d);
+        let (res, c) = ext.overflowing_sub(k as u16);
+        let (r15, rdh7) = (res & 1 << 15, ext & 1 << 15);
+        self.status_reg.n = r15 != 0;
+        self.status_reg.v = (rdh7 != 0) & !(r15 != 0);
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
+        self.status_reg.c = c;
+        self.status_reg.z = res == 0;
+        self.regs.set_ext(d, res);
+
+        self.pc += 1;
+        2
+    }
 
     // 103. Set Bits in Register (SBR Rd, K) OK -> ORI Rd, K
 

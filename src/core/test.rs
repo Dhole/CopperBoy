@@ -1041,6 +1041,27 @@ fn test_op_sbis() {
 }
 
 #[test]
+fn test_op_sbiw() {
+    let mut core = Core::new();
+
+    core.regs.set_ext(24, 0x2315);
+    core.op_sbiw(24, 0x21);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(core.regs.ext(24), 0x22f4);
+    assert_status_reg_true!(&core.status_reg, &[]);
+
+    core.regs.set_ext(24, 0x0000);
+    core.op_sbiw(24, 0x01);
+    assert_eq!(core.regs.ext(24), 0xffff);
+    assert_status_reg_true!(&core.status_reg, &['n', 's', 'c']);
+
+    core.regs.set_ext(24, 0x0001);
+    core.op_sbiw(24, 0x01);
+    assert_eq!(core.regs.ext(24), 0x0000);
+    assert_status_reg_true!(&core.status_reg, &['z']);
+}
+
+#[test]
 fn test_op_sbrc() {
     let mut core = Core::new();
 
