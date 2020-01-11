@@ -285,10 +285,10 @@ fn test_op_call() {
 fn test_op_cbi() {
     let mut core = Core::new();
 
-    core.io_regs[3] = 0xff;
-    core.op_cbi(3, 5);
+    core.data_store(io_regs::SPL, 0xff);
+    core.op_cbi((io_regs::SPL - IOSPACE_ADDR) as u8, 5);
     assert_eq!(core.pc, 0x01);
-    assert_eq!(core.io_regs[3], 0b11011111);
+    assert_eq!(core.data_load(io_regs::SPL), 0b11011111);
 }
 
 #[test]
@@ -561,6 +561,40 @@ fn test_op_fmulsu() {
 }
 
 #[test]
+fn test_op_icall() {
+    let mut core = Core::new();
+
+    core.pc = 0x01;
+    let bytes = 0x0123u16.to_le_bytes();
+    core.regs[30] = bytes[0];
+    core.regs[31] = bytes[1];
+    core.op_icall();
+    assert_eq!(core.pc, 0x0123);
+    assert_eq!(core.sp, (SRAM_END - 1) - 2);
+    assert_eq!(core.data_load_u16((SRAM_END - 1) - 1), 0x02);
+}
+
+#[test]
+fn test_op_ijmp() {
+    let mut core = Core::new();
+
+    let bytes = 0x0123u16.to_le_bytes();
+    core.regs[30] = bytes[0];
+    core.regs[31] = bytes[1];
+    core.op_ijmp();
+    assert_eq!(core.pc, 0x0123);
+}
+
+#[test]
+fn test_op_in() {
+    let mut core = Core::new();
+
+    core.op_in(0, (io_regs::SPL - IOSPACE_ADDR) as u8);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(core.regs[0], (core.sp & 0x00ff) as u8);
+}
+
+#[test]
 fn test_op_inc() {
     let mut core = Core::new();
 
@@ -785,6 +819,16 @@ fn test_op_ori() {
 }
 
 #[test]
+fn test_op_out() {
+    let mut core = Core::new();
+
+    core.regs[0] = 0x12;
+    core.op_out((io_regs::SPL - IOSPACE_ADDR) as u8, 0);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(core.data_load(io_regs::SPL), 0x12);
+}
+
+#[test]
 fn test_op_push_pop() {
     let mut core = Core::new();
 
@@ -961,14 +1005,50 @@ fn test_op_sbci() {
 }
 
 #[test]
+fn test_op_sbi() {
+    let mut core = Core::new();
+
+    core.data_store(io_regs::SPL, 0b10001000);
+    core.op_sbi((io_regs::SPL - IOSPACE_ADDR) as u8, 1);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(core.data_load(io_regs::SPL), 0b10001010);
+}
+
+#[test]
+fn test_op_sbic() {
+    let mut core = Core::new();
+
+    core.data_store(io_regs::SPL, 0b00000010);
+    core.op_sbic((io_regs::SPL - IOSPACE_ADDR) as u8, 1);
+    assert_eq!(core.pc, 0x01);
+
+    core.data_store(io_regs::SPL, 0b00000100);
+    core.op_sbic((io_regs::SPL - IOSPACE_ADDR) as u8, 1);
+    assert_eq!(core.pc, 0x03);
+}
+
+#[test]
+fn test_op_sbis() {
+    let mut core = Core::new();
+
+    core.data_store(io_regs::SPL, 0b000001000);
+    core.op_sbis((io_regs::SPL - IOSPACE_ADDR) as u8, 1);
+    assert_eq!(core.pc, 0x01);
+
+    core.data_store(io_regs::SPL, 0b00000010);
+    core.op_sbis((io_regs::SPL - IOSPACE_ADDR) as u8, 1);
+    assert_eq!(core.pc, 0x03);
+}
+
+#[test]
 fn test_op_sbrc() {
     let mut core = Core::new();
 
-    core.regs[0] = 0x02;
+    core.regs[0] = 0b00000010;
     core.op_sbrc(0, 1);
     assert_eq!(core.pc, 0x01);
 
-    core.regs[0] = 0x04;
+    core.regs[0] = 0b00000100;
     core.op_sbrc(0, 1);
     assert_eq!(core.pc, 0x03);
 }
@@ -977,11 +1057,11 @@ fn test_op_sbrc() {
 fn test_op_sbrs() {
     let mut core = Core::new();
 
-    core.regs[0] = 0x04;
+    core.regs[0] = 0b00000100;
     core.op_sbrs(0, 1);
     assert_eq!(core.pc, 0x01);
 
-    core.regs[0] = 0x02;
+    core.regs[0] = 0b00000010;
     core.op_sbrs(0, 1);
     assert_eq!(core.pc, 0x03);
 }

@@ -1,3 +1,4 @@
+#[allow(unused_assignments)]
 use std::env;
 use std::fs;
 use std::io::{self, BufRead};
@@ -18,7 +19,7 @@ fn decode_hex_line(line: &str) -> Result<Option<(u16, Vec<u8>)>, hex::FromHexErr
     Ok(match rtype {
         0x00 => {
             let data = hex::decode(&line[8..8 + bytes * 2])?;
-            let checksum = hex::decode(&line[8 + bytes * 2..8 + bytes * 2 + 2])?[0];
+            let _checksum = hex::decode(&line[8 + bytes * 2..8 + bytes * 2 + 2])?[0];
             Some((addr, data))
         }
         _ => None,

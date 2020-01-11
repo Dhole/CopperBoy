@@ -1,3 +1,5 @@
+use log::warn;
+
 use super::*;
 
 #[derive(PartialEq)]
@@ -110,8 +112,80 @@ impl StatusRegister {
     }
 }
 
+#[derive(PartialEq, Debug)]
+struct GeneralRegisters {
+    reg: [u8; 32],
+}
+
+impl GeneralRegisters {
+    fn new() -> Self {
+        Self { reg: [0; 32] }
+    }
+}
+
+impl Index<u8> for GeneralRegisters {
+    type Output = u8;
+
+    fn index(&self, i: u8) -> &u8 {
+        &self.reg[i as usize]
+    }
+}
+
+impl IndexMut<u8> for GeneralRegisters {
+    fn index_mut(&mut self, i: u8) -> &mut u8 {
+        &mut self.reg[i as usize]
+    }
+}
+
+impl GeneralRegisters {
+    fn w(&self) -> u16 {
+        u16::from_le_bytes([self[24], self[25]])
+    }
+    fn set_w(&mut self, v: u16) {
+        let bytes = v.to_le_bytes();
+        self[24] = bytes[0];
+        self[25] = bytes[1];
+    }
+    fn x(&self) -> u16 {
+        u16::from_le_bytes([self[26], self[27]])
+    }
+    fn set_x(&mut self, v: u16) {
+        let bytes = v.to_le_bytes();
+        self[26] = bytes[0];
+        self[27] = bytes[1];
+    }
+    fn y(&self) -> u16 {
+        u16::from_le_bytes([self[28], self[29]])
+    }
+    fn set_y(&mut self, v: u16) {
+        let bytes = v.to_le_bytes();
+        self[28] = bytes[0];
+        self[29] = bytes[1];
+    }
+    fn z(&self) -> u16 {
+        u16::from_le_bytes([self[30], self[31]])
+    }
+    fn set_z(&mut self, v: u16) {
+        let bytes = v.to_le_bytes();
+        self[30] = bytes[0];
+        self[31] = bytes[1];
+    }
+
+    fn ext(&self, i: u8) -> u16 {
+        u16::from_le_bytes([self[i], self[i + 1]])
+    }
+
+    fn set_ext(&mut self, i: u8, v: u16) {
+        let bytes = v.to_le_bytes();
+        self[i] = bytes[0];
+        self[i + 1] = bytes[1];
+    }
+}
+
 pub const SRAM_SIZE: u16 = 0x0a00;
 pub const SRAM_ADDR: u16 = 0x0100;
+pub const IOSPACE_SIZE: u16 = 0x0040;
+pub const IOSPACE_ADDR: u16 = 0x0020;
 pub const DATA_SIZE: u16 = 0x0b00;
 pub const PROGRAM_SIZE: u16 = 0x8000;
 
@@ -121,7 +195,7 @@ struct Core {
     /// General Purpose Register File
     regs: GeneralRegisters,
     /// IO Registers
-    io_regs: Vec<u8>,
+    io_space: [u8; IOSPACE_SIZE as usize],
     /// Program Counter
     pc: u16,
     /// Stack Pointer
@@ -154,7 +228,7 @@ impl Core {
     fn new() -> Self {
         Self {
             regs: GeneralRegisters::new(),
-            io_regs: vec![0; 64],
+            io_space: [0; IOSPACE_SIZE as usize],
             status_reg: StatusRegister::new(),
             pc: 0,
             sram: [0; SRAM_SIZE as usize],
@@ -171,7 +245,13 @@ impl Core {
                 io_regs::SPL => get_lo(self.sp),
                 io_regs::SPH => get_hi(self.sp),
                 io_regs::SREG => self.status_reg.as_u8(),
-                _ => unimplemented!(),
+                _ => {
+                    warn!(
+                        "I/O Registers / Extended I/O Space unimplemented load at 0x{:04x}",
+                        addr
+                    );
+                    unimplemented!()
+                }
             }
         }
     }
@@ -188,7 +268,13 @@ impl Core {
                 io_regs::SPL => set_lo(&mut self.sp, v),
                 io_regs::SPH => set_hi(&mut self.sp, v),
                 io_regs::SREG => self.status_reg = StatusRegister::from_u8(v),
-                _ => unimplemented!(),
+                _ => {
+                    warn!(
+                        "I/O Registers / Extended I/O Space unimplemented store at 0x{:04x}",
+                        addr
+                    );
+                    unimplemented!()
+                }
             }
         }
     }
@@ -391,7 +477,8 @@ impl Core {
 
     /// 37. Clear Bit in I/O Register (CBI A, b) OK
     fn op_cbi(&mut self, a: u8, b: u8) -> usize {
-        self.io_regs[a as usize] &= !(1 << b);
+        let v = self.data_load(IOSPACE_ADDR + a as u16);
+        self.data_store(IOSPACE_ADDR + a as u16, v & !(1 << b));
         self.pc += 1;
         2
     }
@@ -483,13 +570,13 @@ impl Core {
 
     /// 52. Compare Skip if Equal (CPSE Rd, Rr) OK
     fn op_cpse(&mut self, d: u8, r: u8) -> usize {
-        if self.regs[d] != self.regs[r] {
-            self.pc += 1;
-            1
-        } else {
+        if self.regs[d] == self.regs[r] {
             // FIXME: If next instruction is two words, 3 instead of 2.
             self.pc += 2;
             2
+        } else {
+            self.pc += 1;
+            1
         }
     }
 
@@ -509,10 +596,23 @@ impl Core {
 
     // 54. Data Encryption Standard (DES) (NOT APPLICABLE)
 
-    // TODO: 55. Extended Indirect Call to Subroutine (EICALL) OK
-    // TODO: 56. Extended Indirect Jump (EIJMP) OK
+    /// 55. Extended Indirect Call to Subroutine (EICALL) OK
+    fn op_eicall(&mut self) -> usize {
+        warn!("EICALL unimplemented.  Maybe not supported by ATmega32u4.");
+        unimplemented!();
+    }
 
-    // TODO: 57. Extended Load Program Memory (ELPM Z{+}) OK
+    /// 56. Extended Indirect Jump (EIJMP) OK
+    fn op_eijmp(&mut self) -> usize {
+        warn!("EIJMP unimplemented.  Maybe not supported by ATmega32u4.");
+        unimplemented!();
+    }
+
+    /// 57. Extended Load Program Memory (ELPM Z{+}) OK
+    fn op_elpm(&mut self) -> usize {
+        warn!("ELPM unimplemented.  Maybe not supported by ATmega32u4.");
+        unimplemented!();
+    }
 
     /// 58. Exclusive OR (EOR, Rd, Rr) OK
     fn op_eor(&mut self, d: u8, r: u8) -> usize {
@@ -573,9 +673,26 @@ impl Core {
         2
     }
 
-    // TODO: 62. Indirect Call to Subroutine (ICALL) OK
-    // TODO: 63. Indirect Jump (IJMP) OK
-    // TODO: 64. Load an I/O Location to Register (IN Rd, a) OK
+    /// 62. Indirect Call to Subroutine (ICALL) OK
+    fn op_icall(&mut self) -> usize {
+        self.push_u16(self.pc + 1);
+        self.pc = self.regs.z();
+        3
+    }
+
+    /// 63. Indirect Jump (IJMP) OK
+    fn op_ijmp(&mut self) -> usize {
+        self.pc = self.regs.z();
+        2
+    }
+
+    /// 64. Load an I/O Location to Register (IN Rd, a) OK
+    fn op_in(&mut self, d: u8, a: u8) -> usize {
+        self.regs[d] = self.data_load(IOSPACE_ADDR + a as u16);
+
+        self.pc += 1;
+        1
+    }
 
     /// 65. Increment (INC Rd) OK
     fn op_inc(&mut self, d: u8) -> usize {
@@ -750,7 +867,13 @@ impl Core {
         1
     }
 
-    // TODO: 88. Store Register to I/O Location (OUT P, Rr) OK
+    /// 88. Store Register to I/O Location (OUT A, Rr) OK
+    fn op_out(&mut self, a: u8, r: u8) -> usize {
+        self.data_store(IOSPACE_ADDR + a as u16, self.regs[r]);
+
+        self.pc += 1;
+        1
+    }
 
     /// 89. Pop Register from Stack (POP Rd) OK
     fn op_pop(&mut self, d: u8) -> usize {
@@ -872,34 +995,65 @@ impl Core {
         1
     }
 
-    // TODO: 99. Set Bit in I/O Register (SBI P, b) OK
-    // TODO: 100. Skip if Bit in I/O Register is Cleared (SBIC P, b) OK
-    // TODO: 101. Skip if Bit in I/O Register is Set (SBIS P, b) OK
+    /// 99. Set Bit in I/O Register (SBI P, b) OK
+    fn op_sbi(&mut self, a: u8, b: u8) -> usize {
+        let v = self.data_load(IOSPACE_ADDR + a as u16);
+        self.data_store(IOSPACE_ADDR + a as u16, v | (1 << b));
+        self.pc += 1;
+        2
+    }
+
+    /// 100. Skip if Bit in I/O Register is Cleared (SBIC P, b) OK
+    fn op_sbic(&mut self, a: u8, b: u8) -> usize {
+        let v = self.data_load(IOSPACE_ADDR + a as u16);
+        if (v & (1 << b)) == 0 {
+            // FIXME: If next instruction is two words, 3 instead of 2.
+            self.pc += 2;
+            2
+        } else {
+            self.pc += 1;
+            1
+        }
+    }
+
+    /// 101. Skip if Bit in I/O Register is Set (SBIS P, b) OK
+    fn op_sbis(&mut self, a: u8, b: u8) -> usize {
+        let v = self.data_load(IOSPACE_ADDR + a as u16);
+        if (v & (1 << b)) != 0 {
+            // FIXME: If next instruction is two words, 3 instead of 2.
+            self.pc += 2;
+            2
+        } else {
+            self.pc += 1;
+            1
+        }
+    }
+
     // TODO: 102. Subtract Immedaite from Word (SBIW Rdl, K) OK
 
     // 103. Set Bits in Register (SBR Rd, K) OK -> ORI Rd, K
 
     /// 104. Skip if Bit in Register is Cleared (SBRC Rr, b) OK
     fn op_sbrc(&mut self, r: u8, b: u8) -> usize {
-        if self.regs[r] & (1 << b) != 0 {
-            self.pc += 1;
-            1
-        } else {
+        if self.regs[r] & (1 << b) == 0 {
             // FIXME: If next instruction is two words, 3 instead of 2.
             self.pc += 2;
             2
+        } else {
+            self.pc += 1;
+            1
         }
     }
 
     /// 105. Skip if Bit in Register is Set (SBRS Rr, b) OK
     fn op_sbrs(&mut self, r: u8, b: u8) -> usize {
-        if self.regs[r] & (1 << b) == 0 {
-            self.pc += 1;
-            1
-        } else {
+        if self.regs[r] & (1 << b) != 0 {
             // FIXME: If next instruction is two words, 3 instead of 2.
             self.pc += 2;
             2
+        } else {
+            self.pc += 1;
+            1
         }
     }
 

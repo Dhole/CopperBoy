@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 hex = "0.3.2"
+log = "0.4.8"
+env_logger = "0.7.0"
