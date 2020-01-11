@@ -73,7 +73,13 @@ fn main() -> Result<(), io::Error> {
             }
             _ => unreachable!(),
         }
-        println!("{:04x}: {:09}  {}", addr, opcode, OpAddr { op: &op, addr });
+        println!(
+            "{:04x} [{:04x}]: {:09}  {}",
+            addr,
+            addr >> 1,
+            opcode,
+            OpAddr { op: &op, addr }
+        );
     }
     Ok(())
 }

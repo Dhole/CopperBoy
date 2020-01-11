@@ -1,5 +1,6 @@
 use log::warn;
 
+use super::opcodes::*;
 use super::*;
 
 #[derive(PartialEq)]
@@ -441,6 +442,7 @@ impl Core {
 
     /// 17. Break (BREAK) OK
     fn op_break(&mut self) -> usize {
+        warn!("BREAK unimplemented.");
         unimplemented!();
         // 1
     }
@@ -482,6 +484,7 @@ impl Core {
     fn op_call(&mut self, k: u16) -> usize {
         self.push_u16(self.pc + 2);
         self.pc = k;
+        self.branch = true;
         4
     }
 
@@ -579,10 +582,10 @@ impl Core {
     }
 
     /// 52. Compare Skip if Equal (CPSE Rd, Rr) OK
-    fn op_cpse(&mut self, d: u8, r: u8) -> usize {
+    fn op_cpse(&mut self, d: u8, r: u8, next_op_len: u8) -> usize {
         if self.regs[d] == self.regs[r] {
-            // FIXME: If next instruction is two words, 3 instead of 2.
-            self.pc += 2;
+            self.pc += 1 + next_op_len as u16;
+            self.branch = true;
             2
         } else {
             self.pc += 1;
@@ -687,12 +690,14 @@ impl Core {
     fn op_icall(&mut self) -> usize {
         self.push_u16(self.pc + 1);
         self.pc = self.regs.z();
+        self.branch = true;
         3
     }
 
     /// 63. Indirect Jump (IJMP) OK
     fn op_ijmp(&mut self) -> usize {
         self.pc = self.regs.z();
+        self.branch = true;
         2
     }
 
@@ -721,16 +726,43 @@ impl Core {
     /// 66. Jump (JMP k) OK
     fn op_jmp(&mut self, k: u32) -> usize {
         self.pc = k as u16;
+        self.branch = true;
         3
     }
 
     // 67. Load and Clear (LAC) (NOT APPLICABLE)
     // 68. Load and Set (LAS) (NOT APPLICABLE)
     // 69. Load and Toggle (LAT) (NOT APPLICABLE)
-    // TODO: 70. Load Indirect from Data Space to Register using Index X (LD, {-}X{+}) OK
-    // TODO: 71. Load Indirect from Data Space to Register using Index Y (LD, {-}Y{+}) OK
-    // TODO: 72. Load Indirect from Data Space to Register using Index Z (LD, {-}Z{+}) OK
-    // TODO: ??. Load Indirect with Displacement (LDD {Y,Z}+q) OK
+
+    ///  70, 71, 72. Load Indirect from Data Space to Register using Index {X, Y, Z} (LD, {-}{X,Y,Z}{+}{q}) OK
+    fn op_ld(&mut self, d: u8, idx: LdStIndex, ext: LdStExt) -> usize {
+        self.pc += 1;
+        let mut addr = self.regs.ext(idx.into());
+
+        let cycles = match ext {
+            LdStExt::None => {
+                self.regs[d] = self.data_load(addr);
+                return 2;
+            }
+            LdStExt::PostInc => {
+                self.regs[d] = self.data_load(addr);
+                addr += 1;
+                2
+            }
+            LdStExt::PreDec => {
+                addr -= 1;
+                self.regs[d] = self.data_load(addr);
+                2
+            }
+            LdStExt::Displacement(q) => {
+                self.regs[d] = self.data_load(addr + q as u16);
+                return 2;
+            }
+        };
+        self.regs.set_ext(idx.into(), addr);
+
+        cycles
+    }
 
     /// 73. Load Immediate (LDI Rd, K) OK
     fn op_ldi(&mut self, d: u8, k: u8) -> usize {
@@ -740,9 +772,25 @@ impl Core {
         1
     }
 
-    // TODO: 74. Load Direct from Data Space (LDS Rd, k) OK
+    /// 74. Load Direct from Data Space (LDS Rd, k) OK
+    fn op_lds(&mut self, d: u8, k: u16) -> usize {
+        self.regs[d] = self.data_load(k);
+        self.pc += 2;
+        2
+    }
+
     // 75. Load Direct from Data Space (LDS Rd, k ; 16bit) (NOT APPLICABLE)
-    // TODO: 76. Load Program Memory (LPM Rd, Z) OK
+    /// 76. Load Program Memory (LPM Rd, Z) OK
+    fn op_lpm(&mut self, d: u8, inc: bool) -> usize {
+        let z = self.regs.z();
+        self.regs[d] = self.program[z as usize];
+        if inc {
+            self.regs.set_z(z + 1);
+        }
+
+        self.pc += 1;
+        1
+    }
 
     // 77. Logical Shift Left (LSL Rd) OK -> ADD Rd, Rd
 
@@ -908,6 +956,7 @@ impl Core {
         self.push_u16(self.pc + 1);
         let (pc, _) = (self.pc as i16).overflowing_add(k);
         self.pc = pc as u16;
+        self.branch = true;
         3
     }
 
@@ -915,6 +964,7 @@ impl Core {
     fn op_ret(&mut self) -> usize {
         let pc = self.pop_u16();
         self.pc = pc;
+        self.branch = true;
         4
     }
 
@@ -923,6 +973,7 @@ impl Core {
         let pc = self.pop_u16();
         self.status_reg.i = true;
         self.pc = pc;
+        self.branch = true;
         4
     }
 
@@ -930,6 +981,7 @@ impl Core {
     fn op_rjmp(&mut self, k: i16) -> usize {
         let (pc, _) = (self.pc as i16).overflowing_add(k);
         self.pc = pc as u16;
+        self.branch = true;
         2
     }
 
@@ -1014,11 +1066,11 @@ impl Core {
     }
 
     /// 100. Skip if Bit in I/O Register is Cleared (SBIC P, b) OK
-    fn op_sbic(&mut self, a: u8, b: u8) -> usize {
+    fn op_sbic(&mut self, a: u8, b: u8, next_op_len: u8) -> usize {
         let v = self.data_load(IOSPACE_ADDR + a as u16);
         if (v & (1 << b)) == 0 {
-            // FIXME: If next instruction is two words, 3 instead of 2.
-            self.pc += 2;
+            self.pc += 1 + next_op_len as u16;
+            self.branch = true;
             2
         } else {
             self.pc += 1;
@@ -1027,11 +1079,11 @@ impl Core {
     }
 
     /// 101. Skip if Bit in I/O Register is Set (SBIS P, b) OK
-    fn op_sbis(&mut self, a: u8, b: u8) -> usize {
+    fn op_sbis(&mut self, a: u8, b: u8, next_op_len: u8) -> usize {
         let v = self.data_load(IOSPACE_ADDR + a as u16);
         if (v & (1 << b)) != 0 {
-            // FIXME: If next instruction is two words, 3 instead of 2.
-            self.pc += 2;
+            self.pc += 1 + next_op_len as u16;
+            self.branch = true;
             2
         } else {
             self.pc += 1;
@@ -1058,10 +1110,10 @@ impl Core {
     // 103. Set Bits in Register (SBR Rd, K) OK -> ORI Rd, K
 
     /// 104. Skip if Bit in Register is Cleared (SBRC Rr, b) OK
-    fn op_sbrc(&mut self, r: u8, b: u8) -> usize {
+    fn op_sbrc(&mut self, r: u8, b: u8, next_op_len: u8) -> usize {
         if self.regs[r] & (1 << b) == 0 {
-            // FIXME: If next instruction is two words, 3 instead of 2.
-            self.pc += 2;
+            self.pc += 1 + next_op_len as u16;
+            self.branch = true;
             2
         } else {
             self.pc += 1;
@@ -1070,10 +1122,10 @@ impl Core {
     }
 
     /// 105. Skip if Bit in Register is Set (SBRS Rr, b) OK
-    fn op_sbrs(&mut self, r: u8, b: u8) -> usize {
+    fn op_sbrs(&mut self, r: u8, b: u8, next_op_len: u8) -> usize {
         if self.regs[r] & (1 << b) != 0 {
-            // FIXME: If next instruction is two words, 3 instead of 2.
-            self.pc += 2;
+            self.pc += 1 + next_op_len as u16;
+            self.branch = true;
             2
         } else {
             self.pc += 1;
@@ -1099,17 +1151,58 @@ impl Core {
 
     /// 115. SLEEP (SLEEP) OK
     fn op_sleep(&mut self) -> usize {
+        warn!("SLEEP unimplemented.");
         unimplemented!();
         // self.pc += 1;
         // 1
     }
-    // TODO: 116. Store Program Memory (SPM) OK
-    // TODO: 117. Store Program Memory (SPM #2)
-    // TODO: 118. Store Indirect from Register to Data Space using Index X (ST {-}X{+}, Rr) OK
-    // TODO: 119. Store Indirect from Register to Data Space using Index Y (ST {-}Y{+}, Rr) OK
-    // TODO: 120. Store Indirect from Register to Data Space using Index Z (ST {-}Z{+}, Rr) OK
-    // TODO: ???. Store Indirect with Displacement (STD {Y,Z}+q, Rr) OK
-    // TODO: 121. Store Direct to Data Space (STS k, Rr) OK
+    /// 116. Store Program Memory (SPM) OK
+    fn op_spm(&mut self) -> usize {
+        warn!("SPM unimplemented.");
+        unimplemented!();
+    }
+    /// 117. Store Program Memory (SPM #2)
+    fn op_spm2(&mut self) -> usize {
+        warn!("SPM #2 unimplemented.");
+        unimplemented!();
+    }
+    /// 118, 119, 120. Store Indirect from Register to Data Space using Index {X, Y, Z} (ST {-}{X,Y,Z}{+}{q}, Rr) OK
+    fn op_st(&mut self, r: u8, idx: LdStIndex, ext: LdStExt) -> usize {
+        self.pc += 1;
+        let mut addr = self.regs.ext(idx.into());
+
+        let cycles = match ext {
+            LdStExt::None => {
+                self.data_store(addr, self.regs[r]);
+                return 2;
+            }
+            LdStExt::PostInc => {
+                self.data_store(addr, self.regs[r]);
+                addr += 1;
+                2
+            }
+            LdStExt::PreDec => {
+                addr -= 1;
+                self.data_store(addr, self.regs[r]);
+                2
+            }
+            LdStExt::Displacement(q) => {
+                self.data_store(addr + q as u16, self.regs[r]);
+                return 2;
+            }
+        };
+        self.regs.set_ext(idx.into(), addr);
+
+        cycles
+    }
+
+    /// 121. Store Direct to Data Space (STS k, Rr) OK
+    fn op_sts(&mut self, k: u16, r: u8) -> usize {
+        self.data_store(k, self.regs[r]);
+        self.pc += 2;
+        2
+    }
+
     // 122. Store Direct to Data Space (STS k, Rr ; 16bit) (NOT APPLICABLE)
 
     /// 123. Subtract without Carry (SUB Rd, Rr) OK
@@ -1148,6 +1241,7 @@ impl Core {
     // 126. Test for Zero or Minus (TST Rd) OK -> AND Rd, Rd
     /// 127. Watchdog Reset (WDR) OK
     fn op_wdr(&mut self) {
+        warn!("WDR unimplemented.");
         unimplemented!();
         // self.pc += 1;
         // 1

@@ -376,11 +376,21 @@ const OPCODE_OP_SWAP_MASK: u16 = 0b1111_1110_0000_1111;
 const OPCODE_OP_WDR_BITS: u16 = 0b1001_0101_1010_1000;
 const OPCODE_OP_WDR_MASK: u16 = 0b1111_1111_1111_1111;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum LdStIndex {
     X,
     Y,
     Z,
+}
+
+impl Into<u8> for LdStIndex {
+    fn into(self) -> u8 {
+        match self {
+            Self::X => 26,
+            Self::Y => 28,
+            Self::Z => 30,
+        }
+    }
 }
 
 impl fmt::Display for LdStIndex {
@@ -398,7 +408,7 @@ pub enum LdStExt {
     None,
     PostInc,
     PreDec,
-    PostAdd(u8),
+    Displacement(u8),
 }
 
 // NOTE: Review undefined combinations
@@ -645,7 +655,7 @@ impl Op {
             _ if (w0 & OPCODE_OP_LDYADQ_MASK) == OPCODE_OP_LDYADQ_BITS => Op::Ld {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
                 idx: LdStIndex::Y,
-                ext: LdStExt::PostAdd(
+                ext: LdStExt::Displacement(
                     ((w0 & 0b0010_0000_0000_0000) >> 4
                         | (w0 & 0b0000_1100_0000_0000) >> 7
                         | w0 & 0b0000_0000_0000_0111) as u8,
@@ -664,7 +674,7 @@ impl Op {
             _ if (w0 & OPCODE_OP_LDZADQ_MASK) == OPCODE_OP_LDZADQ_BITS => Op::Ld {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
                 idx: LdStIndex::Z,
-                ext: LdStExt::PostAdd(
+                ext: LdStExt::Displacement(
                     ((w0 & 0b0010_0000_0000_0000) >> 4
                         | (w0 & 0b0000_1100_0000_0000) >> 7
                         | w0 & 0b0000_0000_0000_0111) as u8,
@@ -809,7 +819,7 @@ impl Op {
             _ if (w0 & OPCODE_OP_STYADQ_MASK) == OPCODE_OP_STYADQ_BITS => Op::St {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
                 idx: LdStIndex::Y,
-                ext: LdStExt::PostAdd(
+                ext: LdStExt::Displacement(
                     ((w0 & 0b0010_0000_0000_0000) >> 4
                         | (w0 & 0b0000_1100_0000_0000) >> 7
                         | w0 & 0b0000_0000_0000_0111) as u8,
@@ -828,7 +838,7 @@ impl Op {
             _ if (w0 & OPCODE_OP_STZADQ_MASK) == OPCODE_OP_STZADQ_BITS => Op::St {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
                 idx: LdStIndex::Z,
-                ext: LdStExt::PostAdd(
+                ext: LdStExt::Displacement(
                     ((w0 & 0b0010_0000_0000_0000) >> 4
                         | (w0 & 0b0000_1100_0000_0000) >> 7
                         | w0 & 0b0000_0000_0000_0111) as u8,
@@ -862,6 +872,7 @@ pub struct OpAddr<'a> {
 
 impl<'a> fmt::Display for OpAddr<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let pc = self.addr >> 1;
         match *self.op {
             Op::Adc { d, r } => write!(f, "ADC R{}, R{}", d, r),
             Op::Add { d, r } => write!(f, "ADD R{}, R{}", d, r),
@@ -872,14 +883,14 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::Bclr { s } => write!(f, "BCLR {}", s),
             Op::Bld { d, b } => write!(f, "BLD R{}, {}", d, b),
             Op::Brbc { s, k } => {
-                let (addr, _) = (self.addr as i16).overflowing_add(1);
-                let (addr, _) = (addr as i16).overflowing_add(k as i16);
-                write!(f, "BRBC {}, 0x{:04x}; k={}", s, addr as u16, k)
+                let (pc1, _) = (pc as i16).overflowing_add(1);
+                let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
+                write!(f, "BRBC {}, 0x{:04x}; k={}", s, pc1 as u16, k)
             }
             Op::Brbs { s, k } => {
-                let (addr, _) = (self.addr as i16).overflowing_add(1);
-                let (addr, _) = (addr as i16).overflowing_add(k as i16);
-                write!(f, "BRBS {}, 0x{:04x}; k={}", s, addr as u16, k)
+                let (pc1, _) = (pc as i16).overflowing_add(1);
+                let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
+                write!(f, "BRBS {}, 0x{:04x}; k={}", s, pc1 as u16, k)
             }
             Op::Break => write!(f, "BREAK"),
             Op::Bset { s } => write!(f, "BSET {}", s),
@@ -922,7 +933,7 @@ impl<'a> fmt::Display for OpAddr<'a> {
                     LdStExt::None => write!(f, "{}", idx),
                     LdStExt::PostInc => write!(f, "{}+", idx),
                     LdStExt::PreDec => write!(f, "-{}", idx),
-                    LdStExt::PostAdd(q) => write!(f, "{}+{}", idx, q),
+                    LdStExt::Displacement(q) => write!(f, "{}+{}", idx, q),
                 }
             }
             Op::Ldi { d, k } => write!(f, "LDI R{}, {}", d, k),
@@ -949,16 +960,16 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::Pop { d } => write!(f, "POP R{}", d),
             Op::Push { r } => write!(f, "PUSH R{}", r),
             Op::Rcall { k } => {
-                let (addr, _) = (self.addr as i16).overflowing_add(1);
-                let (addr, _) = (addr as i16).overflowing_add(k);
-                write!(f, "RCALL 0x{:04x}; k={}", addr as u16, k)
+                let (pc1, _) = (pc as i16).overflowing_add(1);
+                let (pc1, _) = (pc1 as i16).overflowing_add(k);
+                write!(f, "RCALL 0x{:04x}; k={}", pc1 as u16, k)
             }
             Op::Ret => write!(f, "RET"),
             Op::Reti => write!(f, "RETI"),
             Op::Rjmp { k } => {
-                let (addr, _) = (self.addr as i16).overflowing_add(1);
-                let (addr, _) = (addr as i16).overflowing_add(k);
-                write!(f, "RJMP {}; k={}", addr, k)
+                let (pc1, _) = (pc as i16).overflowing_add(1);
+                let (pc1, _) = (pc1 as i16).overflowing_add(k);
+                write!(f, "RJMP {}; k={}", pc1, k)
             }
             Op::Ror { d } => write!(f, "ROR R{}", d),
             Op::Sbc { d, r } => write!(f, "SCB R{}, R{}", d, r),
@@ -983,7 +994,7 @@ impl<'a> fmt::Display for OpAddr<'a> {
                     LdStExt::None => write!(f, "{}", idx),
                     LdStExt::PostInc => write!(f, "{}+", idx),
                     LdStExt::PreDec => write!(f, "-{}", idx),
-                    LdStExt::PostAdd(q) => write!(f, "{}+{}", idx, q),
+                    LdStExt::Displacement(q) => write!(f, "{}+{}", idx, q),
                 }
             }
             Op::Sts { r, k } => write!(f, "STS 0x{:04x}, R{}", k, r),

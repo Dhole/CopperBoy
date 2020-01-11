@@ -411,12 +411,12 @@ fn test_op_cpse() {
 
     core.regs[0] = 0xaa;
     core.regs[1] = 0xbb;
-    core.op_cpse(0, 1);
+    core.op_cpse(0, 1, 1);
     assert_eq!(core.pc, 0x01);
 
     core.regs[0] = 0xaa;
     core.regs[1] = 0xaa;
-    core.op_cpse(0, 1);
+    core.op_cpse(0, 1, 1);
     assert_eq!(core.pc, 0x03);
 }
 
@@ -629,12 +629,58 @@ fn test_op_jmp() {
 }
 
 #[test]
+fn test_op_ld() {
+    let mut core = Core::new();
+
+    core.data_store(0x0123, 0x42);
+    core.regs.set_x(0x0123);
+    core.op_ld(0, LdStIndex::X, LdStExt::PostInc);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(core.regs[0], 0x42);
+    assert_eq!(core.regs.x(), 0x0124);
+
+    core.data_store(0x0123, 0x43);
+    core.regs.set_y(0x0124);
+    core.op_ld(0, LdStIndex::Y, LdStExt::PreDec);
+    assert_eq!(core.regs[0], 0x43);
+    assert_eq!(core.regs.y(), 0x0123);
+
+    core.data_store(0x0126, 0x55);
+    core.regs.set_z(0x0121);
+    core.op_ld(0, LdStIndex::Z, LdStExt::Displacement(5));
+    assert_eq!(core.regs[0], 0x55);
+    assert_eq!(core.regs.z(), 0x0121);
+}
+
+#[test]
 fn test_op_ldi() {
     let mut core = Core::new();
 
     core.op_ldi(16, 0xab);
     assert_eq!(core.pc, 0x01);
     assert_eq!(core.regs[16], 0xab);
+}
+
+#[test]
+fn test_op_lds() {
+    let mut core = Core::new();
+
+    core.data_store(0x0123, 0x42);
+    core.op_lds(0, 0x0123);
+    assert_eq!(core.pc, 0x02);
+    assert_eq!(core.regs[0], 0x42);
+}
+
+#[test]
+fn test_op_lpm() {
+    let mut core = Core::new();
+
+    core.program[0x0123] = 0x42;
+    core.regs.set_z(0x0123);
+    core.op_lpm(0, true);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(core.regs[0], 0x42);
+    assert_eq!(core.regs.z(), 0x0124);
 }
 
 #[test]
@@ -1019,11 +1065,11 @@ fn test_op_sbic() {
     let mut core = Core::new();
 
     core.data_store(io_regs::SPL, 0b00000010);
-    core.op_sbic((io_regs::SPL - IOSPACE_ADDR) as u8, 1);
+    core.op_sbic((io_regs::SPL - IOSPACE_ADDR) as u8, 1, 1);
     assert_eq!(core.pc, 0x01);
 
     core.data_store(io_regs::SPL, 0b00000100);
-    core.op_sbic((io_regs::SPL - IOSPACE_ADDR) as u8, 1);
+    core.op_sbic((io_regs::SPL - IOSPACE_ADDR) as u8, 1, 1);
     assert_eq!(core.pc, 0x03);
 }
 
@@ -1032,11 +1078,11 @@ fn test_op_sbis() {
     let mut core = Core::new();
 
     core.data_store(io_regs::SPL, 0b000001000);
-    core.op_sbis((io_regs::SPL - IOSPACE_ADDR) as u8, 1);
+    core.op_sbis((io_regs::SPL - IOSPACE_ADDR) as u8, 1, 1);
     assert_eq!(core.pc, 0x01);
 
     core.data_store(io_regs::SPL, 0b00000010);
-    core.op_sbis((io_regs::SPL - IOSPACE_ADDR) as u8, 1);
+    core.op_sbis((io_regs::SPL - IOSPACE_ADDR) as u8, 1, 1);
     assert_eq!(core.pc, 0x03);
 }
 
@@ -1066,11 +1112,11 @@ fn test_op_sbrc() {
     let mut core = Core::new();
 
     core.regs[0] = 0b00000010;
-    core.op_sbrc(0, 1);
+    core.op_sbrc(0, 1, 1);
     assert_eq!(core.pc, 0x01);
 
     core.regs[0] = 0b00000100;
-    core.op_sbrc(0, 1);
+    core.op_sbrc(0, 1, 1);
     assert_eq!(core.pc, 0x03);
 }
 
@@ -1079,11 +1125,11 @@ fn test_op_sbrs() {
     let mut core = Core::new();
 
     core.regs[0] = 0b00000100;
-    core.op_sbrs(0, 1);
+    core.op_sbrs(0, 1, 1);
     assert_eq!(core.pc, 0x01);
 
     core.regs[0] = 0b00000010;
-    core.op_sbrs(0, 1);
+    core.op_sbrs(0, 1, 1);
     assert_eq!(core.pc, 0x03);
 }
 
@@ -1094,6 +1140,40 @@ fn test_op_ser() {
     core.op_ser(0);
     assert_eq!(core.pc, 0x01);
     assert_eq!(core.regs[0], 0xff);
+}
+
+#[test]
+fn test_op_st() {
+    let mut core = Core::new();
+
+    core.regs[0] = 0x42;
+    core.regs.set_x(0x0123);
+    core.op_st(0, LdStIndex::X, LdStExt::PostInc);
+    assert_eq!(core.pc, 0x01);
+    assert_eq!(core.data_load(0x0123), 0x42);
+    assert_eq!(core.regs.x(), 0x0124);
+
+    core.regs[0] = 0x43;
+    core.regs.set_y(0x0124);
+    core.op_st(0, LdStIndex::Y, LdStExt::PreDec);
+    assert_eq!(core.data_load(0x0123), 0x43);
+    assert_eq!(core.regs.y(), 0x0123);
+
+    core.regs[0] = 0x55;
+    core.regs.set_z(0x0121);
+    core.op_st(0, LdStIndex::Z, LdStExt::Displacement(5));
+    assert_eq!(core.data_load(0x0126), 0x55);
+    assert_eq!(core.regs.z(), 0x0121);
+}
+
+#[test]
+fn test_op_sts() {
+    let mut core = Core::new();
+
+    core.regs[0] = 0x42;
+    core.op_sts(0x0123, 0);
+    assert_eq!(core.pc, 0x02);
+    assert_eq!(core.data_load(0x0123), 0x42);
 }
 
 #[test]
