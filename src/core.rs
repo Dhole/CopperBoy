@@ -183,6 +183,24 @@ impl GeneralRegisters {
     }
 }
 
+fn get_hi(v: u16) -> u8 {
+    ((v & 0xff00) >> 8) as u8
+}
+
+fn get_lo(v: u16) -> u8 {
+    (v & 0x00ff) as u8
+}
+
+fn set_hi(v: &mut u16, hi: u8) {
+    *v &= 0x00ff;
+    *v |= (hi as u16) << 8;
+}
+
+fn set_lo(v: &mut u16, lo: u8) {
+    *v &= 0xff00;
+    *v |= lo as u16;
+}
+
 pub const SRAM_SIZE: u16 = 0x0a00;
 pub const SRAM_ADDR: u16 = 0x0100;
 pub const IOSPACE_SIZE: u16 = 0x0040;
@@ -208,24 +226,8 @@ struct Core {
     /// Set if the previos instruction branched.  This flag is used to know if the instruction
     /// ahead must be fetched.
     branch: bool,
-}
-
-fn get_hi(v: u16) -> u8 {
-    ((v & 0xff00) >> 8) as u8
-}
-
-fn get_lo(v: u16) -> u8 {
-    (v & 0x00ff) as u8
-}
-
-fn set_hi(v: &mut u16, hi: u8) {
-    *v &= 0x00ff;
-    *v |= (hi as u16) << 8;
-}
-
-fn set_lo(v: &mut u16, lo: u8) {
-    *v &= 0xff00;
-    *v |= lo as u16;
+    /// Next op
+    op1: Op,
 }
 
 impl Core {
@@ -239,7 +241,26 @@ impl Core {
             program: [0; PROGRAM_SIZE as usize],
             sp: SRAM_ADDR + SRAM_SIZE - 1,
             branch: false,
+            op1: Op::Undefined { w: 0x0000 },
         }
+    }
+
+    /// Load a word from Program Memory by PC
+    fn program_load_u16(&self, pc: u16) -> u16 {
+        u16::from_le_bytes([
+            self.program[pc as usize * 2],
+            self.program[pc as usize * 2 + 1],
+        ])
+    }
+
+    /// Reset the core into an initial known state
+    fn reset(&mut self) {
+        self.pc = 0;
+        self.sp = SRAM_ADDR + SRAM_SIZE - 1;
+        self.branch = false;
+        let w0 = self.program_load_u16(self.pc);
+        let w1 = self.program_load_u16(self.pc + 1);
+        self.op1 = Op::decode(w0, w1);
     }
 
     /// Instruction used to populate the Program Memory Space.  Simulates flashing the flash
@@ -248,6 +269,27 @@ impl Core {
         self.program[addr as usize] = v;
     }
 
+    /// Step one instruction.  Return the number of cycles that have passed.
+    fn step(&mut self) -> usize {
+        // Load current op from previously fetched next op
+        let op0 = self.op1;
+        // Fetch next op
+        let pc1 = self.pc + op0.words() as u16;
+        let w0 = self.program_load_u16(pc1);
+        let w1 = self.program_load_u16(pc1 + 1);
+        // Decode next op
+        self.op1 = Op::decode(w0, w1);
+        let cycles = self.exec_op(op0);
+        if self.branch {
+            let w0 = self.program_load_u16(self.pc);
+            let w1 = self.program_load_u16(self.pc + 1);
+            self.op1 = Op::decode(w0, w1);
+            self.branch = false;
+        }
+        cycles
+    }
+
+    /// Load a byte from the User Data Space
     fn data_load(&self, addr: u16) -> u8 {
         if addr >= SRAM_ADDR {
             self.sram[(addr - SRAM_ADDR) as usize]
@@ -267,10 +309,12 @@ impl Core {
         }
     }
 
+    /// Load a word from the User Data Space
     fn data_load_u16(&self, addr: u16) -> u16 {
         u16::from_le_bytes([self.data_load(addr), self.data_load(addr + 1)])
     }
 
+    /// Store a byte into the User Data Space
     fn data_store(&mut self, addr: u16, v: u8) {
         if addr >= SRAM_ADDR {
             self.sram[(addr - SRAM_ADDR) as usize] = v;
@@ -290,12 +334,14 @@ impl Core {
         }
     }
 
+    /// Store a word into the User Data Space
     fn data_store_u16(&mut self, addr: u16, v: u16) {
         let bytes = v.to_le_bytes();
         self.data_store(addr, bytes[0]);
         self.data_store(addr + 1, bytes[1]);
     }
 
+    /// Push a word into the stack
     fn push_u16(&mut self, v: u16) {
         let bytes = v.to_le_bytes();
         self.sram[(self.sp - SRAM_ADDR - 1) as usize] = bytes[0];
@@ -303,6 +349,7 @@ impl Core {
         self.sp -= 2;
     }
 
+    /// Pop a word from the stack
     fn pop_u16(&mut self) -> u16 {
         self.sp += 2;
         u16::from_le_bytes([
@@ -481,9 +528,9 @@ impl Core {
     }
 
     /// 36. Long Call to a Subroutine (CALL k) OK
-    fn op_call(&mut self, k: u16) -> usize {
+    fn op_call(&mut self, k: u32) -> usize {
         self.push_u16(self.pc + 2);
-        self.pc = k;
+        self.pc = k as u16;
         self.branch = true;
         4
     }
@@ -1240,13 +1287,101 @@ impl Core {
 
     // 126. Test for Zero or Minus (TST Rd) OK -> AND Rd, Rd
     /// 127. Watchdog Reset (WDR) OK
-    fn op_wdr(&mut self) {
+    fn op_wdr(&mut self) -> usize {
         warn!("WDR unimplemented.");
         unimplemented!();
         // self.pc += 1;
         // 1
     }
     // 128. Exchange (XCH) (NOT APPLICABLE)
+
+    fn exec_op(&mut self, op: Op) -> usize {
+        match op {
+            Op::Adc { d, r } => self.op_adc(d, r),
+            Op::Add { d, r } => self.op_add(d, r),
+            Op::Adiw { d, k } => self.op_adiw(d, k),
+            Op::And { d, r } => self.op_and(d, r),
+            Op::Andi { d, k } => self.op_andi(d, k),
+            Op::Asr { d } => self.op_asr(d),
+            Op::Bclr { s } => self.op_bclr(s),
+            Op::Bld { d, b } => self.op_bld(d, b),
+            Op::Brbc { s, k } => self.op_brbc(s, k),
+            Op::Brbs { s, k } => self.op_brbs(s, k),
+            Op::Break => self.op_break(),
+            Op::Bset { s } => self.op_bset(s),
+            Op::Bst { d, b } => self.op_bst(d, b),
+            Op::Call { k } => self.op_call(k),
+            Op::Cbi { a, b } => self.op_cbi(a, b),
+            Op::Clr { d } => self.op_clr(d),
+            Op::Com { d } => self.op_com(d),
+            Op::Cp { d, r } => self.op_cp(d, r),
+            Op::Cpc { d, r } => self.op_cpc(d, r),
+            Op::Cpi { d, k } => self.op_cpi(d, k),
+            Op::Cpse { d, r } => self.op_cpse(d, r),
+            Op::Dec { d } => self.op_dec(d),
+            Op::Eicall => self.op_eicall(),
+            Op::Eijmp => self.op_eijmp(),
+            Op::Elpmr0 => self.op_elpm(0, false),
+            Op::Elpm { d, inc } => self.op_elpm(d, inc),
+            Op::Eor { d, r } => self.op_eor(d, r),
+            Op::Fmul { d, r } => self.op_fmul(d, r),
+            Op::Fmuls { d, r } => self.op_fmuls(d, r),
+            Op::Fmulsu { d, r } => self.op_fmulsu(d, r),
+            Op::Icall => self.op_icall(),
+            Op::Ijmp => self.op_ijmp(),
+            Op::In { d, a } => self.op_in(d, a),
+            Op::Inc { d } => self.op_inc(d),
+            Op::Jmp { k } => self.op_jmp(k),
+            Op::Ld { d, idx, ext } => self.op_ld(d, idx, ext),
+            Op::Ldi { d, k } => self.op_ldi(d, k),
+            Op::Lds { d, k } => self.op_lds(d, k),
+            Op::Lpmr0 => self.op_lpm(0, false),
+            Op::Lpm { d, inc } => self.op_lpm(d, inc),
+            Op::Lsr { d } => self.op_lsr(d),
+            Op::Mov { d, r } => self.op_mov(d, r),
+            Op::Movw { d, r } => self.op_movw(d, r),
+            Op::Mul { d, r } => self.op_mul(d, r),
+            Op::Muls { d, r } => self.op_muls(d, r),
+            Op::Mulsu { d, r } => self.op_mulsu(d, r),
+            Op::Neg { d } => self.op_neg(d),
+            Op::Nop => self.op_nop(),
+            Op::Or { d, r } => self.op_or(d, r),
+            Op::Ori { d, k } => self.op_ori(d, k),
+            Op::Out { a, r } => self.op_out(a, r),
+            Op::Pop { d } => self.op_pop(d),
+            Op::Push { r } => self.op_push(r),
+            Op::Rcall { k } => self.op_rcall(k),
+            Op::Ret => self.op_ret(),
+            Op::Reti => self.op_reti(),
+            Op::Rjmp { k } => self.op_rjmp(k),
+            Op::Ror { d } => self.op_ror(d),
+            Op::Sbc { d, r } => self.op_sbc(d, r),
+            Op::Sbci { d, k } => self.op_sbci(d, k),
+            Op::Sbi { a, b } => self.op_sbi(a, b),
+            Op::Sbic { a, b } => self.op_sbic(a, b),
+            Op::Sbis { a, b } => self.op_sbis(a, b),
+            Op::Sbiw { d, k } => self.op_sbiw(d, k),
+            Op::Sbrc { r, b } => self.op_sbrc(r, b),
+            Op::Sbrs { r, b } => self.op_sbrs(r, b),
+            Op::Ser { d } => self.op_ser(d),
+            Op::Sleep => self.op_sleep(),
+            Op::Spm => self.op_spm(),
+            Op::Spm2 => self.op_spm2(),
+            Op::St { r, idx, ext } => self.op_st(r, idx, ext),
+            Op::Sts { k, r } => self.op_sts(k, r),
+            Op::Sub { d, r } => self.op_sub(d, r),
+            Op::Subi { d, k } => self.op_subi(d, k),
+            Op::Swap { d } => self.op_swap(d),
+            Op::Wdr => self.op_wdr(),
+            Op::Undefined { w } => {
+                warn!(
+                    "Tried to execute undefined op 0x{:04x} at address 0x:{04x}",
+                    w, self.pc
+                );
+                unreachable!();
+            }
+        }
+    }
 }
 
 #[cfg(test)]

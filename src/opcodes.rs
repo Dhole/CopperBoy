@@ -485,7 +485,7 @@ pub enum Op {
     Spm,
     Spm2,
     St { r: u8, idx: LdStIndex, ext: LdStExt },
-    Sts { r: u8, k: u16 },
+    Sts { k: u16, r: u8 },
     Sub { d: u8, r: u8 },
     Subi { d: u8, k: u8 },
     Swap { d: u8 },
@@ -845,8 +845,8 @@ impl Op {
                 ),
             },
             _ if (w0 & OPCODE_OP_STS_MASK) == OPCODE_OP_STS_BITS => Self::Sts {
-                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
                 k: w1,
+                r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
             _ if (w0 & OPCODE_OP_SUB_MASK) == OPCODE_OP_SUB_BITS => Self::Sub {
                 r: ((w0 & 0b0000_0010_0000_0000) >> 5 | w0 & 0b0000_0000_0000_1111) as u8,
@@ -997,7 +997,7 @@ impl<'a> fmt::Display for OpAddr<'a> {
                     LdStExt::Displacement(q) => write!(f, "{}+{}", idx, q),
                 }
             }
-            Op::Sts { r, k } => write!(f, "STS 0x{:04x}, R{}", k, r),
+            Op::Sts { k, r } => write!(f, "STS 0x{:04x}, R{}", k, r),
             Op::Sub { d, r } => write!(f, "SUB R{}, R{}", d, r),
             Op::Subi { d, k } => write!(f, "SUBI R{}, {}", d, k),
             Op::Swap { d } => write!(f, "SWAP R{}", d),
