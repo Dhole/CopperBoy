@@ -1,3 +1,5 @@
+use super::core::IOSPACE_ADDR;
+use super::io_regs::io_reg_str;
 use std::fmt;
 
 // 5
@@ -403,7 +405,7 @@ impl fmt::Display for LdStIndex {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LdStExt {
     None,
     PostInc,
@@ -412,7 +414,7 @@ pub enum LdStExt {
 }
 
 // NOTE: Review undefined combinations
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Op {
     Adc { d: u8, r: u8 },
     Add { d: u8, r: u8 },
@@ -865,15 +867,15 @@ impl Op {
     }
 }
 
-pub struct OpAddr<'a> {
-    pub op: &'a Op,
+pub struct OpAddr {
+    pub op: Op,
     pub addr: u16,
 }
 
-impl<'a> fmt::Display for OpAddr<'a> {
+impl<'a> fmt::Display for OpAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pc = self.addr >> 1;
-        match *self.op {
+        match self.op {
             Op::Adc { d, r } => write!(f, "ADC R{}, R{}", d, r),
             Op::Add { d, r } => write!(f, "ADD R{}, R{}", d, r),
             Op::Adiw { d, k } => write!(f, "ADIW R{}, {}", d, k),
@@ -896,7 +898,13 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::Bset { s } => write!(f, "BSET {}", s),
             Op::Bst { d, b } => write!(f, "BST R{}, {}", d, b),
             Op::Call { k } => write!(f, "CALL 0x{:04x}", k),
-            Op::Cbi { a, b } => write!(f, "CBI {}, {}", a, b),
+            Op::Cbi { a, b } => {
+                write!(f, "CBI {}, {}", a, b)?;
+                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                }
+                Ok(())
+            }
             Op::Clr { d } => write!(f, "CLR R{}", d),
             Op::Com { d } => write!(f, "COM R{}", d),
             Op::Cp { d, r } => write!(f, "CP R{}, R{}", d, r),
@@ -920,7 +928,13 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::Fmulsu { d, r } => write!(f, "FMULSU R{}, R{}", d, r),
             Op::Icall => write!(f, "ICALL"),
             Op::Ijmp => write!(f, "IJMP"),
-            Op::In { d, a } => write!(f, "IN R{}, {}", d, a),
+            Op::In { d, a } => {
+                write!(f, "IN R{}, {}", d, a)?;
+                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                }
+                Ok(())
+            }
             Op::Inc { d } => write!(f, "INC R{}", d),
             Op::Jmp { k } => write!(f, "JMP 0x{:04x}", k),
             Op::Ld {
@@ -956,7 +970,13 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::Nop => write!(f, "NOP"),
             Op::Or { d, r } => write!(f, "OR R{}, R{}", d, r),
             Op::Ori { d, k } => write!(f, "ORI R{}, {}", d, k),
-            Op::Out { a, r } => write!(f, "OUT 0x{:02x}, R{}", a, r),
+            Op::Out { a, r } => {
+                write!(f, "OUT 0x{:02x}, R{}", a, r)?;
+                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                }
+                Ok(())
+            }
             Op::Pop { d } => write!(f, "POP R{}", d),
             Op::Push { r } => write!(f, "PUSH R{}", r),
             Op::Rcall { k } => {
@@ -974,9 +994,27 @@ impl<'a> fmt::Display for OpAddr<'a> {
             Op::Ror { d } => write!(f, "ROR R{}", d),
             Op::Sbc { d, r } => write!(f, "SCB R{}, R{}", d, r),
             Op::Sbci { d, k } => write!(f, "SBCI R{}, {}", d, k),
-            Op::Sbi { a, b } => write!(f, "SBI 0x{:02x}, {}", a, b),
-            Op::Sbic { a, b } => write!(f, "SBIC 0x{:02x}, {}", a, b),
-            Op::Sbis { a, b } => write!(f, "SBIS 0x{:02x}, {}", a, b),
+            Op::Sbi { a, b } => {
+                write!(f, "SBI 0x{:02x}, {}", a, b)?;
+                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                }
+                Ok(())
+            }
+            Op::Sbic { a, b } => {
+                write!(f, "SBIC 0x{:02x}, {}", a, b)?;
+                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                }
+                Ok(())
+            }
+            Op::Sbis { a, b } => {
+                write!(f, "SBIS 0x{:02x}, {}", a, b)?;
+                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                }
+                Ok(())
+            }
             Op::Sbiw { d, k } => write!(f, "SBIW R{}, {}", d, k),
             Op::Sbrc { r, b } => write!(f, "SBRC R{}, {}", r, b),
             Op::Sbrs { r, b } => write!(f, "SBRS R{}, {}", r, b),

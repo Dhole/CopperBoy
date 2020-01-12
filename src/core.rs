@@ -208,7 +208,7 @@ pub const IOSPACE_ADDR: u16 = 0x0020;
 pub const DATA_SIZE: u16 = 0x0b00;
 pub const PROGRAM_SIZE: u16 = 0x8000;
 
-struct Core {
+pub struct Core {
     /// Status Register
     status_reg: StatusRegister,
     /// General Purpose Register File
@@ -231,7 +231,7 @@ struct Core {
 }
 
 impl Core {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             regs: GeneralRegisters::new(),
             io_space: [0; IOSPACE_SIZE as usize],
@@ -254,7 +254,7 @@ impl Core {
     }
 
     /// Reset the core into an initial known state
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.pc = 0;
         self.sp = SRAM_ADDR + SRAM_SIZE - 1;
         self.branch = false;
@@ -265,14 +265,25 @@ impl Core {
 
     /// Instruction used to populate the Program Memory Space.  Simulates flashing the flash
     /// memory.
-    fn flash(&mut self, addr: u16, v: u8) {
+    pub fn flash(&mut self, addr: u16, v: u8) {
         self.program[addr as usize] = v;
     }
 
+    pub fn next_op(&self) -> (u16, u16, OpAddr) {
+        (
+            self.program_load_u16(self.pc),
+            self.program_load_u16(self.pc + 1),
+            OpAddr {
+                op: self.op1.clone(),
+                addr: self.pc << 1,
+            },
+        )
+    }
+
     /// Step one instruction.  Return the number of cycles that have passed.
-    fn step(&mut self) -> usize {
+    pub fn step(&mut self) -> usize {
         // Load current op from previously fetched next op
-        let op0 = self.op1;
+        let op0 = self.op1.clone();
         // Fetch next op
         let pc1 = self.pc + op0.words() as u16;
         let w0 = self.program_load_u16(pc1);
@@ -1317,12 +1328,12 @@ impl Core {
             Op::Cp { d, r } => self.op_cp(d, r),
             Op::Cpc { d, r } => self.op_cpc(d, r),
             Op::Cpi { d, k } => self.op_cpi(d, k),
-            Op::Cpse { d, r } => self.op_cpse(d, r),
+            Op::Cpse { d, r } => self.op_cpse(d, r, self.op1.words()),
             Op::Dec { d } => self.op_dec(d),
             Op::Eicall => self.op_eicall(),
             Op::Eijmp => self.op_eijmp(),
-            Op::Elpmr0 => self.op_elpm(0, false),
-            Op::Elpm { d, inc } => self.op_elpm(d, inc),
+            Op::Elpmr0 => self.op_elpm(),
+            Op::Elpm { .. } => self.op_elpm(),
             Op::Eor { d, r } => self.op_eor(d, r),
             Op::Fmul { d, r } => self.op_fmul(d, r),
             Op::Fmuls { d, r } => self.op_fmuls(d, r),
@@ -1358,11 +1369,11 @@ impl Core {
             Op::Sbc { d, r } => self.op_sbc(d, r),
             Op::Sbci { d, k } => self.op_sbci(d, k),
             Op::Sbi { a, b } => self.op_sbi(a, b),
-            Op::Sbic { a, b } => self.op_sbic(a, b),
-            Op::Sbis { a, b } => self.op_sbis(a, b),
+            Op::Sbic { a, b } => self.op_sbic(a, b, self.op1.words()),
+            Op::Sbis { a, b } => self.op_sbis(a, b, self.op1.words()),
             Op::Sbiw { d, k } => self.op_sbiw(d, k),
-            Op::Sbrc { r, b } => self.op_sbrc(r, b),
-            Op::Sbrs { r, b } => self.op_sbrs(r, b),
+            Op::Sbrc { r, b } => self.op_sbrc(r, b, self.op1.words()),
+            Op::Sbrs { r, b } => self.op_sbrs(r, b, self.op1.words()),
             Op::Ser { d } => self.op_ser(d),
             Op::Sleep => self.op_sleep(),
             Op::Spm => self.op_spm(),
@@ -1375,7 +1386,7 @@ impl Core {
             Op::Wdr => self.op_wdr(),
             Op::Undefined { w } => {
                 warn!(
-                    "Tried to execute undefined op 0x{:04x} at address 0x:{04x}",
+                    "Tried to execute undefined op 0x{:04x} at address 0x{:04x}",
                     w, self.pc
                 );
                 unreachable!();
