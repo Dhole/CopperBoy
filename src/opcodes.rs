@@ -431,7 +431,6 @@ pub enum Op {
     Bst { d: u8, b: u8 },
     Call { k: u32 },
     Cbi { a: u8, b: u8 },
-    Clr { d: u8 },
     Com { d: u8 },
     Cp { d: u8, r: u8 },
     Cpc { d: u8, r: u8 },
@@ -539,11 +538,11 @@ impl Op {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
             _ if (w0 & OPCODE_OP_BRBC_MASK) == OPCODE_OP_BRBC_BITS => Self::Brbc {
-                k: ((w0 & 0b0000_0011_1111_1000) >> 3) as i8 - 64,
+                k: (((w0 & 0b0000_0011_1111_1000) >> 2) as i8) >> 1,
                 s: (w0 & 0b0000_0000_0000_0111) as u8,
             },
             _ if (w0 & OPCODE_OP_BRBS_MASK) == OPCODE_OP_BRBS_BITS => Self::Brbs {
-                k: ((w0 & 0b0000_0011_1111_1000) >> 3) as i8 - 64,
+                k: (((w0 & 0b0000_0011_1111_1000) >> 2) as i8) >> 1,
                 s: (w0 & 0b0000_0000_0000_0111) as u8,
             },
             _ if (w0 & OPCODE_OP_BREAK_MASK) == OPCODE_OP_BREAK_BITS => Self::Break,
@@ -562,9 +561,6 @@ impl Op {
             _ if (w0 & OPCODE_OP_CBI_MASK) == OPCODE_OP_CBI_BITS => Self::Cbi {
                 b: (w0 & 0b0000_0000_0000_0111) as u8,
                 a: ((w0 & 0b0000_0000_1111_1000) >> 3) as u8,
-            },
-            _ if (w0 & OPCODE_OP_CLR_MASK) == OPCODE_OP_CLR_BITS => Self::Clr {
-                d: (w0 & 0b0000_0011_1111_1111) as u8,
             },
             _ if (w0 & OPCODE_OP_COM_MASK) == OPCODE_OP_COM_BITS => Self::Com {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
@@ -745,12 +741,12 @@ impl Op {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
             _ if (w0 & OPCODE_OP_RCALL_MASK) == OPCODE_OP_RCALL_BITS => Self::Rcall {
-                k: (w0 & 0b0000_1111_1111_1111) as i16 - 2048,
+                k: ((w0 & 0b0000_1111_1111_1111) << 4) as i16 >> 4,
             },
             _ if (w0 & OPCODE_OP_RET_MASK) == OPCODE_OP_RET_BITS => Self::Ret,
             _ if (w0 & OPCODE_OP_RETI_MASK) == OPCODE_OP_RETI_BITS => Self::Reti,
             _ if (w0 & OPCODE_OP_RJMP_MASK) == OPCODE_OP_RJMP_BITS => Self::Rjmp {
-                k: (w0 & 0b0000_1111_1111_1111) as i16 - 2048,
+                k: ((w0 & 0b0000_1111_1111_1111) << 4) as i16 >> 4,
             },
             _ if (w0 & OPCODE_OP_ROR_MASK) == OPCODE_OP_ROR_BITS => Self::Ror {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
@@ -887,17 +883,17 @@ impl<'a> fmt::Display for OpAddr {
             Op::Brbc { s, k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
                 let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
-                write!(f, "BRBC {}, 0x{:04x}; k={}", s, pc1 as u16, k)
+                write!(f, "BRBC {}, 0x{:04x}; k={}", s, (pc1 as u16) << 1, k)
             }
             Op::Brbs { s, k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
                 let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
-                write!(f, "BRBS {}, 0x{:04x}; k={}", s, pc1 as u16, k)
+                write!(f, "BRBS {}, 0x{:04x}; k={}", s, (pc1 as u16) << 1, k)
             }
             Op::Break => write!(f, "BREAK"),
             Op::Bset { s } => write!(f, "BSET {}", s),
             Op::Bst { d, b } => write!(f, "BST R{}, {}", d, b),
-            Op::Call { k } => write!(f, "CALL 0x{:04x}", k),
+            Op::Call { k } => write!(f, "CALL 0x{:04x}", k << 1),
             Op::Cbi { a, b } => {
                 write!(f, "CBI {}, {}", a, b)?;
                 if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
@@ -905,7 +901,6 @@ impl<'a> fmt::Display for OpAddr {
                 }
                 Ok(())
             }
-            Op::Clr { d } => write!(f, "CLR R{}", d),
             Op::Com { d } => write!(f, "COM R{}", d),
             Op::Cp { d, r } => write!(f, "CP R{}, R{}", d, r),
             Op::Cpc { d, r } => write!(f, "CPC R{}, R{}", d, r),
@@ -936,7 +931,7 @@ impl<'a> fmt::Display for OpAddr {
                 Ok(())
             }
             Op::Inc { d } => write!(f, "INC R{}", d),
-            Op::Jmp { k } => write!(f, "JMP 0x{:04x}", k),
+            Op::Jmp { k } => write!(f, "JMP 0x{:04x}", k << 1),
             Op::Ld {
                 d,
                 ref idx,
@@ -982,14 +977,14 @@ impl<'a> fmt::Display for OpAddr {
             Op::Rcall { k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
                 let (pc1, _) = (pc1 as i16).overflowing_add(k);
-                write!(f, "RCALL 0x{:04x}; k={}", pc1 as u16, k)
+                write!(f, "RCALL 0x{:04x}; k={}", (pc1 as u16) << 1, k)
             }
             Op::Ret => write!(f, "RET"),
             Op::Reti => write!(f, "RETI"),
             Op::Rjmp { k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
                 let (pc1, _) = (pc1 as i16).overflowing_add(k);
-                write!(f, "RJMP {}; k={}", pc1, k)
+                write!(f, "RJMP 0x{:04x}; k={}", (pc1 as u16) << 1, k)
             }
             Op::Ror { d } => write!(f, "ROR R{}", d),
             Op::Sbc { d, r } => write!(f, "SCB R{}, R{}", d, r),

@@ -27,6 +27,11 @@ fn decode_hex_line(line: &str) -> Result<Option<(u16, Vec<u8>)>, hex::FromHexErr
     })
 }
 
+fn bin(w: u16) -> String {
+    let s = format!("{:016b}", w);
+    format!("{}_{}_{}_{}", &s[0..4], &s[4..8], &s[8..12], &s[12..16])
+}
+
 fn main() -> Result<(), io::Error> {
     env_logger::init();
     let filename = env::args().nth(1).unwrap();
@@ -49,15 +54,25 @@ fn main() -> Result<(), io::Error> {
         }
     }
     core.reset();
+    println!("addr ( op_hex  ) (                op_bin                 ) [ pc ]: op");
     loop {
-        let (w0, _w1, op_addr) = core.next_op();
-        println!(
-            "{:04x} {:04x} [{:04x}]: {}",
-            op_addr.addr,
-            w0,
-            op_addr.addr >> 1,
-            op_addr,
-        );
+        let (w0, w1, op_addr) = core.next_op();
+        print!("{:04x} ", op_addr.addr);
+        match op_addr.op.words() {
+            1 => print!("({}     ) ", hex::encode(w0.to_le_bytes())),
+            2 => print!(
+                "({} {}) ",
+                hex::encode(w0.to_le_bytes()),
+                hex::encode(w1.to_le_bytes())
+            ),
+            _ => unreachable!(),
+        }
+        match op_addr.op.words() {
+            1 => print!("({}                    ) ", bin(w0)),
+            2 => print!("({} {}) ", bin(w0), bin(w1)),
+            _ => unreachable!(),
+        }
+        println!("[{:04x}]: {}", op_addr.addr >> 1, op_addr,);
         core.step();
     }
 }

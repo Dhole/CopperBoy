@@ -16,7 +16,6 @@ instructions = """
   35 BST    1111_101d_dddd_0bbb
   36 CALL   1001_010k_kkkk_111k kkkk_kkkk_kkkk_kkkk
   37 CBI    1001_1000_AAAA_Abbb
-  43 CLR    0010_01dd_dddd_dddd
   48 COM    1001_010d_dddd_0000
   49 CP     0001_01rd_dddd_rrrr
   50 CPC    0000_01rd_dddd_rrrr

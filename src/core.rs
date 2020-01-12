@@ -481,6 +481,7 @@ impl Core {
         if test {
             let (pc, _) = (self.pc as i16).overflowing_add(k as i16 + 1);
             self.pc = pc as u16;
+            self.branch = true;
             2
         } else {
             self.pc += 1;
@@ -560,17 +561,17 @@ impl Core {
     // 41. Clear Global Interrupt Flag (CLI) OK -> BCLR I
     // 42. Clear Negative Flag (CLN) OK -> BCLR N
 
-    /// 43. Clear Register (CLR Rd) OK
-    fn op_clr(&mut self, d: u8) -> usize {
-        self.regs[d] = 0;
-        self.status_reg.s = false;
-        self.status_reg.v = false;
-        self.status_reg.n = false;
-        self.status_reg.z = true;
+    // 43. Clear Register (CLR Rd) OK -> EOR Rd, Rd
+    // fn op_clr(&mut self, d: u8) -> usize {
+    //     self.regs[d] = 0;
+    //     self.status_reg.s = false;
+    //     self.status_reg.v = false;
+    //     self.status_reg.n = false;
+    //     self.status_reg.z = true;
 
-        self.pc += 1;
-        1
-    }
+    //     self.pc += 1;
+    //     1
+    // }
 
     // 44. Clear Signed Flag (CLS) OK -> BCLR S
     // 45. Clear T Flag (CLT) OK -> BCLR T
@@ -1013,6 +1014,7 @@ impl Core {
     fn op_rcall(&mut self, k: i16) -> usize {
         self.push_u16(self.pc + 1);
         let (pc, _) = (self.pc as i16).overflowing_add(k);
+        let (pc, _) = (pc as i16).overflowing_add(1);
         self.pc = pc as u16;
         self.branch = true;
         3
@@ -1038,6 +1040,7 @@ impl Core {
     /// 94. Relative Jump (RJMP k) OK
     fn op_rjmp(&mut self, k: i16) -> usize {
         let (pc, _) = (self.pc as i16).overflowing_add(k);
+        let (pc, _) = (pc as i16).overflowing_add(1);
         self.pc = pc as u16;
         self.branch = true;
         2
@@ -1323,7 +1326,6 @@ impl Core {
             Op::Bst { d, b } => self.op_bst(d, b),
             Op::Call { k } => self.op_call(k),
             Op::Cbi { a, b } => self.op_cbi(a, b),
-            Op::Clr { d } => self.op_clr(d),
             Op::Com { d } => self.op_com(d),
             Op::Cp { d, r } => self.op_cp(d, r),
             Op::Cpc { d, r } => self.op_cpc(d, r),
