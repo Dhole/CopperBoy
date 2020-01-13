@@ -303,7 +303,7 @@ const OPCODE_OP_SBRC_BITS: u16 = 0b0110_0000_0000_0000;
 const OPCODE_OP_SBRC_MASK: u16 = 0b1111_0000_0000_0000;
 
 // 105
-const OPCODE_OP_SBRS_BITS: u16 = 0b1111_1100_0000_0000;
+const OPCODE_OP_SBRS_BITS: u16 = 0b1111_1110_0000_0000;
 const OPCODE_OP_SBRS_MASK: u16 = 0b1111_1110_0000_1000;
 
 // 110
@@ -1035,7 +1035,7 @@ impl<'a> fmt::Display for OpAddr {
             Op::Subi { d, k } => write!(f, "SUBI R{}, {}", d, k),
             Op::Swap { d } => write!(f, "SWAP R{}", d),
             Op::Wdr => write!(f, "WDR"),
-            Op::Undefined { w } => write!(f, "UNDEF ; 0x{:04}", w),
+            Op::Undefined { w } => write!(f, "UNDEF ; 0x{}", hex::encode(w.to_le_bytes())),
         }
     }
 }

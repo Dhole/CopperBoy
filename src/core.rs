@@ -1,5 +1,6 @@
-use log::warn;
+use log::{debug, warn};
 
+use super::io_regs::io_reg_str;
 use super::opcodes::*;
 use super::*;
 
@@ -305,14 +306,35 @@ impl Core {
         if addr >= SRAM_ADDR {
             self.sram[(addr - SRAM_ADDR) as usize]
         } else {
+            debug!(
+                "I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} ({})",
+                addr,
+                io_reg_str(addr).unwrap_or("Unknown")
+            );
             match addr {
                 io_regs::SPL => get_lo(self.sp),
                 io_regs::SPH => get_hi(self.sp),
                 io_regs::SREG => self.status_reg.as_u8(),
+                io_regs::TCCR0A => 0, // TODO: Timer/Counter Control Register A
+                io_regs::TCCR0B => 0, // TODO: Timer/Counter Control Register B
+                io_regs::TCCR1A => 0, // TODO: Timer/Counter Control Register A
+                io_regs::TCCR1B => 0, // TODO: Timer/Counter Control Register B
+                io_regs::TCCR3A => 0, // TODO: Timer/Counter Control Register A
+                io_regs::TCCR3B => 0, // TODO: Timer/Counter Control Register B
+                io_regs::TCCR4A => 0, // TODO: Timer/Counter Control Register A
+                io_regs::TCCR4B => 0, // TODO: Timer/Counter Control Register B
+                io_regs::TCCR4C => 0, // TODO: Timer/Counter Control Register B
+                io_regs::TCCR4D => 0, // TODO: Timer/Counter Control Register B
+                io_regs::TIMSK0 => 0, // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::ADCSRA => 0, // TODO: ADC Ctrl & Status Register
+                io_regs::UHWCON => 0, // TODO
+                io_regs::USBCON => 0, // TODO
+                io_regs::PLLCSR => 0, // TODO: PLL Control and Status Register
                 _ => {
                     warn!(
-                        "I/O Registers / Extended I/O Space unimplemented load at 0x{:04x}",
-                        addr
+                        "I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} ({})",
+                        addr,
+                        io_reg_str(addr).unwrap_or("Unknown")
                     );
                     unimplemented!()
                 }
@@ -330,14 +352,37 @@ impl Core {
         if addr >= SRAM_ADDR {
             self.sram[(addr - SRAM_ADDR) as usize] = v;
         } else {
+            debug!(
+                "I/O Registers / Extended I/O Space unimplemented store (0x{:02x}) at 0x{:04x} ({})",
+                v,
+                addr,
+                io_reg_str(addr).unwrap_or("Unknown")
+            );
             match addr {
                 io_regs::SPL => set_lo(&mut self.sp, v),
                 io_regs::SPH => set_hi(&mut self.sp, v),
                 io_regs::SREG => self.status_reg = StatusRegister::from_u8(v),
+                io_regs::TCCR0A => {} // TODO: Timer/Counter Control Register A
+                io_regs::TCCR0B => {} // TODO: Timer/Counter Control Register B
+                io_regs::TCCR1A => {} // TODO: Timer/Counter Control Register A
+                io_regs::TCCR1B => {} // TODO: Timer/Counter Control Register B
+                io_regs::TCCR3A => {} // TODO: Timer/Counter Control Register A
+                io_regs::TCCR3B => {} // TODO: Timer/Counter Control Register B
+                io_regs::TCCR4A => {} // TODO: Timer/Counter Control Register A
+                io_regs::TCCR4B => {} // TODO: Timer/Counter Control Register B
+                io_regs::TCCR4C => {} // TODO: Timer/Counter Control Register B
+                io_regs::TCCR4D => {} // TODO: Timer/Counter Control Register B
+                io_regs::TIMSK0 => {} // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::ADCSRA => {} // TODO: ADC Ctrl & Status Register
+                io_regs::UHWCON => {} // TODO
+                io_regs::USBCON => {} // TODO
+                io_regs::PLLCSR => {} // TODO: PLL Control and Status Register
                 _ => {
                     warn!(
-                        "I/O Registers / Extended I/O Space unimplemented store at 0x{:04x}",
-                        addr
+                        "I/O Registers / Extended I/O Space unimplemented store (0x{:02x}) at 0x{:04x} ({})",
+                        v,
+                        addr,
+                        io_reg_str(addr).unwrap_or("Unknown")
                     );
                     unimplemented!()
                 }
