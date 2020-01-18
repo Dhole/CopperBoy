@@ -54,7 +54,8 @@ fn main() -> Result<(), io::Error> {
         }
     }
     core.reset();
-    println!("addr ( op_hex  ) (                op_bin                 ) [ pc ]: op");
+    // println!("addr ( op_hex  ) (                op_bin                 ) [ pc ]: op");
+    println!("addr ( op_hex  ) [ pc ]: op");
     loop {
         let (w0, w1, op_addr) = core.next_op();
         print!("{:04x} ", op_addr.addr);
@@ -67,12 +68,16 @@ fn main() -> Result<(), io::Error> {
             ),
             _ => unreachable!(),
         }
-        match op_addr.op.words() {
-            1 => print!("({}                    ) ", bin(w0)),
-            2 => print!("({} {}) ", bin(w0), bin(w1)),
-            _ => unreachable!(),
+        // match op_addr.op.words() {
+        //     1 => print!("({}                    ) ", bin(w0)),
+        //     2 => print!("({} {}) ", bin(w0), bin(w1)),
+        //     _ => unreachable!(),
+        // }
+        if let Some(op_addr_alt) = op_addr.alt() {
+            println!("[{:04x}]: {}; {}", op_addr.addr >> 1, op_addr_alt, op_addr,);
+        } else {
+            println!("[{:04x}]: {}", op_addr.addr >> 1, op_addr,);
         }
-        println!("[{:04x}]: {}", op_addr.addr >> 1, op_addr,);
         core.step();
     }
 }

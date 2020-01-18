@@ -904,7 +904,7 @@ impl<'a> fmt::Display for OpAddr {
             Op::Com { d } => write!(f, "COM R{}", d),
             Op::Cp { d, r } => write!(f, "CP R{}, R{}", d, r),
             Op::Cpc { d, r } => write!(f, "CPC R{}, R{}", d, r),
-            Op::Cpi { d, k } => write!(f, "CPI R{}, {}", d, k),
+            Op::Cpi { d, k } => write!(f, "CPI R{}, 0x{:02x}", d, k),
             Op::Cpse { d, r } => write!(f, "CPSE R{}, R{}", d, r),
             Op::Dec { d } => write!(f, "DEC R{}", d),
             Op::Eicall => write!(f, "EICALL"),
@@ -945,7 +945,7 @@ impl<'a> fmt::Display for OpAddr {
                     LdStExt::Displacement(q) => write!(f, "{}+{}", idx, q),
                 }
             }
-            Op::Ldi { d, k } => write!(f, "LDI R{}, {}", d, k),
+            Op::Ldi { d, k } => write!(f, "LDI R{}, 0x{:02x}", d, k),
             Op::Lds { d, k } => write!(f, "LDS R{}, 0x{:04x}", d, k),
             Op::Lpmr0 => write!(f, "LPM"),
             Op::Lpm { d, inc } => {
@@ -1036,6 +1036,138 @@ impl<'a> fmt::Display for OpAddr {
             Op::Swap { d } => write!(f, "SWAP R{}", d),
             Op::Wdr => write!(f, "WDR"),
             Op::Undefined { w } => write!(f, "UNDEF ; 0x{}", hex::encode(w.to_le_bytes())),
+        }
+    }
+}
+
+pub struct OpAddrAlt {
+    pub op: Op,
+    pub addr: u16,
+}
+
+impl OpAddr {
+    pub fn alt(&self) -> Option<OpAddrAlt> {
+        match self.op {
+            Op::Bset { .. } => {}
+            Op::Bclr { .. } => {}
+            Op::Brbs { .. } => {}
+            Op::Brbc { .. } => {}
+            Op::Eor { d, r } => {
+                if d != r {
+                    return None;
+                }
+            }
+            Op::Add { d, r } => {
+                if d != r {
+                    return None;
+                }
+            }
+            Op::Adc { d, r } => {
+                if d != r {
+                    return None;
+                }
+            }
+            Op::And { d, r } => {
+                if d != r {
+                    return None;
+                }
+            }
+            _ => return None,
+        };
+        Some(OpAddrAlt {
+            op: self.op.clone(),
+            addr: self.addr,
+        })
+    }
+}
+
+impl<'a> fmt::Display for OpAddrAlt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let pc = self.addr >> 1;
+        match self.op {
+            Op::Bset { s } => match s {
+                0 => write!(f, "SEC"),
+                1 => write!(f, "SEZ"),
+                2 => write!(f, "SEN"),
+                3 => write!(f, "SEV"),
+                4 => write!(f, "SES"),
+                5 => write!(f, "SEH"),
+                6 => write!(f, "SET"),
+                7 => write!(f, "SEI"),
+                _ => unreachable!(),
+            },
+            Op::Bclr { s } => match s {
+                0 => write!(f, "CLC"),
+                1 => write!(f, "CLZ"),
+                2 => write!(f, "CLN"),
+                3 => write!(f, "CLV"),
+                4 => write!(f, "CLS"),
+                5 => write!(f, "CLH"),
+                6 => write!(f, "CLT"),
+                7 => write!(f, "CLI"),
+                _ => unreachable!(),
+            },
+            Op::Brbs { s, k } => {
+                let (pc1, _) = (pc as i16).overflowing_add(1);
+                let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
+                match s {
+                    0 => write!(f, "BRCS")?,
+                    1 => write!(f, "BRZS")?,
+                    2 => write!(f, "BRNS")?,
+                    3 => write!(f, "BRVS")?,
+                    4 => write!(f, "BRSS")?,
+                    5 => write!(f, "BRHS")?,
+                    6 => write!(f, "BRTS")?,
+                    7 => write!(f, "BRIS")?,
+                    _ => unreachable!(),
+                }
+                write!(f, " 0x{:04x}; k={}", (pc1 as u16) << 1, k)
+            }
+            Op::Brbc { s, k } => {
+                let (pc1, _) = (pc as i16).overflowing_add(1);
+                let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
+                match s {
+                    0 => write!(f, "BRCC")?,
+                    1 => write!(f, "BRZC")?,
+                    2 => write!(f, "BRNC")?,
+                    3 => write!(f, "BRVC")?,
+                    4 => write!(f, "BRSC")?,
+                    5 => write!(f, "BRHC")?,
+                    6 => write!(f, "BRTC")?,
+                    7 => write!(f, "BRIC")?,
+                    _ => unreachable!(),
+                }
+                write!(f, " 0x{:04x}; k={}", (pc1 as u16) << 1, k)
+            }
+            Op::Eor { d, r } => {
+                if d == r {
+                    write!(f, "CLR R{}", d)
+                } else {
+                    write!(f, "EOR R{}, R{}", d, r)
+                }
+            }
+            Op::Add { d, r } => {
+                if d == r {
+                    write!(f, "LSL R{}", d)
+                } else {
+                    write!(f, "ADD R{}, R{}", d, r)
+                }
+            }
+            Op::Adc { d, r } => {
+                if d == r {
+                    write!(f, "ROL R{}", d)
+                } else {
+                    write!(f, "ADC R{}, R{}", d, r)
+                }
+            }
+            Op::And { d, r } => {
+                if d == r {
+                    write!(f, "TST R{}", d)
+                } else {
+                    write!(f, "AND R{}, R{}", d, r)
+                }
+            }
+            _ => write!(f, ""),
         }
     }
 }

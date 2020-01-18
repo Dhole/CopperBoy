@@ -2,6 +2,7 @@ use log::{debug, warn};
 
 use super::io_regs::io_reg_str;
 use super::opcodes::*;
+use super::peripherials;
 use super::*;
 
 #[derive(PartialEq)]
@@ -229,6 +230,8 @@ pub struct Core {
     branch: bool,
     /// Next op
     op1: Op,
+    // Peripherials
+    clock: peripherials::Clock,
 }
 
 impl Core {
@@ -243,6 +246,8 @@ impl Core {
             sp: SRAM_ADDR + SRAM_SIZE - 1,
             branch: false,
             op1: Op::Undefined { w: 0x0000 },
+            // Peripherials
+            clock: peripherials::Clock::new(),
         }
     }
 
@@ -307,7 +312,7 @@ impl Core {
             self.sram[(addr - SRAM_ADDR) as usize]
         } else {
             debug!(
-                "I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} ({})",
+                "I/O Registers / Extended I/O Space load at 0x{:04x} ({})",
                 addr,
                 io_reg_str(addr).unwrap_or("Unknown")
             );
@@ -326,10 +331,12 @@ impl Core {
                 io_regs::TCCR4C => 0, // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4D => 0, // TODO: Timer/Counter Control Register B
                 io_regs::TIMSK0 => 0, // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TCNT0 => 0,  // TODO: Timer/Counter Register
+                io_regs::TIFR1 => 0,  // TODO: Timer/Counter Interrupt Flag Resiger
                 io_regs::ADCSRA => 0, // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => 0, // TODO
                 io_regs::USBCON => 0, // TODO
-                io_regs::PLLCSR => 0, // TODO: PLL Control and Status Register
+                io_regs::PLLCSR => self.clock.reg_pllcsr(), // TODO: PLL Control and Status Register
                 _ => {
                     warn!(
                         "I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} ({})",
@@ -353,7 +360,7 @@ impl Core {
             self.sram[(addr - SRAM_ADDR) as usize] = v;
         } else {
             debug!(
-                "I/O Registers / Extended I/O Space unimplemented store (0x{:02x}) at 0x{:04x} ({})",
+                "I/O Registers / Extended I/O Space store (0x{:02x}) at 0x{:04x} ({})",
                 v,
                 addr,
                 io_reg_str(addr).unwrap_or("Unknown")
@@ -373,10 +380,12 @@ impl Core {
                 io_regs::TCCR4C => {} // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4D => {} // TODO: Timer/Counter Control Register B
                 io_regs::TIMSK0 => {} // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TCNT0 => {}  // TODO: Timer/Counter Register
+                io_regs::TIFR1 => {}  // TODO: Timer/Counter Interrupt Flag Resiger
                 io_regs::ADCSRA => {} // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => {} // TODO
                 io_regs::USBCON => {} // TODO
-                io_regs::PLLCSR => {} // TODO: PLL Control and Status Register
+                io_regs::PLLCSR => self.clock.set_reg_pllcsr(v), // TODO: PLL Control and Status Register
                 _ => {
                     warn!(
                         "I/O Registers / Extended I/O Space unimplemented store (0x{:02x}) at 0x{:04x} ({})",

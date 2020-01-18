@@ -3,6 +3,9 @@
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
+#[macro_use]
+extern crate num_derive;
+
 #[derive(PartialEq, Debug)]
 struct Memory {
     buf: Vec<u8>,
@@ -44,3 +47,4 @@ pub mod core;
 pub mod int_vec;
 pub mod io_regs;
 pub mod opcodes;
+pub mod peripherials;
