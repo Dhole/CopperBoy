@@ -924,7 +924,7 @@ impl<'a> fmt::Display for OpAddr {
             Op::Icall => write!(f, "ICALL"),
             Op::Ijmp => write!(f, "IJMP"),
             Op::In { d, a } => {
-                write!(f, "IN R{}, {}", d, a)?;
+                write!(f, "IN R{}, 0x{:02x}", d, a)?;
                 if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
                     write!(f, "; {} = 0x{:02x}", io_reg, a)?;
                 }
@@ -946,7 +946,13 @@ impl<'a> fmt::Display for OpAddr {
                 }
             }
             Op::Ldi { d, k } => write!(f, "LDI R{}, 0x{:02x}", d, k),
-            Op::Lds { d, k } => write!(f, "LDS R{}, 0x{:04x}", d, k),
+            Op::Lds { d, k } => {
+                write!(f, "LDS R{}, 0x{:04x}", d, k)?;
+                if let Some(io_reg) = io_reg_str(k) {
+                    write!(f, "; {} = 0x{:02x}", io_reg, k)?;
+                }
+                Ok(())
+            }
             Op::Lpmr0 => write!(f, "LPM"),
             Op::Lpm { d, inc } => {
                 write!(f, "LPM R{}, Z", d)?;
@@ -1030,7 +1036,13 @@ impl<'a> fmt::Display for OpAddr {
                     LdStExt::Displacement(q) => write!(f, "{}+{}", idx, q),
                 }
             }
-            Op::Sts { k, r } => write!(f, "STS 0x{:04x}, R{}", k, r),
+            Op::Sts { k, r } => {
+                write!(f, "STS 0x{:04x}, R{}", k, r)?;
+                if let Some(io_reg) = io_reg_str(k) {
+                    write!(f, "; {} = 0x{:02x}", io_reg, k)?;
+                }
+                Ok(())
+            }
             Op::Sub { d, r } => write!(f, "SUB R{}, R{}", d, r),
             Op::Subi { d, k } => write!(f, "SUBI R{}, {}", d, k),
             Op::Swap { d } => write!(f, "SWAP R{}", d),

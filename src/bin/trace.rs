@@ -78,6 +78,7 @@ fn main() -> Result<(), io::Error> {
         } else {
             println!("[{:04x}]: {}", op_addr.addr >> 1, op_addr,);
         }
-        core.step();
+        let cycles = core.step();
+        core.step_hw(cycles as u8);
     }
 }

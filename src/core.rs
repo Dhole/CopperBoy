@@ -1,5 +1,7 @@
 use log::{debug, warn};
+use num_traits::ToPrimitive;
 
+use super::int_vec::*;
 use super::io_regs::io_reg_str;
 use super::opcodes::*;
 use super::peripherials;
@@ -306,6 +308,151 @@ impl Core {
         cycles
     }
 
+    pub fn step_hw(&mut self, cycles: u8) {
+        // The interrupts have priority in accordance with their Interrupt Vector position.  The
+        // lower the Interrupt Vector address, the higher the priority.
+
+        // The Global Interrupt Enable Register is cleared by hardware afeter an interrupt has
+        // ocurred.
+
+        let mut interrupt_bitmap: u64 = 0;
+
+        // First, step all the enabled peripherials
+        self.clock.step(cycles);
+        interrupt_bitmap |= self.clock.int();
+
+        // Then, if interrupts are enabled, handle the pending ones
+
+        // Global Interrupt Flag disabled
+        if !self.status_reg.i {
+            return;
+        }
+
+        // No pending interrupt
+        if interrupt_bitmap == 0 {
+            return;
+        }
+
+        let pc = if interrupt_bitmap & Interrupt::Reset.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt RESET");
+            RESET
+        } else if interrupt_bitmap & Interrupt::Int0.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt INT0");
+            INT0
+        } else if interrupt_bitmap & Interrupt::Int1.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt INT1");
+            INT1
+        } else if interrupt_bitmap & Interrupt::Int2.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt INT2");
+            INT2
+        } else if interrupt_bitmap & Interrupt::Int3.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt INT3");
+            INT3
+        } else if interrupt_bitmap & Interrupt::Int6.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt INT6");
+            INT6
+        } else if interrupt_bitmap & Interrupt::Pcint0.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt PCINT0");
+            PCINT0
+        } else if interrupt_bitmap & Interrupt::UsbGeneral.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt USB_GENERAL");
+            USB_GENERAL
+        } else if interrupt_bitmap & Interrupt::UsbEndpoint.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt USB_ENDPOINT");
+            USB_ENDPOINT
+        } else if interrupt_bitmap & Interrupt::Wdt.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt WDT");
+            WDT
+        } else if interrupt_bitmap & Interrupt::Timer1Capt.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER1_CAPT");
+            TIMER1_CAPT
+        } else if interrupt_bitmap & Interrupt::Timer1CompA.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER1_COMPA");
+            TIMER1_COMPA
+        } else if interrupt_bitmap & Interrupt::Timer1CompB.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER1_COMPB");
+            TIMER1_COMPB
+        } else if interrupt_bitmap & Interrupt::Timer1CompC.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER1_COMPC");
+            TIMER1_COMPC
+        } else if interrupt_bitmap & Interrupt::Timer1Ovf.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER1_OVF");
+            TIMER1_OVF
+        } else if interrupt_bitmap & Interrupt::Timer0CompA.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER0_COMPA");
+            TIMER0_COMPA
+        } else if interrupt_bitmap & Interrupt::Timer0CompB.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER0_COMPB");
+            TIMER0_COMPB
+        } else if interrupt_bitmap & Interrupt::Timer0Ovf.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER0_OVF");
+            TIMER0_OVF
+        } else if interrupt_bitmap & Interrupt::SpiStc.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt SPI_STC");
+            SPI_STC
+        } else if interrupt_bitmap & Interrupt::Usart1Rx.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt USART1_RX");
+            USART1_RX
+        } else if interrupt_bitmap & Interrupt::Usart2Udre.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt USART2_UDRE");
+            USART2_UDRE
+        } else if interrupt_bitmap & Interrupt::Usart1Tx.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt USART1_TX");
+            USART1_TX
+        } else if interrupt_bitmap & Interrupt::AnalogComp.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt ANALOG_COMP");
+            ANALOG_COMP
+        } else if interrupt_bitmap & Interrupt::Adc.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt ADC");
+            ADC
+        } else if interrupt_bitmap & Interrupt::EeReady.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt EE_READY");
+            EE_READY
+        } else if interrupt_bitmap & Interrupt::Timer3Capt.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER3_CAPT");
+            TIMER3_CAPT
+        } else if interrupt_bitmap & Interrupt::Timer3CompA.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER3_COMPA");
+            TIMER3_COMPA
+        } else if interrupt_bitmap & Interrupt::Timer3CompB.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER3_COMPB");
+            TIMER3_COMPB
+        } else if interrupt_bitmap & Interrupt::Timer3CompC.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER3_COMPC");
+            TIMER3_COMPC
+        } else if interrupt_bitmap & Interrupt::Timer3Ovf.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER3_OVF");
+            TIMER3_OVF
+        } else if interrupt_bitmap & Interrupt::Twi.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TWI");
+            TWI
+        } else if interrupt_bitmap & Interrupt::StmReady.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt STM_READY");
+            STM_READY
+        } else if interrupt_bitmap & Interrupt::Timer4CompA.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER4_COMPA");
+            TIMER4_COMPA
+        } else if interrupt_bitmap & Interrupt::Timer4CompB.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER4_COMPB");
+            TIMER4_COMPB
+        } else if interrupt_bitmap & Interrupt::Timer4CompD.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER4_COMPD");
+            TIMER4_COMPD
+        } else if interrupt_bitmap & Interrupt::Timer4Ovf.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER4_OVF");
+            TIMER4_OVF
+        } else if interrupt_bitmap & Interrupt::Timer4Fpf.to_u64().unwrap() != 0 {
+            debug!("Handling interrupt TIMER4_FPF");
+            TIMER4_FPF
+        } else {
+            unreachable!();
+        };
+
+        self.status_reg.i = false;
+        // TODO: Before jumping to the interrupt vector, clean the interrupt flag.
+        self.op_call(pc as u32);
+    }
+
     /// Load a byte from the User Data Space
     fn data_load(&self, addr: u16) -> u8 {
         if addr >= SRAM_ADDR {
@@ -320,19 +467,19 @@ impl Core {
                 io_regs::SPL => get_lo(self.sp),
                 io_regs::SPH => get_hi(self.sp),
                 io_regs::SREG => self.status_reg.as_u8(),
-                io_regs::TCCR0A => 0, // TODO: Timer/Counter Control Register A
-                io_regs::TCCR0B => 0, // TODO: Timer/Counter Control Register B
+                io_regs::TCCR0A => self.clock.reg_tccr0a(), // TODO: Timer/Counter Control Register A
+                io_regs::TCCR0B => self.clock.reg_tccr0b(), // TODO: Timer/Counter Control Register B
                 io_regs::TCCR1A => 0, // TODO: Timer/Counter Control Register A
                 io_regs::TCCR1B => 0, // TODO: Timer/Counter Control Register B
                 io_regs::TCCR3A => 0, // TODO: Timer/Counter Control Register A
                 io_regs::TCCR3B => 0, // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4A => 0, // TODO: Timer/Counter Control Register A
                 io_regs::TCCR4B => 0, // TODO: Timer/Counter Control Register B
-                io_regs::TCCR4C => 0, // TODO: Timer/Counter Control Register B
-                io_regs::TCCR4D => 0, // TODO: Timer/Counter Control Register B
-                io_regs::TIMSK0 => 0, // TODO: Timer/Counter Interrupt Mask Register
-                io_regs::TCNT0 => 0,  // TODO: Timer/Counter Register
-                io_regs::TIFR1 => 0,  // TODO: Timer/Counter Interrupt Flag Resiger
+                io_regs::TCCR4C => 0, // TODO: Timer/Counter Control Register C
+                io_regs::TCCR4D => 0, // TODO: Timer/Counter Control Register D
+                io_regs::TIMSK0 => self.clock.reg_timsk0(), // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TCNT0 => self.clock.reg_tcnt0(),   // TODO: Timer/Counter Register
+                io_regs::TIFR1 => 0, // TODO: Timer/Counter Interrupt Flag Resiger
                 io_regs::ADCSRA => 0, // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => 0, // TODO
                 io_regs::USBCON => 0, // TODO
@@ -369,8 +516,8 @@ impl Core {
                 io_regs::SPL => set_lo(&mut self.sp, v),
                 io_regs::SPH => set_hi(&mut self.sp, v),
                 io_regs::SREG => self.status_reg = StatusRegister::from_u8(v),
-                io_regs::TCCR0A => {} // TODO: Timer/Counter Control Register A
-                io_regs::TCCR0B => {} // TODO: Timer/Counter Control Register B
+                io_regs::TCCR0A => self.clock.set_reg_tccr0a(v), // TODO: Timer/Counter Control Register A
+                io_regs::TCCR0B => self.clock.set_reg_tccr0b(v), // TODO: Timer/Counter Control Register B
                 io_regs::TCCR1A => {} // TODO: Timer/Counter Control Register A
                 io_regs::TCCR1B => {} // TODO: Timer/Counter Control Register B
                 io_regs::TCCR3A => {} // TODO: Timer/Counter Control Register A
@@ -379,9 +526,9 @@ impl Core {
                 io_regs::TCCR4B => {} // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4C => {} // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4D => {} // TODO: Timer/Counter Control Register B
-                io_regs::TIMSK0 => {} // TODO: Timer/Counter Interrupt Mask Register
-                io_regs::TCNT0 => {}  // TODO: Timer/Counter Register
-                io_regs::TIFR1 => {}  // TODO: Timer/Counter Interrupt Flag Resiger
+                io_regs::TIMSK0 => self.clock.set_reg_timsk0(v), // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TCNT0 => self.clock.set_reg_tcnt0(v),   // TODO: Timer/Counter Register
+                io_regs::TIFR1 => {} // TODO: Timer/Counter Interrupt Flag Resiger
                 io_regs::ADCSRA => {} // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => {} // TODO
                 io_regs::USBCON => {} // TODO
@@ -574,7 +721,7 @@ impl Core {
     // 29. Branch if Same or Higher (Unsigned) (BRSH k) OK -> BRBC C
     // 30. Branch if the T Flag is Cleared (BRTC k) OK -> BRBC T
     // 31. Branch if the T Flag is Set (BRTS k) OK -> BRBS T
-    // 32. Branch if Overflow Cleared (BRVC k) OK-> BRBC V
+    // 32. Branch if Overflow Cleared (BRVC k) OK -> BRBC V
     // 33. Branch if Overflow Set (BRVS k) OK -> BRBS V
 
     /// 34. Bit Set in SREG (BSET s) OK
