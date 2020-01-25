@@ -155,7 +155,7 @@ const OPCODE_OP_LDXINC_BITS: u16 = 0b1001_0000_0000_1101;
 const OPCODE_OP_LDXINC_MASK: u16 = 0b1111_1110_0000_1111;
 
 // 70
-const OPCODE_OP_LDXDEC_BITS: u16 = 0b1001_0000_0000_1111;
+const OPCODE_OP_LDXDEC_BITS: u16 = 0b1001_0000_0000_1110;
 const OPCODE_OP_LDXDEC_MASK: u16 = 0b1111_1110_0000_1111;
 
 // 71
@@ -299,8 +299,8 @@ const OPCODE_OP_SBIW_BITS: u16 = 0b1001_0111_0000_0000;
 const OPCODE_OP_SBIW_MASK: u16 = 0b1111_1111_0000_0000;
 
 // 104
-const OPCODE_OP_SBRC_BITS: u16 = 0b0110_0000_0000_0000;
-const OPCODE_OP_SBRC_MASK: u16 = 0b1111_0000_0000_0000;
+const OPCODE_OP_SBRC_BITS: u16 = 0b1111_1100_0000_0000;
+const OPCODE_OP_SBRC_MASK: u16 = 0b1111_1110_0000_1000;
 
 // 105
 const OPCODE_OP_SBRS_BITS: u16 = 0b1111_1110_0000_0000;
@@ -1123,14 +1123,14 @@ impl<'a> fmt::Display for OpAddrAlt {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
                 let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
                 match s {
-                    0 => write!(f, "BRCS")?,
-                    1 => write!(f, "BRZS")?,
-                    2 => write!(f, "BRNS")?,
+                    0 => write!(f, "BRLO/BRCS")?,
+                    1 => write!(f, "BREQ")?,
+                    2 => write!(f, "BRMI")?,
                     3 => write!(f, "BRVS")?,
-                    4 => write!(f, "BRSS")?,
+                    4 => write!(f, "BRLT")?,
                     5 => write!(f, "BRHS")?,
                     6 => write!(f, "BRTS")?,
-                    7 => write!(f, "BRIS")?,
+                    7 => write!(f, "BRIE")?,
                     _ => unreachable!(),
                 }
                 write!(f, " 0x{:04x}; k={}", (pc1 as u16) << 1, k)
@@ -1139,14 +1139,14 @@ impl<'a> fmt::Display for OpAddrAlt {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
                 let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
                 match s {
-                    0 => write!(f, "BRCC")?,
-                    1 => write!(f, "BRZC")?,
-                    2 => write!(f, "BRNC")?,
+                    0 => write!(f, "BRSH/BRCC")?,
+                    1 => write!(f, "BRNE")?,
+                    2 => write!(f, "BRPL")?,
                     3 => write!(f, "BRVC")?,
-                    4 => write!(f, "BRSC")?,
+                    4 => write!(f, "BRGE")?,
                     5 => write!(f, "BRHC")?,
                     6 => write!(f, "BRTC")?,
-                    7 => write!(f, "BRIC")?,
+                    7 => write!(f, "BRID")?,
                     _ => unreachable!(),
                 }
                 write!(f, " 0x{:04x}; k={}", (pc1 as u16) << 1, k)

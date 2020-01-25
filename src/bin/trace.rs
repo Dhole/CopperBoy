@@ -57,26 +57,28 @@ fn main() -> Result<(), io::Error> {
     // println!("addr ( op_hex  ) (                op_bin                 ) [ pc ]: op");
     println!("addr ( op_hex  ) [ pc ]: op");
     loop {
-        let (w0, w1, op_addr) = core.next_op();
-        print!("{:04x} ", op_addr.addr);
-        match op_addr.op.words() {
-            1 => print!("({}     ) ", hex::encode(w0.to_le_bytes())),
-            2 => print!(
-                "({} {}) ",
-                hex::encode(w0.to_le_bytes()),
-                hex::encode(w1.to_le_bytes())
-            ),
-            _ => unreachable!(),
-        }
-        // match op_addr.op.words() {
-        //     1 => print!("({}                    ) ", bin(w0)),
-        //     2 => print!("({} {}) ", bin(w0), bin(w1)),
-        //     _ => unreachable!(),
-        // }
-        if let Some(op_addr_alt) = op_addr.alt() {
-            println!("[{:04x}]: {}; {}", op_addr.addr >> 1, op_addr_alt, op_addr,);
-        } else {
-            println!("[{:04x}]: {}", op_addr.addr >> 1, op_addr,);
+        if !core.sleep {
+            let (w0, w1, op_addr) = core.next_op();
+            print!("{:04x} ", op_addr.addr);
+            match op_addr.op.words() {
+                1 => print!("({}     ) ", hex::encode(w0.to_le_bytes())),
+                2 => print!(
+                    "({} {}) ",
+                    hex::encode(w0.to_le_bytes()),
+                    hex::encode(w1.to_le_bytes())
+                ),
+                _ => unreachable!(),
+            }
+            // match op_addr.op.words() {
+            //     1 => print!("({}                    ) ", bin(w0)),
+            //     2 => print!("({} {}) ", bin(w0), bin(w1)),
+            //     _ => unreachable!(),
+            // }
+            if let Some(op_addr_alt) = op_addr.alt() {
+                println!("[{:04x}]: {}; {}", op_addr.addr >> 1, op_addr_alt, op_addr,);
+            } else {
+                println!("[{:04x}]: {}", op_addr.addr >> 1, op_addr,);
+            }
         }
         let cycles = core.step();
         core.step_hw(cycles as u8);

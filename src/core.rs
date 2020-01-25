@@ -94,14 +94,14 @@ impl StatusRegister {
 
     fn from_u8(v: u8) -> Self {
         Self {
-            i: ((v & 1) << 7) != 0,
-            t: ((v & 1) << 6) != 0,
-            h: ((v & 1) << 5) != 0,
-            s: ((v & 1) << 4) != 0,
-            v: ((v & 1) << 3) != 0,
-            n: ((v & 1) << 2) != 0,
-            z: ((v & 1) << 1) != 0,
-            c: ((v & 1) << 0) != 0,
+            i: v & (1 << 7) != 0,
+            t: v & (1 << 6) != 0,
+            h: v & (1 << 5) != 0,
+            s: v & (1 << 4) != 0,
+            v: v & (1 << 3) != 0,
+            n: v & (1 << 2) != 0,
+            z: v & (1 << 1) != 0,
+            c: v & (1 << 0) != 0,
         }
     }
 
@@ -234,6 +234,8 @@ pub struct Core {
     op1: Op,
     // Peripherials
     clock: peripherials::Clock,
+    /// Sleeping?
+    pub sleep: bool,
 }
 
 impl Core {
@@ -250,6 +252,7 @@ impl Core {
             op1: Op::Undefined { w: 0x0000 },
             // Peripherials
             clock: peripherials::Clock::new(),
+            sleep: false,
         }
     }
 
@@ -290,6 +293,9 @@ impl Core {
 
     /// Step one instruction.  Return the number of cycles that have passed.
     pub fn step(&mut self) -> usize {
+        if self.sleep {
+            return 1;
+        }
         // Load current op from previously fetched next op
         let op0 = self.op1.clone();
         // Fetch next op
@@ -332,6 +338,10 @@ impl Core {
         if interrupt_bitmap == 0 {
             return;
         }
+
+        self.sleep = false;
+        // println!("INTERRUPT 1");
+        self.status_reg.i = false;
 
         let pc = if interrupt_bitmap & Interrupt::Reset.to_u64().unwrap() != 0 {
             debug!("Handling interrupt RESET");
@@ -386,6 +396,7 @@ impl Core {
             TIMER0_COMPB
         } else if interrupt_bitmap & Interrupt::Timer0Ovf.to_u64().unwrap() != 0 {
             debug!("Handling interrupt TIMER0_OVF");
+            self.clock.clear_int(Interrupt::Timer0Ovf);
             TIMER0_OVF
         } else if interrupt_bitmap & Interrupt::SpiStc.to_u64().unwrap() != 0 {
             debug!("Handling interrupt SPI_STC");
@@ -447,10 +458,13 @@ impl Core {
         } else {
             unreachable!();
         };
-
-        self.status_reg.i = false;
         // TODO: Before jumping to the interrupt vector, clean the interrupt flag.
-        self.op_call(pc as u32);
+        self.push_u16(self.pc);
+        self.pc = pc;
+        // Fetch op1 because we are branching without runnig step()
+        let w0 = self.program_load_u16(self.pc);
+        let w1 = self.program_load_u16(self.pc + 1);
+        self.op1 = Op::decode(w0, w1);
     }
 
     /// Load a byte from the User Data Space
@@ -483,6 +497,25 @@ impl Core {
                 io_regs::ADCSRA => 0, // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => 0, // TODO
                 io_regs::USBCON => 0, // TODO
+                io_regs::UDCON => 0, // TODO
+                io_regs::UDINT => 0, // TODO
+                io_regs::UDIEN => 0, // TODO
+                io_regs::DDRD => 0,  // TODO
+                io_regs::DDRB => 0,  // TODO
+                io_regs::DDRE => 0,  // TODO
+                io_regs::DDRF => 0,  // TODO
+                io_regs::ADMUX => 0, // TODO
+                io_regs::PORTB => 0, // TODO
+                io_regs::PORTC => 0, // TODO
+                io_regs::PORTD => 0, // TODO
+                io_regs::PORTE => 0, // TODO
+                io_regs::PORTF => 0, // TODO
+                io_regs::SPCR => 0,  // TODO
+                io_regs::SPSR => 0b10000000, // TODO
+                io_regs::SPDR => 0,  // TODO
+                io_regs::PRR0 => 0,  // TODO
+                io_regs::PRR1 => 0,  // TODO
+                io_regs::SMCR => 0,  // TODO
                 io_regs::PLLCSR => self.clock.reg_pllcsr(), // TODO: PLL Control and Status Register
                 _ => {
                     warn!(
@@ -532,6 +565,25 @@ impl Core {
                 io_regs::ADCSRA => {} // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => {} // TODO
                 io_regs::USBCON => {} // TODO
+                io_regs::UDCON => {} // TODO
+                io_regs::UDINT => {} // TODO
+                io_regs::UDIEN => {} // TODO
+                io_regs::DDRD => {}  // TODO
+                io_regs::DDRB => {}  // TODO
+                io_regs::DDRE => {}  // TODO
+                io_regs::DDRF => {}  // TODO
+                io_regs::ADMUX => {} // TODO
+                io_regs::PORTB => {} // TODO
+                io_regs::PORTC => {} // TODO
+                io_regs::PORTD => {} // TODO
+                io_regs::PORTE => {} // TODO
+                io_regs::PORTF => {} // TODO
+                io_regs::SPCR => {}  // TODO
+                io_regs::SPSR => {}  // TODO
+                io_regs::SPDR => {}  // TODO
+                io_regs::PRR0 => {}  // TODO
+                io_regs::PRR1 => {}  // TODO
+                io_regs::SMCR => {}  // TODO
                 io_regs::PLLCSR => self.clock.set_reg_pllcsr(v), // TODO: PLL Control and Status Register
                 _ => {
                     warn!(
@@ -1010,6 +1062,7 @@ impl Core {
                 2
             }
             LdStExt::PreDec => {
+                println!(">>> addr: 0x{:04x}", addr);
                 addr -= 1;
                 self.regs[d] = self.data_load(addr);
                 2
@@ -1413,10 +1466,10 @@ impl Core {
 
     /// 115. SLEEP (SLEEP) OK
     fn op_sleep(&mut self) -> usize {
-        warn!("SLEEP unimplemented.");
-        unimplemented!();
-        // self.pc += 1;
-        // 1
+        debug!("Entering sleep");
+        self.sleep = true;
+        self.pc += 1;
+        1
     }
     /// 116. Store Program Memory (SPM) OK
     fn op_spm(&mut self) -> usize {

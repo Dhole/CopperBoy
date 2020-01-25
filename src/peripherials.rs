@@ -80,7 +80,6 @@ impl Clock {
                 self.timer_0.overflowing_add(delta as u8)
             }
             ClockSelect::Clk64 => {
-                println!("CLOCK 64: {}", self.timer_0);
                 let delta = self.timer_0_cycles / 64;
                 self.timer_0_cycles = self.timer_0_cycles % 64;
                 self.timer_0.overflowing_add(delta as u8)
@@ -99,7 +98,6 @@ impl Clock {
         };
         self.timer_0 = t;
         if overflow {
-            println!("INTERRUPT 1");
             self.timer_0_ovf_int = true;
         }
     }

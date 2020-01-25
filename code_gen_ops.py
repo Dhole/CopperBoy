@@ -38,7 +38,7 @@ instructions = """
   66 JMP    1001_010k_kkkk_110k kkkk_kkkk_kkkk_kkkk
   70 LDX    1001_000d_dddd_1100
   70 LDXINC 1001_000d_dddd_1101
-  70 LDXDEC 1001_000d_dddd_1111
+  70 LDXDEC 1001_000d_dddd_1110
   71 LDYINC 1001_000d_dddd_1001
   71 LDYDEC 1001_000d_dddd_1010
   71 LDYADQ 10q0_qq0d_dddd_1qqq
