@@ -1,10 +1,10 @@
 use log::{debug, warn};
 use num_traits::ToPrimitive;
 
+use super::clock;
 use super::int_vec::*;
 use super::io_regs::io_reg_str;
 use super::opcodes::*;
-use super::peripherials;
 use super::*;
 
 #[derive(PartialEq)]
@@ -118,7 +118,7 @@ impl StatusRegister {
 }
 
 #[derive(PartialEq, Debug)]
-struct GeneralRegisters {
+pub struct GeneralRegisters {
     reg: [u8; 32],
 }
 
@@ -151,7 +151,7 @@ impl GeneralRegisters {
         self[24] = bytes[0];
         self[25] = bytes[1];
     }
-    fn x(&self) -> u16 {
+    pub fn x(&self) -> u16 {
         u16::from_le_bytes([self[26], self[27]])
     }
     fn set_x(&mut self, v: u16) {
@@ -167,7 +167,7 @@ impl GeneralRegisters {
         self[28] = bytes[0];
         self[29] = bytes[1];
     }
-    fn z(&self) -> u16 {
+    pub fn z(&self) -> u16 {
         u16::from_le_bytes([self[30], self[31]])
     }
     fn set_z(&mut self, v: u16) {
@@ -216,7 +216,7 @@ pub struct Core {
     /// Status Register
     status_reg: StatusRegister,
     /// General Purpose Register File
-    regs: GeneralRegisters,
+    pub regs: GeneralRegisters,
     /// IO Registers
     io_space: [u8; IOSPACE_SIZE as usize],
     /// Program Counter
@@ -226,14 +226,14 @@ pub struct Core {
     /// SRAM
     sram: [u8; SRAM_SIZE as usize],
     /// Program Memory
-    program: [u8; PROGRAM_SIZE as usize],
+    pub program: [u8; PROGRAM_SIZE as usize],
     /// Set if the previos instruction branched.  This flag is used to know if the instruction
     /// ahead must be fetched.
     branch: bool,
     /// Next op
     op1: Op,
     // Peripherials
-    clock: peripherials::Clock,
+    clock: clock::Clock,
     /// Sleeping?
     pub sleep: bool,
 }
@@ -251,7 +251,7 @@ impl Core {
             branch: false,
             op1: Op::Undefined { w: 0x0000 },
             // Peripherials
-            clock: peripherials::Clock::new(),
+            clock: clock::Clock::new(),
             sleep: false,
         }
     }
@@ -468,7 +468,7 @@ impl Core {
     }
 
     /// Load a byte from the User Data Space
-    fn data_load(&self, addr: u16) -> u8 {
+    pub fn data_load(&self, addr: u16) -> u8 {
         if addr >= SRAM_ADDR {
             self.sram[(addr - SRAM_ADDR) as usize]
         } else {
