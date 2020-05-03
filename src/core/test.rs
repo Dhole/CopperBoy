@@ -37,6 +37,12 @@ fn test_op_add() {
     assert_eq!(core.regs[0], 0x03);
     assert_status_reg_true!(&core.status_reg, &[]);
 
+    core.regs[0] = 0x01;
+    core.regs[1] = 0x00;
+    core.op_add(0, 1);
+    assert_eq!(core.regs[0], 0x01);
+    assert_status_reg_true!(&core.status_reg, &[]);
+
     core.regs[0] = 0xff;
     core.regs[1] = 0x01;
     core.op_add(0, 1);
@@ -291,16 +297,16 @@ fn test_op_cbi() {
     assert_eq!(core.data_load(io_regs::SPL), 0b11011111);
 }
 
-#[test]
-fn test_op_clr() {
-    let mut core = Core::new();
-
-    core.regs[0] = 0xab;
-    core.op_clr(0);
-    assert_eq!(core.pc, 0x01);
-    assert_eq!(core.regs[0], 0x00);
-    assert_status_reg_true!(&core.status_reg, &['z']);
-}
+// #[test]
+// fn test_op_clr() {
+//     let mut core = Core::new();
+//
+//     core.regs[0] = 0xab;
+//     core.op_clr(0);
+//     assert_eq!(core.pc, 0x01);
+//     assert_eq!(core.regs[0], 0x00);
+//     assert_status_reg_true!(&core.status_reg, &['z']);
+// }
 
 #[test]
 fn test_op_com() {
