@@ -29,6 +29,14 @@ def reset(port):
 CMD_START = b'START'
 OUT_PATH = 'vectors'
 
+ops_alu0 = ['ADD', 'AND', 'CP', 'EOR', 'MOV', 'OR', 'SUB']
+ops_alu1 = ['ADC', 'CPC', 'SBC']
+
+ops = [
+        ('ALU0', ops_alu0, '# a0 b a1 sreg', 4, [0xff, 0xff]),
+        ('ALU1', ops_alu1, '# sreg0 a0 b a1 sreg1', 5, [1 << 0, 0xff, 0xff]),
+        ]
+
 if __name__ == "__main__":
     port = sys.argv[1]
     os.makedirs(OUT_PATH, exist_ok=True)
@@ -38,16 +46,24 @@ if __name__ == "__main__":
         cmd = com.read(2)
         if cmd != b'OK':
             raise Exception(f'Expecting OK but got {cmd}')
-        ops = ['ADD', 'AND']
-        for op in ops:
-            print(op)
-            com.write(op.encode('ascii') + b'\n')
-            with open(f'{OUT_PATH}/{op}', 'w') as out:
-                out.write('# a0 b a1 sreg\n')
-                while True:
-                    r = com.read(4)
-                    a, b, r, sreg = r[0], r[1], r[2], r[3]
-                    out.write('{:02x} {:02x} {:02x} {:02x}\n'.format(a, b, r, sreg))
-                    if a == 0xff and b == 0xff:
-                        print('done')
-                        break
+        for op_cfg in ops:
+            op_type = op_cfg[0]
+            ops = op_cfg[1]
+            out_header = op_cfg[2]
+            out_len = op_cfg[3]
+            out_end = bytearray(op_cfg[4])
+            for op in ops:
+                print(op)
+                com.write(op_type.encode('ascii') + b'\n')
+                com.write(op.encode('ascii') + b'\n')
+                with open(f'{OUT_PATH}/{op}', 'w') as out:
+                    out.write(out_header + '\n')
+                    while True:
+                        r = com.read(out_len)
+                        r_hex = []
+                        for b in r:
+                            r_hex.append('{:02x}'.format(b))
+                        out.write(' '.join(r_hex) + '\n')
+                        if r[:len(out_end)] == out_end:
+                            print('done')
+                            break

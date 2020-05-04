@@ -635,8 +635,8 @@ impl Core {
     fn op_adc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
-        self.status_reg.c = c0 || c1;
         self.aux_op_add_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        self.status_reg.c = c0 || c1;
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1218,6 +1218,7 @@ impl Core {
         let r7 = res & 1 << 7;
         self.status_reg.n = r7 != 0;
         self.status_reg.v = false;
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
         self.status_reg.z = res == 0;
         self.regs[d] = res;
 
@@ -1339,15 +1340,15 @@ impl Core {
         self.status_reg.n = r7 != 0;
         self.status_reg.v = (rr7 != rd7) && (rr7 == r7);
         self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.h = (a & 0x0f) < (b & 0x0f) + c as u8;
+        self.status_reg.h = ((a & 0x0f) as i8) < ((b & 0x0f) as i8) + c as i8;
     }
 
     /// 97. Subtract with Carry (SBC Rd, Rr) OK
     fn op_sbc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
         let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
-        self.status_reg.c = c0 || c1;
         self.aux_op_sub_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        self.status_reg.c = c0 || c1;
         if res != 0 {
             self.status_reg.z = false;
         }
