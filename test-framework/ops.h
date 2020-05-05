@@ -140,3 +140,119 @@ void op_alu1_select(void (**op)(uint8_t* a, uint8_t b, uint8_t *sreg), String cm
 	} else {
 	}
 }
+
+void op_com(uint8_t* a, uint8_t *sreg) {
+	SREG = 0;
+	asm volatile(
+		"com %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_neg(uint8_t* a, uint8_t *sreg) {
+	SREG = 0;
+	asm volatile(
+		"neg %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_inc(uint8_t* a, uint8_t *sreg) {
+	SREG = 0;
+	asm volatile(
+		"inc %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_dec(uint8_t* a, uint8_t *sreg) {
+	SREG = 0;
+	asm volatile(
+		"dec %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_ser(uint8_t* a, uint8_t *sreg) {
+	SREG = 0;
+	asm volatile(
+		"ser %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_asr(uint8_t* a, uint8_t *sreg) {
+	SREG = 0;
+	asm volatile(
+		"asr %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_swap(uint8_t* a, uint8_t *sreg) {
+	SREG = 0;
+	asm volatile(
+		"swap %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_alu2_select(void (**op)(uint8_t* a, uint8_t *sreg), String cmd) {
+	if (cmd.equals("")) {
+	} else if (cmd.equals("COM")) {
+		*op = &op_com;
+	} else if (cmd.equals("NEG")) {
+		*op = &op_neg;
+	} else if (cmd.equals("INC")) {
+		*op = &op_inc;
+	} else if (cmd.equals("DEC")) {
+		*op = &op_dec;
+	} else if (cmd.equals("SER")) {
+		*op = &op_ser;
+	} else if (cmd.equals("ASR")) {
+		*op = &op_asr;
+	} else if (cmd.equals("SWAP")) {
+		*op = &op_swap;
+	} else {
+	}
+}
+
+void op_ror(uint8_t* a, uint8_t *sreg) {
+	SREG = *sreg;
+	asm volatile(
+		"ror %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_alu3_select(void (**op)(uint8_t* a, uint8_t *sreg), String cmd) {
+	if (cmd.equals("")) {
+	} else if (cmd.equals("ROR")) {
+		*op = &op_ror;
+	} else {
+	}
+}

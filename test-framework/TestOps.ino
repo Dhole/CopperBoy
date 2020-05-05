@@ -48,6 +48,43 @@ void op_test_alu1(String op_name) {
 	}
 }
 
+void op_test_alu2(String op_name) {
+	void (*op)(uint8_t* a, uint8_t *sreg);
+	op_alu2_select(&op, op_name);
+	uint8_t buf[16];
+	uint8_t a, sreg;
+	int i;
+	for (i = 0; i < 0x100; i++) {
+		a = i;
+		op(&a, &sreg);
+		buf[0] = i; buf[1] = a; buf[2] = sreg;
+		Serial.write(buf, 3);
+	}
+}
+
+void op_test_alu3(String op_name) {
+	void (*op)(uint8_t* a, uint8_t *sreg);
+	op_alu3_select(&op, op_name);
+	uint8_t buf[16];
+	uint8_t a, sreg, sreg0;
+	int i, s;
+	for (s = 0; s < 2; s++) {
+		if (s == 0) {
+			sreg0 = 0;
+		} else {
+			sreg0 = 1 << 0;
+		}
+		for (i = 0; i < 0x100; i++) {
+			a = i;
+			sreg = sreg0;
+			op(&a, &sreg);
+			buf[0] = sreg0; buf[1] = i; buf[2] = a; buf[3] = sreg;
+			Serial.write(buf, 4);
+		}
+	}
+}
+
+
 void loop_main() {
 	String op_type;
 	while (true) {
@@ -68,6 +105,10 @@ void loop_main() {
 		op_test_alu0(op_name);
 	} else if (op_type.equals("ALU1")) {
 		op_test_alu1(op_name);
+	} else if (op_type.equals("ALU2")) {
+		op_test_alu2(op_name);
+	} else if (op_type.equals("ALU3")) {
+		op_test_alu3(op_name);
 	} else {
 	}
 }
