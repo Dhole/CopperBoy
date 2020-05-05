@@ -1,6 +1,6 @@
 
 void op_add(uint8_t* a, uint8_t b, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"add %0, %3 \n"
 		"in %1, __SREG__ \n"
@@ -11,7 +11,7 @@ void op_add(uint8_t* a, uint8_t b, uint8_t *sreg) {
 }
 
 void op_and(uint8_t* a, uint8_t b, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"and %0, %3 \n"
 		"in %1, __SREG__ \n"
@@ -22,7 +22,7 @@ void op_and(uint8_t* a, uint8_t b, uint8_t *sreg) {
 }
 
 void op_cp(uint8_t* a, uint8_t b, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"cp %0, %3 \n"
 		"in %1, __SREG__ \n"
@@ -33,7 +33,7 @@ void op_cp(uint8_t* a, uint8_t b, uint8_t *sreg) {
 }
 
 void op_eor(uint8_t* a, uint8_t b, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"eor %0, %3 \n"
 		"in %1, __SREG__ \n"
@@ -44,7 +44,7 @@ void op_eor(uint8_t* a, uint8_t b, uint8_t *sreg) {
 }
 
 void op_mov(uint8_t* a, uint8_t b, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"mov %0, %3 \n"
 		"in %1, __SREG__ \n"
@@ -55,7 +55,7 @@ void op_mov(uint8_t* a, uint8_t b, uint8_t *sreg) {
 }
 
 void op_or(uint8_t* a, uint8_t b, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"or %0, %3 \n"
 		"in %1, __SREG__ \n"
@@ -66,7 +66,7 @@ void op_or(uint8_t* a, uint8_t b, uint8_t *sreg) {
 }
 
 void op_sub(uint8_t* a, uint8_t b, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"sub %0, %3 \n"
 		"in %1, __SREG__ \n"
@@ -129,7 +129,7 @@ void op_sbc(uint8_t* a, uint8_t b, uint8_t *sreg) {
 	);
 }
 
-void op_alu1_select(void (**op)(uint8_t* a, uint8_t b, uint8_t *sreg), String cmd) {
+void op_alu0s_select(void (**op)(uint8_t* a, uint8_t b, uint8_t *sreg), String cmd) {
 	if (cmd.equals("")) {
 	} else if (cmd.equals("ADC")) {
 		*op = &op_adc;
@@ -142,7 +142,7 @@ void op_alu1_select(void (**op)(uint8_t* a, uint8_t b, uint8_t *sreg), String cm
 }
 
 void op_com(uint8_t* a, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"com %0 \n"
 		"in %1, __SREG__ \n"
@@ -153,7 +153,7 @@ void op_com(uint8_t* a, uint8_t *sreg) {
 }
 
 void op_neg(uint8_t* a, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"neg %0 \n"
 		"in %1, __SREG__ \n"
@@ -164,7 +164,7 @@ void op_neg(uint8_t* a, uint8_t *sreg) {
 }
 
 void op_inc(uint8_t* a, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"inc %0 \n"
 		"in %1, __SREG__ \n"
@@ -175,7 +175,7 @@ void op_inc(uint8_t* a, uint8_t *sreg) {
 }
 
 void op_dec(uint8_t* a, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"dec %0 \n"
 		"in %1, __SREG__ \n"
@@ -186,7 +186,7 @@ void op_dec(uint8_t* a, uint8_t *sreg) {
 }
 
 void op_ser(uint8_t* a, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"ser %0 \n"
 		"in %1, __SREG__ \n"
@@ -197,7 +197,7 @@ void op_ser(uint8_t* a, uint8_t *sreg) {
 }
 
 void op_asr(uint8_t* a, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"asr %0 \n"
 		"in %1, __SREG__ \n"
@@ -208,7 +208,7 @@ void op_asr(uint8_t* a, uint8_t *sreg) {
 }
 
 void op_swap(uint8_t* a, uint8_t *sreg) {
-	SREG = 0;
+	SREG = *sreg;
 	asm volatile(
 		"swap %0 \n"
 		"in %1, __SREG__ \n"
@@ -218,7 +218,7 @@ void op_swap(uint8_t* a, uint8_t *sreg) {
 	);
 }
 
-void op_alu2_select(void (**op)(uint8_t* a, uint8_t *sreg), String cmd) {
+void op_alu1_select(void (**op)(uint8_t* a, uint8_t *sreg), String cmd) {
 	if (cmd.equals("")) {
 	} else if (cmd.equals("COM")) {
 		*op = &op_com;
@@ -249,7 +249,7 @@ void op_ror(uint8_t* a, uint8_t *sreg) {
 	);
 }
 
-void op_alu3_select(void (**op)(uint8_t* a, uint8_t *sreg), String cmd) {
+void op_alu1s_select(void (**op)(uint8_t* a, uint8_t *sreg), String cmd) {
 	if (cmd.equals("")) {
 	} else if (cmd.equals("ROR")) {
 		*op = &op_ror;

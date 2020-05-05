@@ -11,12 +11,12 @@
 #-  86 OR     0010_10rd_dddd_rrrr
 #- 123 SUB    0001_10rd_dddd_rrrr
 
-# =ALU1= (SREG, Rd, Rr) -> (Rd)
+# =ALU0S= (SREG, Rd, Rr) -> (Rd)
 #-   5 ADC    0001_11rd_dddd_rrrr
 #-  97 SBC    0000_10rd_dddd_rrrr
 #-  50 CPC    0000_01rd_dddd_rrrr
 
-# =ALU2= (Rd) -> (Rd)
+# =ALU1= (Rd) -> (Rd)
 #-  48 COM    1001_010d_dddd_0000
 #-  84 NEG    1001_010d_dddd_0001
 #-  65 INC    1001_010d_dddd_0011
@@ -25,7 +25,7 @@
 #-  10 ASR    1001_010d_dddd_0101
 #- 125 SWAP   1001_010d_dddd_0010
 
-# =ALU3= (SREG, Rd) -> (Rd)
+# =ALU1S= (SREG, Rd) -> (Rd)
 #  96 ROR    1001_010d_dddd_0111
 
 #   7 ADIW   1001_0110_KKdd_KKKK
@@ -117,23 +117,9 @@ OP_SELECT_END = """
 """
 
 ops_alu0 = ['ADD', 'AND', 'CP', 'EOR', 'MOV', 'OR', 'SUB']
+ops_alu0s = ['ADC', 'CPC', 'SBC']
 OP_ALU0_ARGS = "uint8_t* a, uint8_t b, uint8_t *sreg"
 OP_ALU0_TEST = """
-void op_{op_low}(uint8_t* a, uint8_t b, uint8_t *sreg) {{
-	SREG = 0;
-	asm volatile(
-		"{op_low} %0, %3 \\n"
-		"in %1, __SREG__ \\n"
-		: "=r" (*a), "=r" (*sreg)
-		: "0" (*a), "r" (b)
-		:
-	);
-}}
-"""
-
-ops_alu1 = ['ADC', 'CPC', 'SBC']
-OP_ALU1_ARGS = "uint8_t* a, uint8_t b, uint8_t *sreg"
-OP_ALU1_TEST = """
 void op_{op_low}(uint8_t* a, uint8_t b, uint8_t *sreg) {{
 	SREG = *sreg;
 	asm volatile(
@@ -146,24 +132,10 @@ void op_{op_low}(uint8_t* a, uint8_t b, uint8_t *sreg) {{
 }}
 """
 
-ops_alu2 = ['COM', 'NEG', 'INC', 'DEC', 'SER', 'ASR', 'SWAP']
-OP_ALU2_ARGS = "uint8_t* a, uint8_t *sreg"
-OP_ALU2_TEST = """
-void op_{op_low}(uint8_t* a, uint8_t *sreg) {{
-	SREG = 0;
-	asm volatile(
-		"{op_low} %0 \\n"
-		"in %1, __SREG__ \\n"
-		: "=r" (*a), "=r" (*sreg)
-		: "0" (*a)
-		:
-	);
-}}
-"""
-
-ops_alu3 = ['ROR']
-OP_ALU3_ARGS = "uint8_t* a, uint8_t *sreg"
-OP_ALU3_TEST = """
+ops_alu1 = ['COM', 'NEG', 'INC', 'DEC', 'SER', 'ASR', 'SWAP']
+ops_alu1s = ['ROR']
+OP_ALU1_ARGS = "uint8_t* a, uint8_t *sreg"
+OP_ALU1_TEST = """
 void op_{op_low}(uint8_t* a, uint8_t *sreg) {{
 	SREG = *sreg;
 	asm volatile(
@@ -177,13 +149,11 @@ void op_{op_low}(uint8_t* a, uint8_t *sreg) {{
 """
 
 ops = {
-        'alu0': (ops_alu0, OP_ALU0_TEST, OP_ALU0_ARGS),
-        'alu1': (ops_alu1, OP_ALU1_TEST, OP_ALU1_ARGS),
-        'alu2': (ops_alu2, OP_ALU2_TEST, OP_ALU2_ARGS),
-        'alu3': (ops_alu3, OP_ALU3_TEST, OP_ALU3_ARGS),
+        'alu0' : (ops_alu0 , OP_ALU0_TEST, OP_ALU0_ARGS),
+        'alu0s': (ops_alu0s, OP_ALU0_TEST, OP_ALU0_ARGS),
+        'alu1' : (ops_alu1 , OP_ALU1_TEST, OP_ALU1_ARGS),
+        'alu1s': (ops_alu1s, OP_ALU1_TEST, OP_ALU1_ARGS),
         }
-
-
 
 if __name__ == "__main__":
     with open('ops.h', 'w') as f:

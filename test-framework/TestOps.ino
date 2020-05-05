@@ -10,22 +10,23 @@ void op_test_alu0(String op_name) {
 	void (*op)(uint8_t* a, uint8_t b, uint8_t *sreg);
 	op_alu0_select(&op, op_name);
 	uint8_t buf[16];
-	uint8_t a, b, sreg;
+	uint8_t a, b, sreg, sreg0;
 	int i, j;
 	for (i = 0; i < 0x100; i++) {
 		for (j = 0; j < 0x100; j++) {
 			a = i;
 			b = j;
+			sreg = sreg0;
 			op(&a, b, &sreg);
-			buf[0] = i; buf[1] = j; buf[2] = a; buf[3] = sreg;
-			Serial.write(buf, 4);
+			buf[0] = sreg0; buf[1] = i; buf[2] = j; buf[3] = a; buf[4] = sreg;
+			Serial.write(buf, 5);
 		}
 	}
 }
 
-void op_test_alu1(String op_name) {
-	void (*op)(uint8_t* a, uint8_t b, uint8_t *sreg1);
-	op_alu1_select(&op, op_name);
+void op_test_alu0s(String op_name) {
+	void (*op)(uint8_t* a, uint8_t b, uint8_t *sreg);
+	op_alu0s_select(&op, op_name);
 	uint8_t buf[16];
 	uint8_t a, b, sreg, sreg0;
 	int i, j, s;
@@ -48,23 +49,24 @@ void op_test_alu1(String op_name) {
 	}
 }
 
-void op_test_alu2(String op_name) {
+void op_test_alu1(String op_name) {
 	void (*op)(uint8_t* a, uint8_t *sreg);
-	op_alu2_select(&op, op_name);
+	op_alu1_select(&op, op_name);
 	uint8_t buf[16];
-	uint8_t a, sreg;
+	uint8_t a, sreg, sreg0;
 	int i;
 	for (i = 0; i < 0x100; i++) {
 		a = i;
+		sreg = sreg0;
 		op(&a, &sreg);
-		buf[0] = i; buf[1] = a; buf[2] = sreg;
-		Serial.write(buf, 3);
+		buf[0] = sreg0; buf[1] = i; buf[2] = a; buf[3] = sreg;
+		Serial.write(buf, 4);
 	}
 }
 
-void op_test_alu3(String op_name) {
+void op_test_alu1s(String op_name) {
 	void (*op)(uint8_t* a, uint8_t *sreg);
-	op_alu3_select(&op, op_name);
+	op_alu1s_select(&op, op_name);
 	uint8_t buf[16];
 	uint8_t a, sreg, sreg0;
 	int i, s;
@@ -103,12 +105,12 @@ void loop_main() {
 	if (op_type.equals("")) {
 	} else if (op_type.equals("ALU0")) {
 		op_test_alu0(op_name);
+	} else if (op_type.equals("ALU0S")) {
+		op_test_alu0s(op_name);
 	} else if (op_type.equals("ALU1")) {
 		op_test_alu1(op_name);
-	} else if (op_type.equals("ALU2")) {
-		op_test_alu2(op_name);
-	} else if (op_type.equals("ALU3")) {
-		op_test_alu3(op_name);
+	} else if (op_type.equals("ALU1S")) {
+		op_test_alu1s(op_name);
 	} else {
 	}
 }

@@ -29,17 +29,17 @@ def reset(port):
 CMD_START = b'START'
 OUT_PATH = 'vectors'
 
-ops_alu0 = ['ADD', 'AND', 'CP', 'EOR', 'MOV', 'OR', 'SUB']
-ops_alu1 = ['ADC', 'CPC', 'SBC']
-ops_alu2 = ['COM', 'NEG', 'INC', 'DEC', 'SER', 'ASR', 'SWAP']
-ops_alu3 = ['ROR']
+ops_alu0  = ['ADD', 'AND', 'CP', 'EOR', 'MOV', 'OR', 'SUB']
+ops_alu0s = ['ADC', 'CPC', 'SBC']
+ops_alu1  = ['COM', 'NEG', 'INC', 'DEC', 'SER', 'ASR', 'SWAP']
+ops_alu1s = ['ROR']
 
 ops = [
         # (OP_TYPE, OP_LIST, OUT_HEADER, OUT_LEN, OUT_END)
-        # ('ALU0', ops_alu0, '# a0 b a1 sreg', 4, [0xff, 0xff]),
-        # ('ALU1', ops_alu1, '# sreg0 a0 b a1 sreg1', 5, [1 << 0, 0xff, 0xff]),
-        # ('ALU2', ops_alu2, '# a0 a1 sreg', 3, [0xff]),
-        ('ALU3', ops_alu3, '# sreg0 a0 a1 sreg1', 4, [1 << 0, 0xff]),
+        ('ALU0' , ops_alu0 , '# sreg0 a0 b a1 sreg1', 5, [0 << 0, 0xff, 0xff]),
+        ('ALU0S', ops_alu0s, '# sreg0 a0 b a1 sreg1', 5, [1 << 0, 0xff, 0xff]),
+        ('ALU1' , ops_alu1 , '# sreg0 a0 a1 sreg1'  , 4, [0 << 0, 0xff]      ),
+        ('ALU1S', ops_alu1s, '# sreg0 a0 a1 sreg1'  , 4, [1 << 0, 0xff]      ),
         ]
 
 if __name__ == "__main__":

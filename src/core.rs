@@ -1194,11 +1194,11 @@ impl Core {
     fn op_neg(&mut self, d: u8) -> usize {
         let (res, _) = 0x00u8.overflowing_sub(self.regs[d]);
         self.status_reg.c = res != 0;
-        let (r7, r3, rd3) = (res & 1 << 7, res & 1 << 3, self.regs[d] & 1 << 3);
+        let r7 = res & 1 << 7;
         self.status_reg.n = r7 != 0;
         self.status_reg.v = res == 0x80;
         self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.h = r3 != 0 && rd3 == 0;
+        self.status_reg.h = (self.regs[d] & 0x0f) != 0;
         self.status_reg.z = res == 0;
         self.regs[d] = res;
 
