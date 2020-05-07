@@ -1232,6 +1232,7 @@ impl Core {
         let r7 = res & 1 << 7;
         self.status_reg.n = r7 != 0;
         self.status_reg.v = false;
+        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
         self.status_reg.z = res == 0;
         self.regs[d] = res;
 
@@ -1362,8 +1363,8 @@ impl Core {
     fn op_sbci(&mut self, d: u8, k: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(k);
         let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
-        self.status_reg.c = c0 || c1;
         self.aux_op_sub_flags(self.regs[d], k, self.status_reg.c, res);
+        self.status_reg.c = c0 || c1;
         if res != 0 {
             self.status_reg.z = false;
         }
