@@ -35,7 +35,7 @@ OUT_PATH = 'vectors'
 
 OPS_ALU0  = ['add', 'and', 'cp', 'eor', 'mov', 'or', 'sub']
 OPS_ALU0S = ['adc', 'cpc', 'sbc']
-OPS_ALU1  = ['com', 'neg', 'inc', 'dec', 'ser', 'asr', 'swap']
+OPS_ALU1  = ['com', 'neg', 'inc', 'dec', 'ser', 'asr', 'swap', 'lsr']
 OPS_ALU1S = ['ror']
 OPS_ALU2 = ['subi', 'andi', 'ori', 'cpi', 'ldi']
 OPS_ALU2S = ['sbci']
@@ -53,9 +53,9 @@ OPS = [
         # (OP_TYPE, OP_LIST, OUT_HEADER, OUT_LEN, OUT_END)
         # ('alu0' , OPS_ALU0 , '# sreg0 a0 b a1 sreg1', 5, [0 << 0, 0xff, 0xff]),
         # ('alu0s', OPS_ALU0S, '# sreg0 a0 b a1 sreg1', 5, [1 << 0, 0xff, 0xff]),
-        # ('alu1' , OPS_ALU1 , '# sreg0 a0 a1 sreg1'  , 4, [0 << 0, 0xff]      ),
+        ('alu1' , OPS_ALU1 , '# sreg0 a0 a1 sreg1'  , 4, [0 << 0, 0xff]      ),
         # ('alu1s', OPS_ALU1S, '# sreg0 a0 a1 sreg1'  , 4, [1 << 0, 0xff]      ),
-        ('alu4' , OPS_ALU4 , '# a0 b0 a1 b1 sreg1'  , 5, [0xff, 0xff]        ),
+        # ('alu4' , OPS_ALU4 , '# a0 b0 a1 b1 sreg1'  , 5, [0xff, 0xff]        ),
         ]
 
 OPS_K = [

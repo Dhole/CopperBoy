@@ -840,7 +840,7 @@ fn test_op_or() {
     core.regs[1] = 0x65;
     core.op_or(0, 1);
     assert_eq!(core.regs[0], 0xe5);
-    assert_status_reg_true!(&core.status_reg, &['n']);
+    assert_status_reg_true!(&core.status_reg, &['s', 'n']);
 
     core.regs[0] = 0x00;
     core.regs[1] = 0x00;
@@ -862,7 +862,7 @@ fn test_op_ori() {
     core.regs[0] = 0x81;
     core.op_ori(0, 0x65);
     assert_eq!(core.regs[0], 0xe5);
-    assert_status_reg_true!(&core.status_reg, &['n']);
+    assert_status_reg_true!(&core.status_reg, &['s', 'n']);
 
     core.regs[0] = 0x00;
     core.op_ori(0, 0x00);
@@ -902,14 +902,14 @@ fn test_op_rcall() {
 
     core.pc = 0x01;
     core.op_rcall(0x0123);
-    assert_eq!(core.pc, 0x0124);
+    assert_eq!(core.pc, 0x0125);
     assert_eq!(core.sp, (SRAM_END - 1) - 2);
     assert_eq!(core.data_load_u16((SRAM_END - 1) - 1), 0x02);
 
     core.op_rcall(-0x0025);
-    assert_eq!(core.pc, 0x00ff);
+    assert_eq!(core.pc, 0x00101);
     assert_eq!(core.sp, (SRAM_END - 1) - (2 + 2));
-    assert_eq!(core.data_load_u16((SRAM_END - 1) - (1 + 2)), 0x0125);
+    assert_eq!(core.data_load_u16((SRAM_END - 1) - (1 + 2)), 0x0126);
 }
 
 #[test]
@@ -943,10 +943,10 @@ fn test_op_rjmp() {
 
     core.pc = 0x01;
     core.op_rjmp(0x0123);
-    assert_eq!(core.pc, 0x0124);
+    assert_eq!(core.pc, 0x0125);
 
     core.op_rjmp(-0x0025);
-    assert_eq!(core.pc, 0x00ff);
+    assert_eq!(core.pc, 0x00101);
 }
 
 // #[test]

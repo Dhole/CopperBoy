@@ -1062,7 +1062,6 @@ impl Core {
                 2
             }
             LdStExt::PreDec => {
-                println!(">>> addr: 0x{:04x}", addr);
                 addr -= 1;
                 self.regs[d] = self.data_load(addr);
                 2

@@ -1,150 +1,134 @@
 
-void op_mul(uint8_t* a, uint8_t* b, uint8_t *sreg) {
+void op_com(uint8_t* a, uint8_t *sreg) {
 	SREG = *sreg;
 	asm volatile(
-                "push r0 \n"
-                "push r1 \n"
-		"mul %0, %1 \n"
-		"in %2, __SREG__ \n"
-                "mov %0, r0 \n"
-                "mov %1, r1 \n"
-                "pop r1 \n"
-                "pop r0 \n"
-		: "=a" (*a), "=a" (*b), "=r" (*sreg)
-		: "0" (*a), "1" (*b)
+		"com %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
 		:
 	);
 }
 
-void op_muls(uint8_t* a, uint8_t* b, uint8_t *sreg) {
+void op_neg(uint8_t* a, uint8_t *sreg) {
 	SREG = *sreg;
 	asm volatile(
-                "push r0 \n"
-                "push r1 \n"
-		"muls %0, %1 \n"
-		"in %2, __SREG__ \n"
-                "mov %0, r0 \n"
-                "mov %1, r1 \n"
-                "pop r1 \n"
-                "pop r0 \n"
-		: "=a" (*a), "=a" (*b), "=r" (*sreg)
-		: "0" (*a), "1" (*b)
+		"neg %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
 		:
 	);
 }
 
-void op_mulsu(uint8_t* a, uint8_t* b, uint8_t *sreg) {
+void op_inc(uint8_t* a, uint8_t *sreg) {
 	SREG = *sreg;
 	asm volatile(
-                "push r0 \n"
-                "push r1 \n"
-		"mulsu %0, %1 \n"
-		"in %2, __SREG__ \n"
-                "mov %0, r0 \n"
-                "mov %1, r1 \n"
-                "pop r1 \n"
-                "pop r0 \n"
-		: "=a" (*a), "=a" (*b), "=r" (*sreg)
-		: "0" (*a), "1" (*b)
+		"inc %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
 		:
 	);
 }
 
-void op_fmul(uint8_t* a, uint8_t* b, uint8_t *sreg) {
+void op_dec(uint8_t* a, uint8_t *sreg) {
 	SREG = *sreg;
 	asm volatile(
-                "push r0 \n"
-                "push r1 \n"
-		"fmul %0, %1 \n"
-		"in %2, __SREG__ \n"
-                "mov %0, r0 \n"
-                "mov %1, r1 \n"
-                "pop r1 \n"
-                "pop r0 \n"
-		: "=a" (*a), "=a" (*b), "=r" (*sreg)
-		: "0" (*a), "1" (*b)
+		"dec %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
 		:
 	);
 }
 
-void op_fmuls(uint8_t* a, uint8_t* b, uint8_t *sreg) {
+void op_ser(uint8_t* a, uint8_t *sreg) {
 	SREG = *sreg;
 	asm volatile(
-                "push r0 \n"
-                "push r1 \n"
-		"fmuls %0, %1 \n"
-		"in %2, __SREG__ \n"
-                "mov %0, r0 \n"
-                "mov %1, r1 \n"
-                "pop r1 \n"
-                "pop r0 \n"
-		: "=a" (*a), "=a" (*b), "=r" (*sreg)
-		: "0" (*a), "1" (*b)
+		"ser %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
 		:
 	);
 }
 
-void op_fmulsu(uint8_t* a, uint8_t* b, uint8_t *sreg) {
+void op_asr(uint8_t* a, uint8_t *sreg) {
 	SREG = *sreg;
 	asm volatile(
-                "push r0 \n"
-                "push r1 \n"
-		"fmulsu %0, %1 \n"
-		"in %2, __SREG__ \n"
-                "mov %0, r0 \n"
-                "mov %1, r1 \n"
-                "pop r1 \n"
-                "pop r0 \n"
-		: "=a" (*a), "=a" (*b), "=r" (*sreg)
-		: "0" (*a), "1" (*b)
+		"asr %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
 		:
 	);
 }
 
-void op_alu4_select(void (**op)(uint8_t* a, uint8_t* b, uint8_t *sreg), String cmd) {
+void op_swap(uint8_t* a, uint8_t *sreg) {
+	SREG = *sreg;
+	asm volatile(
+		"swap %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_lsr(uint8_t* a, uint8_t *sreg) {
+	SREG = *sreg;
+	asm volatile(
+		"lsr %0 \n"
+		"in %1, __SREG__ \n"
+		: "=r" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}
+
+void op_alu1_select(void (**op)(uint8_t* a, uint8_t *sreg), String cmd) {
 	if (cmd.equals("")) {
-	} else if (cmd.equals("mul")) {
-		*op = &op_mul;
-	} else if (cmd.equals("muls")) {
-		*op = &op_muls;
-	} else if (cmd.equals("mulsu")) {
-		*op = &op_mulsu;
-	} else if (cmd.equals("fmul")) {
-		*op = &op_fmul;
-	} else if (cmd.equals("fmuls")) {
-		*op = &op_fmuls;
-	} else if (cmd.equals("fmulsu")) {
-		*op = &op_fmulsu;
+	} else if (cmd.equals("com")) {
+		*op = &op_com;
+	} else if (cmd.equals("neg")) {
+		*op = &op_neg;
+	} else if (cmd.equals("inc")) {
+		*op = &op_inc;
+	} else if (cmd.equals("dec")) {
+		*op = &op_dec;
+	} else if (cmd.equals("ser")) {
+		*op = &op_ser;
+	} else if (cmd.equals("asr")) {
+		*op = &op_asr;
+	} else if (cmd.equals("swap")) {
+		*op = &op_swap;
+	} else if (cmd.equals("lsr")) {
+		*op = &op_lsr;
 	} else {
 	}
 }
 
-void op_test_alu4(String op_name) {
-	void (*op)(uint8_t* a, uint8_t* b, uint8_t *sreg);
-	op_alu4_select(&op, op_name);
+void op_test_alu1(String op_name) {
+	void (*op)(uint8_t* a, uint8_t *sreg);
+	op_alu1_select(&op, op_name);
 	uint8_t buf[16];
-	uint8_t a, b, sreg;
-	uint32_t i, j;
-        for (i = 0; i < 0x100; i++) {
-                for (j = 0; j < 0x100; j++) {
-                        sreg = 0;
-                        a = i;
-                        b = j;
-                        op(&a, &b, &sreg);
-                        buf[0] = i;
-                        buf[1] = j;
-                        buf[2] = a;
-                        buf[3] = b;
-                        buf[4] = sreg;
-                        Serial.write(buf, 5);
-                }
-        }
+	uint8_t a, sreg, sreg0;
+	int i;
+	for (i = 0; i < 0x100; i++) {
+                sreg0 = 0;
+		a = i;
+		sreg = sreg0;
+		op(&a, &sreg);
+		buf[0] = sreg0; buf[1] = i; buf[2] = a; buf[3] = sreg;
+		Serial.write(buf, 4);
+	}
 }
 
 void test_op(String op_type, String op_name) {
 	if (op_type.equals("")) {
-        } else if (op_type.equals("alu4")) {
-		op_test_alu4(op_name);
+        } else if (op_type.equals("alu1")) {
+		op_test_alu1(op_name);
 	} else {
 	}
 }

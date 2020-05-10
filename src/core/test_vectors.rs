@@ -297,6 +297,7 @@ fn test_vec_ops_alu1() {
     ops.insert("asr" , Box::new(|c: &mut Core| { c.op_asr( 0); }));
     ops.insert("swap", Box::new(|c: &mut Core| { c.op_swap(0); }));
     ops.insert("ror" , Box::new(|c: &mut Core| { c.op_ror( 0); }));
+    ops.insert("lsr" , Box::new(|c: &mut Core| { c.op_lsr( 0); }));
 
     let mut core = Core::new();
     for (op, f) in &ops {

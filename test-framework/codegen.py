@@ -24,6 +24,7 @@
 #- 110 SER    1110_1111_dddd_1111
 #-  10 ASR    1001_010d_dddd_0101
 #- 125 SWAP   1001_010d_dddd_0010
+#  78 LSR    1001_010d_dddd_0110
 
 # =ALU1S= (SREG, Rd) -> (Rd)
 #-  96 ROR    1001_010d_dddd_0111
@@ -46,32 +47,36 @@
 #  80 MOVW   0000_0001_dddd_rrrr
 
 # =ALU5= (Rd, Rr) -> (R0, R1)
-#  81 MUL    1001_11rd_dddd_rrrr
-#  82 MULS   0000_0010_dddd_rrrr
-#  83 MULSU  0000_0011_0ddd_0rrr
-#  59 FMUL   0000_0011_0ddd_1rrr
-#  60 FMULS  0000_0011_1ddd_0rrr
-#  61 FMULSU 0000_0011_1ddd_1rrr
+#-  81 MUL    1001_11rd_dddd_rrrr
+#-  82 MULS   0000_0010_dddd_rrrr
+#-  83 MULSU  0000_0011_0ddd_0rrr
+#-  59 FMUL   0000_0011_0ddd_1rrr
+#-  60 FMULS  0000_0011_1ddd_0rrr
+#-  61 FMULSU 0000_0011_1ddd_1rrr
 
+# =BIT SET/CLEAR/LOAD=
 #  11 BCLR   1001_0100_1sss_1000
 #  12 BLD    1111_100d_dddd_0bbb
+#  35 BST    1111_101d_dddd_0bbb
+#  34 BSET   1001_0100_0sss_1000
+#  37 CBI    1001_1000_AAAA_Abbb
+#  99 SBI    1001_1010_AAAA_Abbb
+
+# =BRANCH=
 #  13 BRBC   1111_01kk_kkkk_ksss
 #  14 BRBS   1111_00kk_kkkk_ksss
-#  17 BREAK  1001_0101_1001_1000
-#  34 BSET   1001_0100_0sss_1000
-#  35 BST    1111_101d_dddd_0bbb
-#  36 CALL   1001_010k_kkkk_111k kkkk_kkkk_kkkk_kkkk
-#  37 CBI    1001_1000_AAAA_Abbb
+
+# =SKIP=
 #  52 CPSE   0001_00rd_dddd_rrrr
-#  55 EICALL 1001_0101_0001_1001
-#  56 EIJMP  1001_0100_0001_1001
+# 100 SBIC   1001_1001_AAAA_Abbb
+# 101 SBIS   1001_1011_AAAA_Abbb
+# 104 SBRC   1111_110r_rrrr_0bbb
+# 105 SBRS   1111_111r_rrrr_0bbb
+
+# =LOAD/STORE=
 #  57 ELPMR0 1001_0101_1101_1000
 #  57 ELPM   1001_000d_dddd_0110
 #  57 ELPMINC 1001_000d_dddd_0111
-#  62 ICALL  1001_0101_0000_1001
-#  63 IJMP   1001_0100_0000_1001
-#  64 IN     1011_0AAd_dddd_AAAA
-#  66 JMP    1001_010k_kkkk_110k kkkk_kkkk_kkkk_kkkk
 #  70 LDX    1001_000d_dddd_1100
 #  70 LDXINC 1001_000d_dddd_1101
 #  70 LDXDEC 1001_000d_dddd_1110
@@ -85,21 +90,6 @@
 #  76 LPMR0  1001_0101_1100_1000
 #  76 LPM    1001_000d_dddd_0100
 #  76 LPMINC 1001_000d_dddd_0101
-#  78 LSR    1001_010d_dddd_0110
-#  85 NOP    0000_0000_0000_0000
-#  88 OUT    1011_1AAr_rrrr_AAAA
-#  89 POP    1001_000d_dddd_1111
-#  90 PUSH   1001_001r_rrrr_1111
-#  91 RCALL  1101_kkkk_kkkk_kkkk
-#  92 RET    1001_0101_0000_1000
-#  93 RETI   1001_0101_0001_1000
-#  94 RJMP   1100_kkkk_kkkk_kkkk
-#  99 SBI    1001_1010_AAAA_Abbb
-# 100 SBIC   1001_1001_AAAA_Abbb
-# 101 SBIS   1001_1011_AAAA_Abbb
-# 104 SBRC   1111_110r_rrrr_0bbb
-# 105 SBRS   1111_111r_rrrr_0bbb
-# 115 SLEEP  1001_0101_1000_1000
 # 116 SPM    1001_0101_1110_1000
 # 117 SPM2   1001_0101_1111_1000
 # 118 STX    1001_001r_rrrr_1100
@@ -112,6 +102,26 @@
 # 120 STZDEC 1001_001r_rrrr_0010
 # 120 STZADQ 10q0_qq1r_rrrr_0qqq
 # 121 STS    1001_001r_rrrr_0000 kkkk_kkkk_kkkk_kkkk
+
+# =JUMPS=
+#  36 CALL   1001_010k_kkkk_111k kkkk_kkkk_kkkk_kkkk
+#  55 EICALL 1001_0101_0001_1001
+#  62 ICALL  1001_0101_0000_1001
+#  63 IJMP   1001_0100_0000_1001
+#  66 JMP    1001_010k_kkkk_110k kkkk_kkkk_kkkk_kkkk
+#  91 RCALL  1101_kkkk_kkkk_kkkk
+#  92 RET    1001_0101_0000_1000
+#  93 RETI   1001_0101_0001_1000
+
+#  17 BREAK  1001_0101_1001_1000
+#  56 EIJMP  1001_0100_0001_1001
+#  64 IN     1011_0AAd_dddd_AAAA
+#  85 NOP    0000_0000_0000_0000
+#  88 OUT    1011_1AAr_rrrr_AAAA
+#  89 POP    1001_000d_dddd_1111
+#  90 PUSH   1001_001r_rrrr_1111
+#  94 RJMP   1100_kkkk_kkkk_kkkk
+# 115 SLEEP  1001_0101_1000_1000
 # 127 WDR    1001_0101_1010_1000
 
 OP_TEST_LOOP_ALU0 = """
@@ -346,7 +356,7 @@ void op_{op}(uint8_t* a, uint8_t b, uint8_t *sreg) {{
 }}
 """
 
-ops_alu1 = ['COM', 'NEG', 'INC', 'DEC', 'SER', 'ASR', 'SWAP']
+ops_alu1 = ['COM', 'NEG', 'INC', 'DEC', 'SER', 'ASR', 'SWAP', 'LSR']
 ops_alu1s = ['ROR']
 OP_ALU1_ARGS = "uint8_t* a, uint8_t *sreg"
 OP_ALU1_TEST = """
