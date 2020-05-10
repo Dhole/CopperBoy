@@ -26,19 +26,33 @@
 #- 125 SWAP   1001_010d_dddd_0010
 
 # =ALU1S= (SREG, Rd) -> (Rd)
-#  96 ROR    1001_010d_dddd_0111
+#-  96 ROR    1001_010d_dddd_0111
 
 # =ALU2= (Rd, k) -> (Rd)
-# 124 SUBI   0101_KKKK_dddd_KKKK
-#   9 ANDI   0111_KKKK_dddd_KKKK
-#  87 ORI    0110_KKKK_dddd_KKKK
-#  51 CPI    0011_KKKK_dddd_KKKK
-#  73 LDI    1110_KKKK_dddd_KKKK
+#- 124 SUBI   0101_KKKK_dddd_KKKK
+#-   9 ANDI   0111_KKKK_dddd_KKKK
+#-  87 ORI    0110_KKKK_dddd_KKKK
+#-  51 CPI    0011_KKKK_dddd_KKKK
+#-  73 LDI    1110_KKKK_dddd_KKKK
 
 # =ALU2S= (SREG, Rd, k) -> (Rd)
-#  98 SBCI   0100_KKKK_dddd_KKKK
+#-  98 SBCI   0100_KKKK_dddd_KKKK
 
-#   7 ADIW   1001_0110_KKdd_KKKK
+# =ALU3= (Rd0, Rd1, k) -> (Rd0, Rd1)
+#-   7 ADIW   1001_0110_KKdd_KKKK
+#- 102 SBIW   1001_0111_KKdd_KKKK
+
+# =ALU4= (Rr0, Rr1) -> (Rd0, Rd1)
+#  80 MOVW   0000_0001_dddd_rrrr
+
+# =ALU5= (Rd, Rr) -> (R0, R1)
+#  81 MUL    1001_11rd_dddd_rrrr
+#  82 MULS   0000_0010_dddd_rrrr
+#  83 MULSU  0000_0011_0ddd_0rrr
+#  59 FMUL   0000_0011_0ddd_1rrr
+#  60 FMULS  0000_0011_1ddd_0rrr
+#  61 FMULSU 0000_0011_1ddd_1rrr
+
 #  11 BCLR   1001_0100_1sss_1000
 #  12 BLD    1111_100d_dddd_0bbb
 #  13 BRBC   1111_01kk_kkkk_ksss
@@ -54,9 +68,6 @@
 #  57 ELPMR0 1001_0101_1101_1000
 #  57 ELPM   1001_000d_dddd_0110
 #  57 ELPMINC 1001_000d_dddd_0111
-#  59 FMUL   0000_0011_0ddd_1rrr
-#  60 FMULS  0000_0011_1ddd_0rrr
-#  61 FMULSU 0000_0011_1ddd_1rrr
 #  62 ICALL  1001_0101_0000_1001
 #  63 IJMP   1001_0100_0000_1001
 #  64 IN     1011_0AAd_dddd_AAAA
@@ -75,10 +86,6 @@
 #  76 LPM    1001_000d_dddd_0100
 #  76 LPMINC 1001_000d_dddd_0101
 #  78 LSR    1001_010d_dddd_0110
-#  80 MOVW   0000_0001_dddd_rrrr
-#  81 MUL    1001_11rd_dddd_rrrr
-#  82 MULS   0000_0010_dddd_rrrr
-#  83 MULSU  0000_0011_0ddd_0rrr
 #  85 NOP    0000_0000_0000_0000
 #  88 OUT    1011_1AAr_rrrr_AAAA
 #  89 POP    1001_000d_dddd_1111
@@ -90,7 +97,6 @@
 #  99 SBI    1001_1010_AAAA_Abbb
 # 100 SBIC   1001_1001_AAAA_Abbb
 # 101 SBIS   1001_1011_AAAA_Abbb
-# 102 SBIW   1001_0111_KKdd_KKKK
 # 104 SBRC   1111_110r_rrrr_0bbb
 # 105 SBRS   1111_111r_rrrr_0bbb
 # 115 SLEEP  1001_0101_1000_1000
@@ -117,6 +123,7 @@ void op_test_alu0(String op_name) {
 	int i, j;
 	for (i = 0; i < 0x100; i++) {
 		for (j = 0; j < 0x100; j++) {
+                        sreg0 = 0;
 			a = i;
 			b = j;
 			sreg = sreg0;
@@ -163,6 +170,7 @@ void op_test_alu1(String op_name) {
 	uint8_t a, sreg, sreg0;
 	int i;
 	for (i = 0; i < 0x100; i++) {
+                sreg0 = 0;
 		a = i;
 		sreg = sreg0;
 		op(&a, &sreg);
@@ -204,6 +212,7 @@ void op_test_alu2(String op_name) {
 	uint8_t a, sreg, sreg0;
 	int i;
 	for (i = 0; i < 0x100; i++) {
+                sreg0 = 0;
 		a = i;
 		sreg = sreg0;
 		op(&a, &sreg);
@@ -236,6 +245,54 @@ void op_test_alu2s(String op_name) {
 	}
 }
 """
+
+OP_TEST_LOOP_ALU3 = """
+void op_test_alu3(String op_name) {
+	void (*op)(uint16_t* a, uint8_t *sreg);
+	op_alu3_select(&op, op_name);
+	uint8_t buf[16];
+        uint16_t a;
+	uint8_t sreg, sreg0;
+	uint32_t i;
+        for (i = 0; i < 0x10000; i++) {
+                sreg = 0;
+                a = i;
+                sreg = sreg0;
+                op(&a, &sreg);
+                buf[0] = (uint8_t) (i & 0x00ff);
+                buf[1] = (uint8_t) ((i >> 8) & 0x00ff);
+                buf[2] = (uint8_t) (a & 0x00ff);
+                buf[3] = (uint8_t) ((a >> 8) & 0x00ff);
+                buf[4] = sreg;
+                Serial.write(buf, 5);
+        }
+}
+"""
+
+OP_TEST_LOOP_ALU4 = """
+void op_test_alu4(String op_name) {
+	void (*op)(uint8_t* a, uint8_t* b, uint8_t *sreg);
+	op_alu4_select(&op, op_name);
+	uint8_t buf[16];
+	uint8_t a, b, sreg;
+	uint32_t i, j;
+        for (i = 0; i < 0x100; i++) {
+                for (j = 0; j < 0x100; j++) {
+                        sreg = 0;
+                        a = i;
+                        b = j;
+                        op(&a, &b, &sreg);
+                        buf[0] = i;
+                        buf[1] = j;
+                        buf[2] = a;
+                        buf[3] = b;
+                        buf[4] = sreg;
+                        Serial.write(buf, 5);
+                }
+        }
+}
+"""
+
 
 OP_TEST_MAIN_BEGIN = """
 void test_op(String op_type, String op_name) {
@@ -322,16 +379,57 @@ void op_{op}_{k}(uint8_t* a, uint8_t *sreg) {{
 }}
 """
 
+ops_alu3 = ['ADIW', 'SBIW']
+OP_ALU3_ARGS = "uint16_t* a, uint8_t *sreg"
+OP_ALU3_TEST = """
+void op_{op}_{k}(uint16_t* a, uint8_t *sreg) {{
+	SREG = *sreg;
+	asm volatile(
+		"{op} %0, 0x{k} \\n"
+		"in %1, __SREG__ \\n"
+		: "=w" (*a), "=r" (*sreg)
+		: "0" (*a)
+		:
+	);
+}}
+"""
+
+
+
+ops_alu4 = ['MUL', 'MULS', 'MULSU', 'FMUL', 'FMULS', 'FMULSU']
+OP_ALU4_ARGS = "uint8_t* a, uint8_t* b, uint8_t *sreg"
+OP_ALU4_TEST = """
+void op_{op}(uint8_t* a, uint8_t* b, uint8_t *sreg) {{
+	SREG = *sreg;
+	asm volatile(
+                "push r0 \\n"
+                "push r1 \\n"
+		"{op} %0, %1 \\n"
+		"in %2, __SREG__ \\n"
+                "mov %0, r0 \\n"
+                "mov %1, r1 \\n"
+                "pop r1 \\n"
+                "pop r0 \\n"
+		: "=a" (*a), "=a" (*b), "=r" (*sreg)
+		: "0" (*a), "1" (*b)
+		:
+	);
+}}
+"""
+
+
 OPS = {
         'alu0' : (OP_TEST_LOOP_ALU0 , OP_ALU0_TEST, OP_ALU0_ARGS),
         'alu0s': (OP_TEST_LOOP_ALU0S, OP_ALU0_TEST, OP_ALU0_ARGS),
         'alu1' : (OP_TEST_LOOP_ALU1 , OP_ALU1_TEST, OP_ALU1_ARGS),
         'alu1s': (OP_TEST_LOOP_ALU1S, OP_ALU1_TEST, OP_ALU1_ARGS),
+        'alu4' : (OP_TEST_LOOP_ALU4 , OP_ALU4_TEST, OP_ALU4_ARGS),
         }
 
 OPS_K = {
         'alu2' : (OP_TEST_LOOP_ALU2 , OP_ALU2_TEST, OP_ALU2_ARGS, 0x100),
         'alu2s': (OP_TEST_LOOP_ALU2S, OP_ALU2_TEST, OP_ALU2_ARGS, 0x100),
+        'alu3' : (OP_TEST_LOOP_ALU3 , OP_ALU3_TEST, OP_ALU3_ARGS, 0x40),
         }
 
 def gen_ops(f, op_type, ops_list):

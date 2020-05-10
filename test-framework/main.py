@@ -39,6 +39,8 @@ OPS_ALU1  = ['com', 'neg', 'inc', 'dec', 'ser', 'asr', 'swap']
 OPS_ALU1S = ['ror']
 OPS_ALU2 = ['subi', 'andi', 'ori', 'cpi', 'ldi']
 OPS_ALU2S = ['sbci']
+OPS_ALU3 = ['adiw', 'sbiw']
+OPS_ALU4 = ['mul', 'muls', 'mulsu', 'fmul', 'fmuls', 'fmulsu']
 
 # OPS_ALU0  = []
 # OPS_ALU0S = []
@@ -49,15 +51,17 @@ OPS_ALU2S = ['sbci']
 
 OPS = [
         # (OP_TYPE, OP_LIST, OUT_HEADER, OUT_LEN, OUT_END)
-        ('alu0' , OPS_ALU0 , '# sreg0 a0 b a1 sreg1', 5, [0 << 0, 0xff, 0xff]),
-        ('alu0s', OPS_ALU0S, '# sreg0 a0 b a1 sreg1', 5, [1 << 0, 0xff, 0xff]),
-        ('alu1' , OPS_ALU1 , '# sreg0 a0 a1 sreg1'  , 4, [0 << 0, 0xff]      ),
-        ('alu1s', OPS_ALU1S, '# sreg0 a0 a1 sreg1'  , 4, [1 << 0, 0xff]      ),
+        # ('alu0' , OPS_ALU0 , '# sreg0 a0 b a1 sreg1', 5, [0 << 0, 0xff, 0xff]),
+        # ('alu0s', OPS_ALU0S, '# sreg0 a0 b a1 sreg1', 5, [1 << 0, 0xff, 0xff]),
+        # ('alu1' , OPS_ALU1 , '# sreg0 a0 a1 sreg1'  , 4, [0 << 0, 0xff]      ),
+        # ('alu1s', OPS_ALU1S, '# sreg0 a0 a1 sreg1'  , 4, [1 << 0, 0xff]      ),
+        ('alu4' , OPS_ALU4 , '# a0 b0 a1 b1 sreg1'  , 5, [0xff, 0xff]        ),
         ]
 
 OPS_K = [
-        ('alu2' , OPS_ALU2 , '# sreg0 a0 k a1 sreg1'  , 4, [0 << 0, 0xff], codegen.OPS_K['alu2'][3]),
-        ('alu2s', OPS_ALU2S, '# sreg0 a0 k a1 sreg1'  , 4, [1 << 0, 0xff], codegen.OPS_K['alu2s'][3]),
+        # ('alu2' , OPS_ALU2 , '# sreg0 a0 k a1 sreg1'  , 4, [0 << 0, 0xff], codegen.OPS_K['alu2'][3]),
+        # ('alu2s', OPS_ALU2S, '# sreg0 a0 k a1 sreg1'  , 4, [1 << 0, 0xff], codegen.OPS_K['alu2s'][3]),
+        ('alu3' , OPS_ALU3 , '# a0 b0 k a1 b1 sreg1'  , 5, [0xff, 0xff]  , codegen.OPS_K['alu3'][3]),
         ]
 
 def test_op(com, op_type, op, out_header, out_len, out_end):
@@ -71,6 +75,7 @@ def test_op(com, op_type, op, out_header, out_len, out_end):
             r_hex = []
             for b in r:
                 r_hex.append('{:02x}'.format(b))
+            # print(' '.join(r_hex))
             out.write(' '.join(r_hex) + '\n')
             if r[:len(out_end)] == out_end:
                 print('done')
@@ -94,6 +99,7 @@ def test_op_k(com, op_type, op, out_header, out_len, out_end, k_range):
                 for b in r:
                     r_hex.append('{:02x}'.format(b))
                 r_hex = r_hex[:2] + [k] + r_hex[2:]
+                # print(r_hex)
                 out.write(' '.join(r_hex) + '\n')
                 if r[:len(out_end)] == out_end:
                     print('done')
@@ -181,5 +187,5 @@ if __name__ == "__main__":
     os.makedirs(OUT_PATH, exist_ok=True)
 
     run_test_ops(port)
-    run_test_ops_k(port)
+    # run_test_ops_k(port)
 
