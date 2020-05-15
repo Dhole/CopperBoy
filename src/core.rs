@@ -473,9 +473,9 @@ impl Core {
             self.sram[(addr - SRAM_ADDR) as usize]
         } else {
             debug!(
-                "I/O Registers / Extended I/O Space load at 0x{:04x} ({})",
+                "I/O Registers / Extended I/O Space load at 0x{:04x} {:?}",
                 addr,
-                io_reg_str(addr).unwrap_or("Unknown")
+                io_reg_str(addr).unwrap_or(("Unknown", ""))
             );
             match addr {
                 io_regs::SPL => get_lo(self.sp),
@@ -516,12 +516,17 @@ impl Core {
                 io_regs::PRR0 => 0,  // TODO
                 io_regs::PRR1 => 0,  // TODO
                 io_regs::SMCR => 0,  // TODO
+                io_regs::PINB => 0,  // TODO
+                io_regs::PINC => 0,  // TODO
+                io_regs::PIND => 0,  // TODO
+                io_regs::PINE => 0,  // TODO
+                io_regs::PINF => 0,  // TODO
                 io_regs::PLLCSR => self.clock.reg_pllcsr(), // TODO: PLL Control and Status Register
                 _ => {
                     warn!(
-                        "I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} ({})",
+                        "I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} {:?}",
                         addr,
-                        io_reg_str(addr).unwrap_or("Unknown")
+                        io_reg_str(addr).unwrap_or(("Unknown", ""))
                     );
                     unimplemented!()
                 }
@@ -540,10 +545,10 @@ impl Core {
             self.sram[(addr - SRAM_ADDR) as usize] = v;
         } else {
             debug!(
-                "I/O Registers / Extended I/O Space store (0x{:02x}) at 0x{:04x} ({})",
+                "I/O Registers / Extended I/O Space store (0x{:02x}) at 0x{:04x} {:?}",
                 v,
                 addr,
-                io_reg_str(addr).unwrap_or("Unknown")
+                io_reg_str(addr).unwrap_or(("Unknown", ""))
             );
             match addr {
                 io_regs::SPL => set_lo(&mut self.sp, v),
@@ -578,19 +583,24 @@ impl Core {
                 io_regs::PORTD => {} // TODO
                 io_regs::PORTE => {} // TODO
                 io_regs::PORTF => {} // TODO
-                io_regs::SPCR => {}  // TODO
-                io_regs::SPSR => {}  // TODO
-                io_regs::SPDR => {}  // TODO
-                io_regs::PRR0 => {}  // TODO
-                io_regs::PRR1 => {}  // TODO
-                io_regs::SMCR => {}  // TODO
+                io_regs::SPCR => {}  // TODO: SPI Control Register
+                io_regs::SPSR => {}  // TODO: SPI Status Register
+                io_regs::SPDR => {}  // TODO: SPI Data Register
+                io_regs::PRR0 => {}  // TODO: Power Reduction Register 0
+                io_regs::PRR1 => {}  // TODO: Power Reduction Register 1
+                io_regs::SMCR => {}  // TODO: Sleep Mode Control Register
+                io_regs::PINB => {}  // TODO
+                io_regs::PINC => {}  // TODO
+                io_regs::PIND => {}  // TODO
+                io_regs::PINE => {}  // TODO
+                io_regs::PINF => {}  // TODO
                 io_regs::PLLCSR => self.clock.set_reg_pllcsr(v), // TODO: PLL Control and Status Register
                 _ => {
                     warn!(
-                        "I/O Registers / Extended I/O Space unimplemented store (0x{:02x}) at 0x{:04x} ({})",
+                        "I/O Registers / Extended I/O Space unimplemented store (0x{:02x}) at 0x{:04x} {:?}",
                         v,
                         addr,
-                        io_reg_str(addr).unwrap_or("Unknown")
+                        io_reg_str(addr).unwrap_or(("Unknown", ""))
                     );
                     unimplemented!()
                 }

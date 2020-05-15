@@ -331,7 +331,7 @@ const OPCODE_OP_STXINC_BITS: u16 = 0b1001_0010_0000_1101;
 const OPCODE_OP_STXINC_MASK: u16 = 0b1111_1110_0000_1111;
 
 // 118
-const OPCODE_OP_STXDEC_BITS: u16 = 0b1001_0010_0000_1111;
+const OPCODE_OP_STXDEC_BITS: u16 = 0b1001_0010_0000_1110;
 const OPCODE_OP_STXDEC_MASK: u16 = 0b1111_1110_0000_1111;
 
 // 119
@@ -896,8 +896,8 @@ impl<'a> fmt::Display for OpAddr {
             Op::Call { k } => write!(f, "CALL 0x{:04x}", k << 1),
             Op::Cbi { a, b } => {
                 write!(f, "CBI {}, {}", a, b)?;
-                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
-                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                if let Some((io_reg, io_dsc)) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x} ({})", io_reg, a, io_dsc)?;
                 }
                 Ok(())
             }
@@ -925,8 +925,8 @@ impl<'a> fmt::Display for OpAddr {
             Op::Ijmp => write!(f, "IJMP"),
             Op::In { d, a } => {
                 write!(f, "IN R{}, 0x{:02x}", d, a)?;
-                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
-                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                if let Some((io_reg, io_dsc)) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x} ({})", io_reg, a, io_dsc)?;
                 }
                 Ok(())
             }
@@ -948,8 +948,8 @@ impl<'a> fmt::Display for OpAddr {
             Op::Ldi { d, k } => write!(f, "LDI R{}, 0x{:02x}", d, k),
             Op::Lds { d, k } => {
                 write!(f, "LDS R{}, 0x{:04x}", d, k)?;
-                if let Some(io_reg) = io_reg_str(k) {
-                    write!(f, "; {} = 0x{:02x}", io_reg, k)?;
+                if let Some((io_reg, io_dsc)) = io_reg_str(k) {
+                    write!(f, "; {} = 0x{:02x} ({})", io_reg, k, io_dsc)?;
                 }
                 Ok(())
             }
@@ -973,8 +973,8 @@ impl<'a> fmt::Display for OpAddr {
             Op::Ori { d, k } => write!(f, "ORI R{}, {}", d, k),
             Op::Out { a, r } => {
                 write!(f, "OUT 0x{:02x}, R{}", a, r)?;
-                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
-                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                if let Some((io_reg, io_dsc)) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x} ({})", io_reg, a, io_dsc)?;
                 }
                 Ok(())
             }
@@ -997,22 +997,22 @@ impl<'a> fmt::Display for OpAddr {
             Op::Sbci { d, k } => write!(f, "SBCI R{}, {}", d, k),
             Op::Sbi { a, b } => {
                 write!(f, "SBI 0x{:02x}, {}", a, b)?;
-                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
-                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                if let Some((io_reg, io_dsc)) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x} ({})", io_reg, a, io_dsc)?;
                 }
                 Ok(())
             }
             Op::Sbic { a, b } => {
                 write!(f, "SBIC 0x{:02x}, {}", a, b)?;
-                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
-                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                if let Some((io_reg, io_dsc)) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x} ({})", io_reg, a, io_dsc)?;
                 }
                 Ok(())
             }
             Op::Sbis { a, b } => {
                 write!(f, "SBIS 0x{:02x}, {}", a, b)?;
-                if let Some(io_reg) = io_reg_str(IOSPACE_ADDR + a as u16) {
-                    write!(f, "; {} = 0x{:02x}", io_reg, a)?;
+                if let Some((io_reg, io_dsc)) = io_reg_str(IOSPACE_ADDR + a as u16) {
+                    write!(f, "; {} = 0x{:02x} ({})", io_reg, a, io_dsc)?;
                 }
                 Ok(())
             }
@@ -1028,18 +1028,19 @@ impl<'a> fmt::Display for OpAddr {
                 ref idx,
                 ref ext,
             } => {
-                write!(f, "ST R{}, ", r)?;
+                write!(f, "ST ")?;
                 match ext {
                     LdStExt::None => write!(f, "{}", idx),
                     LdStExt::PostInc => write!(f, "{}+", idx),
                     LdStExt::PreDec => write!(f, "-{}", idx),
                     LdStExt::Displacement(q) => write!(f, "{}+{}", idx, q),
-                }
+                }?;
+                write!(f, ", R{}", r)
             }
             Op::Sts { k, r } => {
                 write!(f, "STS 0x{:04x}, R{}", k, r)?;
-                if let Some(io_reg) = io_reg_str(k) {
-                    write!(f, "; {} = 0x{:02x}", io_reg, k)?;
+                if let Some((io_reg, io_dsc)) = io_reg_str(k) {
+                    write!(f, "; {} = 0x{:02x} ({})", io_reg, k, io_dsc)?;
                 }
                 Ok(())
             }
