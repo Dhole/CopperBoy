@@ -2,6 +2,7 @@ use log::{debug, warn};
 use num_traits::ToPrimitive;
 
 use super::clock;
+use super::display;
 use super::int_vec::*;
 use super::io_regs::io_reg_str;
 use super::opcodes::*;
@@ -234,6 +235,7 @@ pub struct Core {
     op1: Op,
     // Peripherials
     clock: clock::Clock,
+    pub display: display::Display,
     /// Sleeping?
     pub sleep: bool,
 }
@@ -253,6 +255,7 @@ impl Core {
             // Peripherials
             clock: clock::Clock::new(),
             sleep: false,
+            display: display::Display::new(),
         }
     }
 
@@ -580,20 +583,20 @@ impl Core {
                 io_regs::ADMUX => {} // TODO
                 io_regs::PORTB => {} // TODO
                 io_regs::PORTC => {} // TODO
-                io_regs::PORTD => {} // TODO
+                io_regs::PORTD => self.display.set_dc(((v & 1) << 4) != 0),
                 io_regs::PORTE => {} // TODO
                 io_regs::PORTF => {} // TODO
                 io_regs::SPCR => {}  // TODO: SPI Control Register
                 io_regs::SPSR => {}  // TODO: SPI Status Register
-                io_regs::SPDR => {}  // TODO: SPI Data Register
-                io_regs::PRR0 => {}  // TODO: Power Reduction Register 0
-                io_regs::PRR1 => {}  // TODO: Power Reduction Register 1
-                io_regs::SMCR => {}  // TODO: Sleep Mode Control Register
-                io_regs::PINB => {}  // TODO
-                io_regs::PINC => {}  // TODO
-                io_regs::PIND => {}  // TODO
-                io_regs::PINE => {}  // TODO
-                io_regs::PINF => {}  // TODO
+                io_regs::SPDR => self.display.spi_write(v),
+                io_regs::PRR0 => {} // TODO: Power Reduction Register 0
+                io_regs::PRR1 => {} // TODO: Power Reduction Register 1
+                io_regs::SMCR => {} // TODO: Sleep Mode Control Register
+                io_regs::PINB => {} // TODO
+                io_regs::PINC => {} // TODO
+                io_regs::PIND => {} // TODO
+                io_regs::PINE => {} // TODO
+                io_regs::PINF => {} // TODO
                 io_regs::PLLCSR => self.clock.set_reg_pllcsr(v), // TODO: PLL Control and Status Register
                 _ => {
                     warn!(
