@@ -80,22 +80,22 @@ fn main() -> Result<(), io::Error> {
                 println!("[{:04x}]: {}", op_addr.addr >> 1, op_addr,);
             }
 
-            if op_addr.addr == 0x0c90 {
-                println!(
-                    ">>> X: 0x{:04x}, [X]: 0x{:02x}, R24: 0x{:02x}",
-                    core.regs.x(),
-                    core.program[core.regs.x() as usize],
-                    core.regs[24]
-                );
-            }
-            if op_addr.addr == 0x0c92 {
-                println!(
-                    ">>> X: 0x{:04x}, [X]: 0x{:02x}, R25: 0x{:02x}",
-                    core.regs.x(),
-                    core.program[core.regs.x() as usize],
-                    core.regs[25]
-                );
-            }
+            // if op_addr.addr == 0x0c90 {
+            //     println!(
+            //         ">>> X: 0x{:04x}, [X]: 0x{:02x}, R24: 0x{:02x}",
+            //         core.regs.x(),
+            //         core.program[core.regs.x() as usize],
+            //         core.regs[24]
+            //     );
+            // }
+            // if op_addr.addr == 0x0c92 {
+            //     println!(
+            //         ">>> X: 0x{:04x}, [X]: 0x{:02x}, R25: 0x{:02x}",
+            //         core.regs.x(),
+            //         core.program[core.regs.x() as usize],
+            //         core.regs[25]
+            //     );
+            // }
         }
         let cycles = core.step();
         core.step_hw(cycles as u8);

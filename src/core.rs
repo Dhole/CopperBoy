@@ -583,7 +583,7 @@ impl Core {
                 io_regs::ADMUX => {} // TODO
                 io_regs::PORTB => {} // TODO
                 io_regs::PORTC => {} // TODO
-                io_regs::PORTD => self.display.set_dc(((v & 1) << 4) != 0),
+                io_regs::PORTD => self.display.set_dc((v & (1 << 4)) != 0),
                 io_regs::PORTE => {} // TODO
                 io_regs::PORTF => {} // TODO
                 io_regs::SPCR => {}  // TODO: SPI Control Register
