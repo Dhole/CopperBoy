@@ -48,4 +48,5 @@ pub mod core;
 pub mod display;
 pub mod int_vec;
 pub mod io_regs;
+pub mod keys;
 pub mod opcodes;

@@ -238,6 +238,45 @@ pub struct Core {
     pub display: display::Display,
     /// Sleeping?
     pub sleep: bool,
+    pub gpio: GPIO,
+}
+
+pub struct GPIO {
+    pin_b: u8,
+    pin_c: u8,
+    pin_d: u8,
+    pin_e: u8,
+    pin_f: u8,
+}
+
+impl GPIO {
+    fn new() -> Self {
+        GPIO {
+            pin_b: 0,
+            pin_c: 0,
+            pin_d: 0,
+            pin_e: 0,
+            pin_f: 0,
+        }
+    }
+
+    pub fn set_port(&mut self, port: GPIOPort, v: u8) {
+        match port {
+            GPIOPort::B => self.pin_b = v,
+            GPIOPort::C => self.pin_c = v,
+            GPIOPort::D => self.pin_d = v,
+            GPIOPort::E => self.pin_e = v,
+            GPIOPort::F => self.pin_f = v,
+        }
+    }
+}
+
+pub enum GPIOPort {
+    B,
+    C,
+    D,
+    E,
+    F,
 }
 
 impl Core {
@@ -256,6 +295,7 @@ impl Core {
             clock: clock::Clock::new(),
             sleep: false,
             display: display::Display::new(),
+            gpio: GPIO::new(),
         }
     }
 
@@ -474,6 +514,8 @@ impl Core {
     pub fn data_load(&self, addr: u16) -> u8 {
         if addr >= SRAM_ADDR {
             self.sram[(addr - SRAM_ADDR) as usize]
+        } else if addr < IOSPACE_ADDR {
+            self.regs[addr as u8]
         } else {
             debug!(
                 "I/O Registers / Extended I/O Space load at 0x{:04x} {:?}",
@@ -495,39 +537,51 @@ impl Core {
                 io_regs::TCCR4C => 0, // TODO: Timer/Counter Control Register C
                 io_regs::TCCR4D => 0, // TODO: Timer/Counter Control Register D
                 io_regs::TIMSK0 => self.clock.reg_timsk0(), // TODO: Timer/Counter Interrupt Mask Register
-                io_regs::TCNT0 => self.clock.reg_tcnt0(),   // TODO: Timer/Counter Register
-                io_regs::TIFR1 => 0, // TODO: Timer/Counter Interrupt Flag Resiger
+                io_regs::TIMSK4 => 0, // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TIMSK3 => 0, // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TCNT0 => self.clock.reg_tcnt0(), // TODO: Timer/Counter Register
+                io_regs::TIFR1 => 0,  // TODO: Timer/Counter Interrupt Flag Resiger
                 io_regs::ADCSRA => 0, // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => 0, // TODO
                 io_regs::USBCON => 0, // TODO
-                io_regs::UDCON => 0, // TODO
-                io_regs::UDINT => 0, // TODO
-                io_regs::UDIEN => 0, // TODO
-                io_regs::DDRD => 0,  // TODO
-                io_regs::DDRB => 0,  // TODO
-                io_regs::DDRE => 0,  // TODO
-                io_regs::DDRF => 0,  // TODO
-                io_regs::ADMUX => 0, // TODO
-                io_regs::PORTB => 0, // TODO
-                io_regs::PORTC => 0, // TODO
-                io_regs::PORTD => 0, // TODO
-                io_regs::PORTE => 0, // TODO
-                io_regs::PORTF => 0, // TODO
-                io_regs::SPCR => 0,  // TODO
+                io_regs::UDCON => 0,  // TODO
+                io_regs::UDINT => 0,  // TODO
+                io_regs::UDIEN => 0,  // TODO
+                io_regs::DDRD => 0,   // TODO
+                io_regs::DDRB => 0,   // TODO
+                io_regs::DDRE => 0,   // TODO
+                io_regs::DDRF => 0,   // TODO
+                io_regs::ADMUX => 0,  // TODO
+                io_regs::PORTB => 0,  // TODO
+                io_regs::PORTC => 0,  // TODO
+                io_regs::PORTD => 0,  // TODO
+                io_regs::PORTE => 0,  // TODO
+                io_regs::PORTF => 0,  // TODO
+                io_regs::DDRC => 0,   // TODO
+                io_regs::SPCR => 0,   // TODO
                 io_regs::SPSR => 0b10000000, // TODO
-                io_regs::SPDR => 0,  // TODO
-                io_regs::PRR0 => 0,  // TODO
-                io_regs::PRR1 => 0,  // TODO
-                io_regs::SMCR => 0,  // TODO
-                io_regs::PINB => 0,  // TODO
-                io_regs::PINC => 0,  // TODO
-                io_regs::PIND => 0,  // TODO
-                io_regs::PINE => 0,  // TODO
-                io_regs::PINF => 0,  // TODO
+                io_regs::SPDR => 0,   // TODO
+                io_regs::PRR0 => 0,   // TODO
+                io_regs::PRR1 => 0,   // TODO
+                io_regs::SMCR => 0,   // TODO
+                io_regs::PINB => self.gpio.pin_b, // TODO
+                io_regs::PINC => self.gpio.pin_c, // TODO
+                io_regs::PIND => self.gpio.pin_d, // TODO
+                io_regs::PINE => self.gpio.pin_e, // TODO
+                io_regs::PINF => self.gpio.pin_f, // TODO
                 io_regs::PLLCSR => self.clock.reg_pllcsr(), // TODO: PLL Control and Status Register
+                io_regs::EEDR => 0,   // TODO
+                io_regs::EECR => 0,   // TODO
+                0x20 => 0,            // TODO
+                0x21 => 0,            // TODO
+                0x22 => 0,            // TODO
+                0x32 => 0,            // TODO
+                0x33 => 0,            // TODO
+                0x34 => 0,            // TODO
                 _ => {
                     warn!(
-                        "I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} {:?}",
+                        "[{:04x}] I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} {:?}",
+                        self.pc,
                         addr,
                         io_reg_str(addr).unwrap_or(("Unknown", ""))
                     );
@@ -546,6 +600,8 @@ impl Core {
     fn data_store(&mut self, addr: u16, v: u8) {
         if addr >= SRAM_ADDR {
             self.sram[(addr - SRAM_ADDR) as usize] = v;
+        } else if addr < IOSPACE_ADDR {
+            self.regs[addr as u8] = v;
         } else {
             debug!(
                 "I/O Registers / Extended I/O Space store (0x{:02x}) at 0x{:04x} {:?}",
@@ -568,24 +624,28 @@ impl Core {
                 io_regs::TCCR4C => {} // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4D => {} // TODO: Timer/Counter Control Register B
                 io_regs::TIMSK0 => self.clock.set_reg_timsk0(v), // TODO: Timer/Counter Interrupt Mask Register
-                io_regs::TCNT0 => self.clock.set_reg_tcnt0(v),   // TODO: Timer/Counter Register
-                io_regs::TIFR1 => {} // TODO: Timer/Counter Interrupt Flag Resiger
+                io_regs::TIMSK1 => {} // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TIMSK3 => {} // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TIMSK4 => {} // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TCNT0 => self.clock.set_reg_tcnt0(v), // TODO: Timer/Counter Register
+                io_regs::TIFR1 => {}  // TODO: Timer/Counter Interrupt Flag Resiger
                 io_regs::ADCSRA => {} // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => {} // TODO
                 io_regs::USBCON => {} // TODO
-                io_regs::UDCON => {} // TODO
-                io_regs::UDINT => {} // TODO
-                io_regs::UDIEN => {} // TODO
-                io_regs::DDRD => {}  // TODO
-                io_regs::DDRB => {}  // TODO
-                io_regs::DDRE => {}  // TODO
-                io_regs::DDRF => {}  // TODO
-                io_regs::ADMUX => {} // TODO
-                io_regs::PORTB => {} // TODO
-                io_regs::PORTC => {} // TODO
+                io_regs::UDCON => {}  // TODO
+                io_regs::UDINT => {}  // TODO
+                io_regs::UDIEN => {}  // TODO
+                io_regs::DDRD => {}   // TODO
+                io_regs::DDRB => {}   // TODO
+                io_regs::DDRE => {}   // TODO
+                io_regs::DDRF => {}   // TODO
+                io_regs::ADMUX => {}  // TODO
+                io_regs::PORTB => {}  // TODO
+                io_regs::PORTC => {}  // TODO
                 io_regs::PORTD => self.display.set_dc((v & (1 << 4)) != 0),
                 io_regs::PORTE => {} // TODO
                 io_regs::PORTF => {} // TODO
+                io_regs::DDRC => {}  // TODO
                 io_regs::SPCR => {}  // TODO: SPI Control Register
                 io_regs::SPSR => {}  // TODO: SPI Status Register
                 io_regs::SPDR => self.display.spi_write(v),
@@ -598,6 +658,20 @@ impl Core {
                 io_regs::PINE => {} // TODO
                 io_regs::PINF => {} // TODO
                 io_regs::PLLCSR => self.clock.set_reg_pllcsr(v), // TODO: PLL Control and Status Register
+                io_regs::EEARL => {}                             // TODO
+                io_regs::EEARH => {}                             // TODO
+                io_regs::EECR => {}                              // TODO
+                io_regs::TCCR3C => {}                            // TODO
+                io_regs::ICR3H => {}                             // TODO
+                io_regs::ICR3L => {}                             // TODO
+                io_regs::EEDR => {}                              // TODO
+                io_regs::OCR3AH => {}                            // TODO
+                io_regs::OCR3AL => {}                            // TODO
+                io_regs::TCNT3H => {}                            // TODO
+                io_regs::TCNT3L => {}                            // TODO
+                io_regs::GPIOR0 => {
+                    warn!("DBG: {:02x}", v);
+                }
                 _ => {
                     warn!(
                         "I/O Registers / Extended I/O Space unimplemented store (0x{:02x}) at 0x{:04x} {:?}",
