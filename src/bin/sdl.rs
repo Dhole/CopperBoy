@@ -192,8 +192,14 @@ fn run(scale: u32, mut trace: bool, core: &mut Core) -> Result<(), FrontError> {
 
         cycles += 16_000_000 / 60;
         while cycles > 0 {
+            let (w0, w1, op_addr) = core.next_op();
+            println!("{:04x} !SP: {:04x}", op_addr.addr, 0x0a00 - core.sp);
+            // trace = if 0x4d00 <= op_addr.addr && op_addr.addr <= 0x4e5a {
+            //     true
+            // } else {
+            //     false
+            // };
             if trace && !core.sleep {
-                let (w0, w1, op_addr) = core.next_op();
                 print!("{:04x} ", op_addr.addr);
                 match op_addr.op.words() {
                     1 => print!("({}     ) ", hex::encode(w0.to_le_bytes())),

@@ -223,7 +223,7 @@ pub struct Core {
     /// Program Counter
     pc: u16,
     /// Stack Pointer
-    sp: u16,
+    pub sp: u16,
     /// SRAM
     sram: [u8; SRAM_SIZE as usize],
     /// Program Memory
