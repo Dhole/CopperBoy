@@ -378,7 +378,7 @@ const OPCODE_OP_SWAP_MASK: u16 = 0b1111_1110_0000_1111;
 const OPCODE_OP_WDR_BITS: u16 = 0b1001_0101_1010_1000;
 const OPCODE_OP_WDR_MASK: u16 = 0b1111_1111_1111_1111;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LdStIndex {
     X,
     Y,
@@ -405,7 +405,7 @@ impl fmt::Display for LdStIndex {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LdStExt {
     None,
     PostInc,
@@ -414,7 +414,7 @@ pub enum LdStExt {
 }
 
 // NOTE: Review undefined combinations
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Op {
     Adc { d: u8, r: u8 },
     Add { d: u8, r: u8 },
@@ -1184,3 +1184,6 @@ impl<'a> fmt::Display for OpAddrAlt {
         }
     }
 }
+
+#[cfg(test)]
+mod test;
