@@ -143,6 +143,8 @@ fn run(scale: u32, mut trace: bool, core: &mut Core) -> Result<(), FrontError> {
     let mut pin_e = 0xff as u8;
     let mut pin_f = 0xff as u8;
     let mut cycles: i32 = 0;
+    let mut d = 0;
+    let mut int_ret_addr: Option<(u16)> = Option::None;
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -189,12 +191,14 @@ fn run(scale: u32, mut trace: bool, core: &mut Core) -> Result<(), FrontError> {
         core.gpio.set_port(GPIOPort::D, pin_d);
         core.gpio.set_port(GPIOPort::E, pin_e);
         core.gpio.set_port(GPIOPort::F, pin_f);
-
         cycles += 16_000_000 / 60;
         while cycles > 0 {
+            let addr0 = core.pc << 1;
             let (w0, w1, op_addr) = core.next_op();
-            println!("{:04x} !SP: {:04x}", op_addr.addr, 0x0a00 - core.sp);
-            // trace = if 0x4d00 <= op_addr.addr && op_addr.addr <= 0x4e5a {
+            // println!("{:04x} !SP: {:04x}", op_addr.addr, 0x0a00 - core.sp);
+            // trace = if 0x573a <= op_addr.addr && op_addr.addr <= 0x576a
+            //     || 0x4662 <= op_addr.addr && op_addr.addr <= 0x4668
+            // {
             //     true
             // } else {
             //     false
@@ -211,13 +215,70 @@ fn run(scale: u32, mut trace: bool, core: &mut Core) -> Result<(), FrontError> {
                     _ => unreachable!(),
                 }
                 if let Some(op_addr_alt) = op_addr.alt() {
-                    println!("[{:04x}]: {}; {}", op_addr.addr >> 1, op_addr_alt, op_addr,);
+                    print!("[{:04x}]: {}; {}", op_addr.addr >> 1, op_addr_alt, op_addr,);
                 } else {
-                    println!("[{:04x}]: {}", op_addr.addr >> 1, op_addr,);
+                    print!("[{:04x}]: {}", op_addr.addr >> 1, op_addr,);
                 }
+                println!("; SP = {:04x}", core.sp);
             }
             cycles -= core.step() as i32;
-            core.step_hw(cycles as u8);
+            let addr1 = core.pc << 1;
+            if let Option::None = int_ret_addr {
+                if let Op::Rcall { k: 0 } = op_addr.op {
+                } else {
+                    match op_addr.op {
+                        Op::Call { .. } | Op::Icall { .. } | Op::Rcall { .. } => {
+                            println!(
+                                "{pad:<2} {0:<pad$}{1:04x} -> {2:04x} call",
+                                "",
+                                addr0,
+                                core.pc << 1,
+                                pad = d,
+                            );
+                            d += 1;
+                        }
+                        Op::Ret { .. } | Op::Reti { .. } => {
+                            if d != 0 {
+                                d -= 1;
+                            } else {
+                                println!("D UNDERFLOW");
+                            }
+                            println!(
+                                "{pad:<2} {0:<pad$}{2:04x} <- {1:04x} ret",
+                                "",
+                                addr0,
+                                core.pc << 1,
+                                pad = d,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            if let Some(addr) = int_ret_addr {
+                if core.pc << 1 == addr {
+                    // println!("EXIT INT");
+                    int_ret_addr = Option::None;
+                }
+            }
+            let int = core.step_hw(cycles as u8);
+            if int {
+                // println!("ENTER INT");
+                int_ret_addr = Some(addr1);
+                // println!(
+                //     "{0:<pad$}{1:04x} -> {2:04x} int {3:04x}",
+                //     "",
+                //     addr1,
+                //     core.pc << 1,
+                //     core.sp,
+                //     pad = d,
+                // );
+                // d += 1;
+            }
+        }
+        if d > 100 {
+            println!("D OVERFLOW");
+            d = 0;
         }
 
         canvas.set_draw_color(Color::RGB(0, 0, 0));

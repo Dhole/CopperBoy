@@ -221,7 +221,7 @@ pub struct Core {
     /// IO Registers
     io_space: [u8; IOSPACE_SIZE as usize],
     /// Program Counter
-    pc: u16,
+    pub pc: u16,
     /// Stack Pointer
     pub sp: u16,
     /// SRAM
@@ -357,7 +357,8 @@ impl Core {
         cycles
     }
 
-    pub fn step_hw(&mut self, cycles: u8) {
+    // returns true if an interrupt is fired
+    pub fn step_hw(&mut self, cycles: u8) -> bool {
         // The interrupts have priority in accordance with their Interrupt Vector position.  The
         // lower the Interrupt Vector address, the higher the priority.
 
@@ -374,12 +375,12 @@ impl Core {
 
         // Global Interrupt Flag disabled
         if !self.status_reg.i {
-            return;
+            return false;
         }
 
         // No pending interrupt
         if interrupt_bitmap == 0 {
-            return;
+            return false;
         }
 
         self.sleep = false;
@@ -501,6 +502,7 @@ impl Core {
         } else {
             unreachable!();
         };
+        // debug!("INT PUSH PC {:04x}", self.pc << 1);
         // TODO: Before jumping to the interrupt vector, clean the interrupt flag.
         self.push_u16(self.pc);
         self.pc = pc;
@@ -508,6 +510,7 @@ impl Core {
         let w0 = self.program_load_u16(self.pc);
         let w1 = self.program_load_u16(self.pc + 1);
         self.op1 = Op::decode(w0, w1);
+        true
     }
 
     /// Load a byte from the User Data Space
@@ -572,12 +575,14 @@ impl Core {
                 io_regs::PLLCSR => self.clock.reg_pllcsr(), // TODO: PLL Control and Status Register
                 io_regs::EEDR => 0,   // TODO
                 io_regs::EECR => 0,   // TODO
-                0x20 => 0,            // TODO
-                0x21 => 0,            // TODO
-                0x22 => 0,            // TODO
-                0x32 => 0,            // TODO
-                0x33 => 0,            // TODO
-                0x34 => 0,            // TODO
+                io_regs::ADCL => 0,   // TODO
+                io_regs::ADCH => 0,   // TODO
+                // 0x20 => 0,            // TODO
+                // 0x21 => 0,            // TODO
+                // 0x22 => 0,            // TODO
+                // 0x32 => 0,            // TODO
+                // 0x33 => 0,            // TODO
+                // 0x34 => 0,            // TODO
                 _ => {
                     warn!(
                         "[{:04x}] I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} {:?}",
@@ -669,6 +674,8 @@ impl Core {
                 io_regs::OCR3AL => {}                            // TODO
                 io_regs::TCNT3H => {}                            // TODO
                 io_regs::TCNT3L => {}                            // TODO
+                io_regs::OCR1AH => {}                            // TODO
+                io_regs::OCR1AL => {}                            // TODO
                 io_regs::GPIOR0 => {
                     warn!("DBG: {:02x}", v);
                 }

@@ -772,7 +772,7 @@ impl Op {
                 b: (w0 & 0b0000_0000_0000_0111) as u8,
             },
             _ if (w0 & OPCODE_OP_SBIW_MASK) == OPCODE_OP_SBIW_BITS => Self::Sbiw {
-                k: ((w0 & 0b0000_0000_1100_0000) >> 3 | w0 & 0b0000_0000_0000_1111) as u8,
+                k: ((w0 & 0b0000_0000_1100_0000) >> 2 | w0 & 0b0000_0000_0000_1111) as u8,
                 d: (((w0 & 0b0000_0000_0011_0000) >> 4) as u8) * 2 + 24,
             },
             _ if (w0 & OPCODE_OP_SBRC_MASK) == OPCODE_OP_SBRC_BITS => Self::Sbrc {
