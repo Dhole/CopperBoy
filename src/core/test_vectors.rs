@@ -293,7 +293,7 @@ fn test_vec_ops_alu1() {
     ops.insert("neg" , Box::new(|c: &mut Core| { c.op_neg( 0); }));
     ops.insert("inc" , Box::new(|c: &mut Core| { c.op_inc( 0); }));
     ops.insert("dec" , Box::new(|c: &mut Core| { c.op_dec( 0); }));
-    ops.insert("ser" , Box::new(|c: &mut Core| { c.op_ser( 0); }));
+    // ops.insert("ser" , Box::new(|c: &mut Core| { c.op_ser( 0); }));
     ops.insert("asr" , Box::new(|c: &mut Core| { c.op_asr( 0); }));
     ops.insert("swap", Box::new(|c: &mut Core| { c.op_swap(0); }));
     ops.insert("ror" , Box::new(|c: &mut Core| { c.op_ror( 0); }));

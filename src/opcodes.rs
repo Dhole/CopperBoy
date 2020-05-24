@@ -481,7 +481,7 @@ pub enum Op {
     Sbiw { d: u8, k: u8 },
     Sbrc { r: u8, b: u8 },
     Sbrs { r: u8, b: u8 },
-    Ser { d: u8 },
+    // Ser { d: u8 },
     Sleep,
     Spm,
     Spm2,
@@ -783,9 +783,9 @@ impl Op {
                 b: (w0 & 0b0000_0000_0000_0111) as u8,
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
-            _ if (w0 & OPCODE_OP_SER_MASK) == OPCODE_OP_SER_BITS => Self::Ser {
-                d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
-            },
+            // _ if (w0 & OPCODE_OP_SER_MASK) == OPCODE_OP_SER_BITS => Self::Ser {
+            //     d: ((w0 & 0b0000_0000_1111_0000) >> 4) as u8 + 16,
+            // },
             _ if (w0 & OPCODE_OP_SLEEP_MASK) == OPCODE_OP_SLEEP_BITS => Self::Sleep,
             _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => Op::Spm,
             _ if (w0 & OPCODE_OP_SPM2_MASK) == OPCODE_OP_SPM2_BITS => Op::Spm2,
@@ -945,7 +945,13 @@ impl<'a> fmt::Display for OpAddr {
                     LdStExt::Displacement(q) => write!(f, "{}+{}", idx, q),
                 }
             }
-            Op::Ldi { d, k } => write!(f, "LDI R{}, 0x{:02x}", d, k),
+            Op::Ldi { d, k } => {
+                write!(f, "LDI R{}, 0x{:02x}", d, k)?;
+                if k == 0xff {
+                    write!(f, "; SER  R{}", d)?;
+                }
+                Ok(())
+            }
             Op::Lds { d, k } => {
                 write!(f, "LDS R{}, 0x{:04x}", d, k)?;
                 if let Some((io_reg, io_dsc)) = io_reg_str(k) {
@@ -1019,7 +1025,7 @@ impl<'a> fmt::Display for OpAddr {
             Op::Sbiw { d, k } => write!(f, "SBIW R{}, {}", d, k),
             Op::Sbrc { r, b } => write!(f, "SBRC R{}, {}", r, b),
             Op::Sbrs { r, b } => write!(f, "SBRS R{}, {}", r, b),
-            Op::Ser { d } => write!(f, "SER R{}", d),
+            // Op::Ser { d } => write!(f, "SER R{}", d),
             Op::Sleep => write!(f, "SLEEP"),
             Op::Spm => write!(f, "SPM"),
             Op::Spm2 => write!(f, "SPM Z+"),

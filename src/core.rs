@@ -1548,12 +1548,12 @@ impl Core {
     // 108. Set Global Interrupt Flag (SEI) OK -> BSET I
     // 109. Set Negative Flag (SEN) OK -> BSET N
 
-    /// 110. Set all Bits in Register (SER Rd) OK
-    fn op_ser(&mut self, d: u8) -> usize {
-        self.regs[d] = 0xff;
-        self.pc += 1;
-        1
-    }
+    // 110. Set all Bits in Register (SER Rd) OK -> LDI Rd, 0xff
+    // fn op_ser(&mut self, d: u8) -> usize {
+    //     self.regs[d] = 0xff;
+    //     self.pc += 1;
+    //     1
+    // }
     // 111. Set Signed Flag (SES) OK -> BSET S
     // 112. Set T Flag (SET) OK -> BSET T
     // 113. Set Overflow Flag (SEV) OK -> BSET V
@@ -1725,7 +1725,7 @@ impl Core {
             Op::Sbiw { d, k } => self.op_sbiw(d, k),
             Op::Sbrc { r, b } => self.op_sbrc(r, b, self.op1.words()),
             Op::Sbrs { r, b } => self.op_sbrs(r, b, self.op1.words()),
-            Op::Ser { d } => self.op_ser(d),
+            // Op::Ser { d } => self.op_ser(d),
             Op::Sleep => self.op_sleep(),
             Op::Spm => self.op_spm(),
             Op::Spm2 => self.op_spm2(),

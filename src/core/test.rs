@@ -1139,14 +1139,14 @@ fn test_op_sbrs() {
     assert_eq!(core.pc, 0x03);
 }
 
-#[test]
-fn test_op_ser() {
-    let mut core = Core::new();
-
-    core.op_ser(0);
-    assert_eq!(core.pc, 0x01);
-    assert_eq!(core.regs[0], 0xff);
-}
+// #[test]
+// fn test_op_ser() {
+//     let mut core = Core::new();
+//
+//     core.op_ser(0);
+//     assert_eq!(core.pc, 0x01);
+//     assert_eq!(core.regs[0], 0xff);
+// }
 
 #[test]
 fn test_op_st() {
