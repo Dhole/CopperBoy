@@ -83,6 +83,12 @@ pub fn main() -> Result<(), FrontError> {
                 .help("Trace all instructions"),
         )
         .arg(
+            Arg::with_name("calltrace")
+                .short("c")
+                .long("calltrace")
+                .help("Trace all calls"),
+        )
+        .arg(
             Arg::with_name("path")
                 .help("Path to the rom file")
                 .index(1)
@@ -96,6 +102,7 @@ pub fn main() -> Result<(), FrontError> {
         .unwrap();
     let path = app.value_of("path").unwrap();
     let trace = app.is_present("trace");
+    let calltrace = app.is_present("calltrace");
 
     let file = fs::File::open(path)?;
 
@@ -116,10 +123,15 @@ pub fn main() -> Result<(), FrontError> {
     }
 
     core.reset();
-    run(scale, trace, &mut core)
+    run(scale, trace, calltrace, &mut core)
 }
 
-fn run(scale: u32, mut trace: bool, core: &mut Core) -> Result<(), FrontError> {
+fn run(
+    scale: u32,
+    mut trace: bool,
+    mut calltrace: bool,
+    core: &mut Core,
+) -> Result<(), FrontError> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
 
@@ -228,13 +240,15 @@ fn run(scale: u32, mut trace: bool, core: &mut Core) -> Result<(), FrontError> {
                 } else {
                     match op_addr.op {
                         Op::Call { .. } | Op::Icall { .. } | Op::Rcall { .. } => {
-                            println!(
-                                "{pad:<2} {0:<pad$}{1:04x} -> {2:04x} call",
-                                "",
-                                addr0,
-                                core.pc << 1,
-                                pad = d,
-                            );
+                            if calltrace {
+                                println!(
+                                    "{pad:<2} {0:<pad$}{1:04x} -> {2:04x} call",
+                                    "",
+                                    addr0,
+                                    core.pc << 1,
+                                    pad = d,
+                                );
+                            }
                             d += 1;
                         }
                         Op::Ret { .. } | Op::Reti { .. } => {
@@ -243,13 +257,15 @@ fn run(scale: u32, mut trace: bool, core: &mut Core) -> Result<(), FrontError> {
                             } else {
                                 println!("D UNDERFLOW");
                             }
-                            println!(
-                                "{pad:<2} {0:<pad$}{2:04x} <- {1:04x} ret",
-                                "",
-                                addr0,
-                                core.pc << 1,
-                                pad = d,
-                            );
+                            if calltrace {
+                                println!(
+                                    "{pad:<2} {0:<pad$}{2:04x} <- {1:04x} ret",
+                                    "",
+                                    addr0,
+                                    core.pc << 1,
+                                    pad = d,
+                                );
+                            }
                         }
                         _ => {}
                     }
@@ -281,24 +297,23 @@ fn run(scale: u32, mut trace: bool, core: &mut Core) -> Result<(), FrontError> {
             d = 0;
         }
 
+        core.display.render();
+
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
         canvas.set_draw_color(Color::RGB(255, 255, 255));
 
-        for row in 0..HEIGTH / 8 {
+        for y in 0..HEIGTH {
             for x in 0..WIDTH {
-                let pixels = core.display.fb[row * WIDTH + x];
-                for dy in 0..8 {
-                    if pixels & (1 << dy) != 0 {
-                        canvas
-                            .fill_rect(Rect::new(
-                                x as i32 * scale as i32,
-                                (row * 8 + dy) as i32 * scale as i32,
-                                scale,
-                                scale,
-                            ))
-                            .unwrap();
-                    }
+                if core.display.frame[y * WIDTH + x] == 1 {
+                    canvas
+                        .fill_rect(Rect::new(
+                            x as i32 * scale as i32,
+                            y as i32 * scale as i32,
+                            scale,
+                            scale,
+                        ))
+                        .unwrap();
                 }
             }
         }

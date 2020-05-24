@@ -676,6 +676,9 @@ impl Core {
                 io_regs::TCNT3L => {}                            // TODO
                 io_regs::OCR1AH => {}                            // TODO
                 io_regs::OCR1AL => {}                            // TODO
+                io_regs::OCR0A => {}                             // TODO
+                io_regs::OCR1BL => {}                            // TODO
+                io_regs::OCR1BH => {}                            // TODO
                 io_regs::GPIOR0 => {
                     warn!("DBG: {:02x}", v);
                 }
