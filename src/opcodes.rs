@@ -405,7 +405,7 @@ impl fmt::Display for LdStIndex {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum LdStExt {
     None,
     PostInc,
@@ -414,7 +414,7 @@ pub enum LdStExt {
 }
 
 // NOTE: Review undefined combinations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Op {
     Adc { d: u8, r: u8 },
     Add { d: u8, r: u8 },

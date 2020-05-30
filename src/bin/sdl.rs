@@ -2,7 +2,9 @@
 use std::env;
 use std::fs;
 use std::io::{self, BufRead};
+use std::path::Path;
 use std::time::Duration;
+use std::time::Instant;
 
 use hex;
 
@@ -16,6 +18,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
+use sdl2::render::TextureQuery;
 
 // use rand::{self, RngCore};
 
@@ -106,6 +109,8 @@ pub fn main() -> Result<(), FrontError> {
 
     let file = fs::File::open(path)?;
 
+    let font_path: &Path = Path::new("./assets/DejaVuSansMono.ttf");
+
     let mut core = Core::new();
     for line in io::BufReader::new(file).lines() {
         let line = line?;
@@ -123,17 +128,19 @@ pub fn main() -> Result<(), FrontError> {
     }
 
     core.reset();
-    run(scale, trace, calltrace, &mut core)
+    run(scale, trace, calltrace, font_path, &mut core)
 }
 
 fn run(
     scale: u32,
     mut trace: bool,
     mut calltrace: bool,
+    font_path: &Path,
     core: &mut Core,
 ) -> Result<(), FrontError> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
+    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
 
     let window = video_subsystem
         .window("avremu-rs", WIDTH as u32 * scale, HEIGTH as u32 * scale)
@@ -144,10 +151,18 @@ fn run(
 
     let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
 
+    let mut font = ttf_context.load_font(font_path, 128)?;
+    font.set_style(sdl2::ttf::FontStyle::NORMAL);
+
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
     canvas.present();
     let mut event_pump = sdl_context.event_pump()?;
+
+    let texture_creator = canvas.texture_creator();
+
+    let frame_exp_dur = Duration::from_nanos(1_000_000_000u64 / 60);
+    let mut now_end_frame = Instant::now();
 
     let mut pin_b = 0xff as u8;
     let mut pin_c = 0xff as u8;
@@ -155,8 +170,11 @@ fn run(
     let mut pin_e = 0xff as u8;
     let mut pin_f = 0xff as u8;
     let mut cycles: i32 = 0;
+    let mut frame: u32 = 0;
     let mut d = 0;
     let mut int_ret_addr: Option<(u16)> = Option::None;
+    let mut fps: f32 = 0.0;
+    let start = Instant::now();
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -318,8 +336,47 @@ fn run(
             }
         }
 
+        // Render frame rate
+        let surface = font
+            .render(format!("{:02.0}", fps).as_str())
+            .blended(Color::RGBA(100, 200, 100, 200))
+            .map_err(|e| e.to_string())?;
+        let texture = texture_creator
+            .create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string())?;
+        let TextureQuery { width, height, .. } = texture.query();
+        const padding: i32 = 1;
+        canvas.copy(
+            &texture,
+            None,
+            Some(Rect::new(
+                padding * scale as i32,
+                padding * scale as i32,
+                width / 16 * scale,
+                height / 16 * scale,
+            )),
+        )?;
+
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        frame += 1;
+
+        let now = Instant::now();
+        let elapsed = now - start;
+        let expected = frame_exp_dur * frame;
+        if elapsed < expected {
+            ::std::thread::sleep(expected - elapsed);
+        }
+        let now = Instant::now();
+        let frame_dur = now - now_end_frame;
+        // println!(
+        //     "elapsed: {:?}, expected: {:?}. frame_dur: {:?}",
+        //     Instant::now() - start,
+        //     expected,
+        //     frame_dur,
+        // );
+        const update: f32 = 0.2;
+        fps = (1.0 - update) * fps + update * (1_000_000_000.0 / frame_dur.subsec_nanos() as f32);
+        now_end_frame = now;
     }
 
     Ok(())

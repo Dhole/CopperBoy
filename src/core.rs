@@ -228,11 +228,12 @@ pub struct Core {
     sram: [u8; SRAM_SIZE as usize],
     /// Program Memory
     pub program: [u8; PROGRAM_SIZE as usize],
+    pub program_ops: [Op; PROGRAM_SIZE as usize],
     /// Set if the previos instruction branched.  This flag is used to know if the instruction
     /// ahead must be fetched.
     branch: bool,
     /// Next op
-    op1: Op,
+    // op1: Op,
     // Peripherials
     clock: clock::Clock,
     pub display: display::Display,
@@ -288,9 +289,10 @@ impl Core {
             pc: 0,
             sram: [0; SRAM_SIZE as usize],
             program: [0; PROGRAM_SIZE as usize],
+            program_ops: [Op::Nop; PROGRAM_SIZE as usize],
             sp: SRAM_ADDR + SRAM_SIZE - 1,
             branch: false,
-            op1: Op::Undefined { w: 0x0000 },
+            // op1: Op::Undefined { w: 0x0000 },
             // Peripherials
             clock: clock::Clock::new(),
             sleep: false,
@@ -312,15 +314,39 @@ impl Core {
         self.pc = 0;
         self.sp = SRAM_ADDR + SRAM_SIZE - 1;
         self.branch = false;
-        let w0 = self.program_load_u16(self.pc);
-        let w1 = self.program_load_u16(self.pc + 1);
-        self.op1 = Op::decode(w0, w1);
+        // let w0 = self.program_load_u16(self.pc);
+        // let w1 = self.program_load_u16(self.pc + 1);
+        // self.op1 = Op::decode(w0, w1);
     }
 
     /// Instruction used to populate the Program Memory Space.  Simulates flashing the flash
     /// memory.
     pub fn flash(&mut self, addr: u16, v: u8) {
         self.program[addr as usize] = v;
+        let addr_align = (addr & 0b1111_1111_1111_1110) as usize;
+        self.program_ops[(addr >> 1) as usize] = Op::decode(
+            (self.program[addr_align + 0] as u16) | (self.program[addr_align + 1] as u16) << 8,
+            (self.program[addr_align + 2] as u16) | (self.program[addr_align + 3] as u16) << 8,
+        );
+        // If a byte of the second word of a two word op is being flashed, the op needs to be
+        // updated.
+        if addr_align < 2 {
+            return;
+        }
+        match self.program_ops[(addr >> 1) as usize - 1] {
+            Op::Call { .. } | Op::Jmp { .. } | Op::Lds { .. } | Op::Sts { .. } => {}
+            _ => {
+                return;
+            }
+        }
+        self.program_ops[(addr >> 1) as usize - 1] = Op::decode(
+            (self.program[addr_align - 2] as u16) | (self.program[addr_align - 1] as u16) << 8,
+            (self.program[addr_align + 0] as u16) | (self.program[addr_align + 1] as u16) << 8,
+        );
+    }
+
+    pub fn op1(&self) -> Op {
+        self.program_ops[self.pc as usize + 1]
     }
 
     pub fn next_op(&self) -> (u16, u16, OpAddr) {
@@ -328,7 +354,8 @@ impl Core {
             self.program_load_u16(self.pc),
             self.program_load_u16(self.pc + 1),
             OpAddr {
-                op: self.op1.clone(),
+                // op: self.op1.clone(),
+                op: self.program_ops[self.pc as usize],
                 addr: self.pc << 1,
             },
         )
@@ -340,21 +367,23 @@ impl Core {
             return 1;
         }
         // Load current op from previously fetched next op
-        let op0 = self.op1.clone();
-        // Fetch next op
-        let pc1 = self.pc + op0.words() as u16;
-        let w0 = self.program_load_u16(pc1);
-        let w1 = self.program_load_u16(pc1 + 1);
-        // Decode next op
-        self.op1 = Op::decode(w0, w1);
-        let cycles = self.exec_op(op0);
-        if self.branch {
-            let w0 = self.program_load_u16(self.pc);
-            let w1 = self.program_load_u16(self.pc + 1);
-            self.op1 = Op::decode(w0, w1);
-            self.branch = false;
-        }
-        cycles
+        //let op0 = self.op1.clone();
+        //// Fetch next op
+        //let pc1 = self.pc + op0.words() as u16;
+        //let w0 = self.program_load_u16(pc1);
+        //let w1 = self.program_load_u16(pc1 + 1);
+        //// Decode next op
+        //self.op1 = Op::decode(w0, w1);
+        //let cycles = self.exec_op(op0);
+        //if self.branch {
+        //    let w0 = self.program_load_u16(self.pc);
+        //    let w1 = self.program_load_u16(self.pc + 1);
+        //    self.op1 = Op::decode(w0, w1);
+        //    self.branch = false;
+        //}
+        //cycles
+
+        self.exec_op(self.program_ops[self.pc as usize])
     }
 
     // returns true if an interrupt is fired
@@ -507,9 +536,9 @@ impl Core {
         self.push_u16(self.pc);
         self.pc = pc;
         // Fetch op1 because we are branching without runnig step()
-        let w0 = self.program_load_u16(self.pc);
-        let w1 = self.program_load_u16(self.pc + 1);
-        self.op1 = Op::decode(w0, w1);
+        // let w0 = self.program_load_u16(self.pc);
+        // let w1 = self.program_load_u16(self.pc + 1);
+        // self.op1 = Op::decode(w0, w1);
         true
     }
 
@@ -1682,7 +1711,7 @@ impl Core {
             Op::Cp { d, r } => self.op_cp(d, r),
             Op::Cpc { d, r } => self.op_cpc(d, r),
             Op::Cpi { d, k } => self.op_cpi(d, k),
-            Op::Cpse { d, r } => self.op_cpse(d, r, self.op1.words()),
+            Op::Cpse { d, r } => self.op_cpse(d, r, self.op1().words()),
             Op::Dec { d } => self.op_dec(d),
             Op::Eicall => self.op_eicall(),
             Op::Eijmp => self.op_eijmp(),
@@ -1723,11 +1752,11 @@ impl Core {
             Op::Sbc { d, r } => self.op_sbc(d, r),
             Op::Sbci { d, k } => self.op_sbci(d, k),
             Op::Sbi { a, b } => self.op_sbi(a, b),
-            Op::Sbic { a, b } => self.op_sbic(a, b, self.op1.words()),
-            Op::Sbis { a, b } => self.op_sbis(a, b, self.op1.words()),
+            Op::Sbic { a, b } => self.op_sbic(a, b, self.op1().words()),
+            Op::Sbis { a, b } => self.op_sbis(a, b, self.op1().words()),
             Op::Sbiw { d, k } => self.op_sbiw(d, k),
-            Op::Sbrc { r, b } => self.op_sbrc(r, b, self.op1.words()),
-            Op::Sbrs { r, b } => self.op_sbrs(r, b, self.op1.words()),
+            Op::Sbrc { r, b } => self.op_sbrc(r, b, self.op1().words()),
+            Op::Sbrs { r, b } => self.op_sbrs(r, b, self.op1().words()),
             // Op::Ser { d } => self.op_ser(d),
             Op::Sleep => self.op_sleep(),
             Op::Spm => self.op_spm(),
