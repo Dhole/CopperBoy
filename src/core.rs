@@ -387,7 +387,7 @@ impl Core {
     }
 
     // returns true if an interrupt is fired
-    pub fn step_hw(&mut self, cycles: u8) -> bool {
+    pub fn step_hw(&mut self, cycles: usize) -> bool {
         // The interrupts have priority in accordance with their Interrupt Vector position.  The
         // lower the Interrupt Vector address, the higher the priority.
 
@@ -506,6 +506,7 @@ impl Core {
             TIMER3_COMPC
         } else if interrupt_bitmap & Interrupt::Timer3Ovf.to_u64().unwrap() != 0 {
             debug!("Handling interrupt TIMER3_OVF");
+            self.clock.clear_int(Interrupt::Timer3Ovf);
             TIMER3_OVF
         } else if interrupt_bitmap & Interrupt::Twi.to_u64().unwrap() != 0 {
             debug!("Handling interrupt TWI");
@@ -549,11 +550,20 @@ impl Core {
         } else if addr < IOSPACE_ADDR {
             self.regs[addr as u8]
         } else {
-            debug!(
-                "I/O Registers / Extended I/O Space load at 0x{:04x} {:?}",
-                addr,
-                io_reg_str(addr).unwrap_or(("Unknown", ""))
-            );
+            match addr {
+                io_regs::SPL
+                | io_regs::SPH
+                | io_regs::SREG
+                | io_regs::SPSR
+                | io_regs::PINB
+                | io_regs::PINE
+                | io_regs::PINF => {}
+                _ => debug!(
+                    "I/O Registers / Extended I/O Space load at 0x{:04x} {:?}",
+                    addr,
+                    io_reg_str(addr).unwrap_or(("Unknown", ""))
+                ),
+            }
             match addr {
                 io_regs::SPL => get_lo(self.sp),
                 io_regs::SPH => get_hi(self.sp),
@@ -562,50 +572,51 @@ impl Core {
                 io_regs::TCCR0B => self.clock.reg_tccr0b(), // TODO: Timer/Counter Control Register B
                 io_regs::TCCR1A => 0, // TODO: Timer/Counter Control Register A
                 io_regs::TCCR1B => 0, // TODO: Timer/Counter Control Register B
-                io_regs::TCCR3A => 0, // TODO: Timer/Counter Control Register A
-                io_regs::TCCR3B => 0, // TODO: Timer/Counter Control Register B
+                io_regs::TCCR3A => self.clock.reg_tccr3a(), // TODO: Timer/Counter Control Register A
+                io_regs::TCCR3B => self.clock.reg_tccr3b(), // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4A => 0, // TODO: Timer/Counter Control Register A
                 io_regs::TCCR4B => 0, // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4C => 0, // TODO: Timer/Counter Control Register C
                 io_regs::TCCR4D => 0, // TODO: Timer/Counter Control Register D
                 io_regs::TIMSK0 => self.clock.reg_timsk0(), // TODO: Timer/Counter Interrupt Mask Register
                 io_regs::TIMSK4 => 0, // TODO: Timer/Counter Interrupt Mask Register
-                io_regs::TIMSK3 => 0, // TODO: Timer/Counter Interrupt Mask Register
-                io_regs::TCNT0 => self.clock.reg_tcnt0(), // TODO: Timer/Counter Register
-                io_regs::TIFR1 => 0,  // TODO: Timer/Counter Interrupt Flag Resiger
+                io_regs::TIMSK3 => self.clock.reg_timsk3(), // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TCNT0 => self.clock.reg_tcnt0(),   // TODO: Timer/Counter Register
+                io_regs::TIFR1 => 0, // TODO: Timer/Counter Interrupt Flag Resiger
                 io_regs::ADCSRA => 0, // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => 0, // TODO
                 io_regs::USBCON => 0, // TODO
-                io_regs::UDCON => 0,  // TODO
-                io_regs::UDINT => 0,  // TODO
-                io_regs::UDIEN => 0,  // TODO
-                io_regs::DDRD => 0,   // TODO
-                io_regs::DDRB => 0,   // TODO
-                io_regs::DDRE => 0,   // TODO
-                io_regs::DDRF => 0,   // TODO
-                io_regs::ADMUX => 0,  // TODO
-                io_regs::PORTB => 0,  // TODO
-                io_regs::PORTC => 0,  // TODO
-                io_regs::PORTD => 0,  // TODO
-                io_regs::PORTE => 0,  // TODO
-                io_regs::PORTF => 0,  // TODO
-                io_regs::DDRC => 0,   // TODO
-                io_regs::SPCR => 0,   // TODO
+                io_regs::UDCON => 0, // TODO
+                io_regs::UDINT => 0, // TODO
+                io_regs::UDIEN => 0, // TODO
+                io_regs::DDRD => 0,  // TODO
+                io_regs::DDRB => 0,  // TODO
+                io_regs::DDRE => 0,  // TODO
+                io_regs::DDRF => 0,  // TODO
+                io_regs::ADMUX => 0, // TODO
+                io_regs::PORTB => 0, // TODO
+                io_regs::PORTC => 0, // TODO
+                io_regs::PORTD => 0, // TODO
+                io_regs::PORTE => 0, // TODO
+                io_regs::PORTF => 0, // TODO
+                io_regs::DDRC => 0,  // TODO
+                io_regs::SPCR => 0,  // TODO
                 io_regs::SPSR => 0b10000000, // TODO
-                io_regs::SPDR => 0,   // TODO
-                io_regs::PRR0 => 0,   // TODO
-                io_regs::PRR1 => 0,   // TODO
-                io_regs::SMCR => 0,   // TODO
+                io_regs::SPDR => 0,  // TODO
+                io_regs::PRR0 => 0,  // TODO
+                io_regs::PRR1 => 0,  // TODO
+                io_regs::SMCR => 0,  // TODO
                 io_regs::PINB => self.gpio.pin_b, // TODO
                 io_regs::PINC => self.gpio.pin_c, // TODO
                 io_regs::PIND => self.gpio.pin_d, // TODO
                 io_regs::PINE => self.gpio.pin_e, // TODO
                 io_regs::PINF => self.gpio.pin_f, // TODO
                 io_regs::PLLCSR => self.clock.reg_pllcsr(), // TODO: PLL Control and Status Register
-                io_regs::EEDR => 0,   // TODO
-                io_regs::EECR => 0,   // TODO
-                io_regs::ADCL => 0,   // TODO
-                io_regs::ADCH => 0,   // TODO
+                io_regs::EEDR => 0,  // TODO
+                io_regs::EECR => 0,  // TODO
+                io_regs::ADCL => 0,  // TODO
+                io_regs::ADCH => 0,  // TODO
+                io_regs::ADCSRB => 0, // TODO
                 // 0x20 => 0,            // TODO
                 // 0x21 => 0,            // TODO
                 // 0x22 => 0,            // TODO
@@ -637,45 +648,48 @@ impl Core {
         } else if addr < IOSPACE_ADDR {
             self.regs[addr as u8] = v;
         } else {
-            debug!(
-                "I/O Registers / Extended I/O Space store (0x{:02x}) at 0x{:04x} {:?}",
-                v,
-                addr,
-                io_reg_str(addr).unwrap_or(("Unknown", ""))
-            );
+            match addr {
+                io_regs::SPL | io_regs::SPH | io_regs::SREG | io_regs::SPDR | io_regs::PORTC => {}
+                _ => debug!(
+                    "I/O Registers / Extended I/O Space store (0x{:02x}) at 0x{:04x} {:?}",
+                    v,
+                    addr,
+                    io_reg_str(addr).unwrap_or(("Unknown", ""))
+                ),
+            }
             match addr {
                 io_regs::SPL => set_lo(&mut self.sp, v),
                 io_regs::SPH => set_hi(&mut self.sp, v),
                 io_regs::SREG => self.status_reg = StatusRegister::from_u8(v),
-                io_regs::TCCR0A => self.clock.set_reg_tccr0a(v), // TODO: Timer/Counter Control Register A
-                io_regs::TCCR0B => self.clock.set_reg_tccr0b(v), // TODO: Timer/Counter Control Register B
+                io_regs::TCCR0A => self.clock.set_reg_tccr0a(v),
+                io_regs::TCCR0B => self.clock.set_reg_tccr0b(v),
                 io_regs::TCCR1A => {} // TODO: Timer/Counter Control Register A
                 io_regs::TCCR1B => {} // TODO: Timer/Counter Control Register B
-                io_regs::TCCR3A => {} // TODO: Timer/Counter Control Register A
-                io_regs::TCCR3B => {} // TODO: Timer/Counter Control Register B
+                io_regs::TCCR3A => self.clock.set_reg_tccr3a(v),
+                io_regs::TCCR3B => self.clock.set_reg_tccr3b(v),
                 io_regs::TCCR4A => {} // TODO: Timer/Counter Control Register A
                 io_regs::TCCR4B => {} // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4C => {} // TODO: Timer/Counter Control Register B
                 io_regs::TCCR4D => {} // TODO: Timer/Counter Control Register B
-                io_regs::TIMSK0 => self.clock.set_reg_timsk0(v), // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TIMSK0 => self.clock.set_reg_timsk0(v),
                 io_regs::TIMSK1 => {} // TODO: Timer/Counter Interrupt Mask Register
-                io_regs::TIMSK3 => {} // TODO: Timer/Counter Interrupt Mask Register
+                io_regs::TIMSK3 => self.clock.set_reg_timsk3(v),
                 io_regs::TIMSK4 => {} // TODO: Timer/Counter Interrupt Mask Register
-                io_regs::TCNT0 => self.clock.set_reg_tcnt0(v), // TODO: Timer/Counter Register
-                io_regs::TIFR1 => {}  // TODO: Timer/Counter Interrupt Flag Resiger
+                io_regs::TCNT0 => self.clock.set_reg_tcnt0(v),
+                io_regs::TIFR1 => {} // TODO: Timer/Counter Interrupt Flag Resiger
                 io_regs::ADCSRA => {} // TODO: ADC Ctrl & Status Register
                 io_regs::UHWCON => {} // TODO
                 io_regs::USBCON => {} // TODO
-                io_regs::UDCON => {}  // TODO
-                io_regs::UDINT => {}  // TODO
-                io_regs::UDIEN => {}  // TODO
-                io_regs::DDRD => {}   // TODO
-                io_regs::DDRB => {}   // TODO
-                io_regs::DDRE => {}   // TODO
-                io_regs::DDRF => {}   // TODO
-                io_regs::ADMUX => {}  // TODO
-                io_regs::PORTB => {}  // TODO
-                io_regs::PORTC => {}  // TODO
+                io_regs::UDCON => {} // TODO
+                io_regs::UDINT => {} // TODO
+                io_regs::UDIEN => {} // TODO
+                io_regs::DDRD => {}  // TODO
+                io_regs::DDRB => {}  // TODO
+                io_regs::DDRE => {}  // TODO
+                io_regs::DDRF => {}  // TODO
+                io_regs::ADMUX => {} // TODO
+                io_regs::PORTB => {} // TODO
+                io_regs::PORTC => {} // TODO
                 io_regs::PORTD => self.display.set_dc((v & (1 << 4)) != 0),
                 io_regs::PORTE => {} // TODO
                 io_regs::PORTF => {} // TODO
@@ -696,18 +710,19 @@ impl Core {
                 io_regs::EEARH => {}                             // TODO
                 io_regs::EECR => {}                              // TODO
                 io_regs::TCCR3C => {}                            // TODO
-                io_regs::ICR3H => {}                             // TODO
-                io_regs::ICR3L => {}                             // TODO
+                io_regs::ICR3H => self.clock.set_reg_icr3h(v),   // TODO
+                io_regs::ICR3L => self.clock.set_reg_icr3l(v),   // TODO
                 io_regs::EEDR => {}                              // TODO
-                io_regs::OCR3AH => {}                            // TODO
-                io_regs::OCR3AL => {}                            // TODO
-                io_regs::TCNT3H => {}                            // TODO
-                io_regs::TCNT3L => {}                            // TODO
-                io_regs::OCR1AH => {}                            // TODO
-                io_regs::OCR1AL => {}                            // TODO
-                io_regs::OCR0A => {}                             // TODO
-                io_regs::OCR1BL => {}                            // TODO
-                io_regs::OCR1BH => {}                            // TODO
+                io_regs::OCR3AH => self.clock.set_reg_ocr3ah(v),
+                io_regs::OCR3AL => self.clock.set_reg_ocr3al(v),
+                io_regs::TCNT3H => self.clock.set_reg_tcnt3h(v),
+                io_regs::TCNT3L => self.clock.set_reg_tcnt3l(v),
+                io_regs::OCR1AH => {} // TODO
+                io_regs::OCR1AL => {} // TODO
+                io_regs::OCR0A => {}  // TODO
+                io_regs::OCR1BL => {} // TODO
+                io_regs::OCR1BH => {} // TODO
+                io_regs::ADCSRB => {} // TODO
                 io_regs::GPIOR0 => {
                     warn!("DBG: {:02x}", v);
                 }

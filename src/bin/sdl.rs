@@ -174,7 +174,8 @@ fn run(
     let mut d = 0;
     let mut int_ret_addr: Option<(u16)> = Option::None;
     let mut fps: f32 = 0.0;
-    let start = Instant::now();
+    let mut turbo = false;
+    let mut start = Instant::now();
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -195,6 +196,7 @@ fn run(
                         Keycode::X => pin_e &= !PIN_A,
                         Keycode::Z => pin_b &= !PIN_B,
                         Keycode::T => trace = !trace,
+                        Keycode::Tab => turbo = true,
                         _ => {}
                     };
                 }
@@ -209,6 +211,11 @@ fn run(
                         Keycode::Down => pin_f |= PIN_DOWN,
                         Keycode::X => pin_e |= PIN_A,
                         Keycode::Z => pin_b |= PIN_B,
+                        Keycode::Tab => {
+                            start = Instant::now();
+                            frame = 0;
+                            turbo = false
+                        }
                         _ => {}
                     };
                 }
@@ -251,7 +258,8 @@ fn run(
                 }
                 println!("; SP = {:04x}", core.sp);
             }
-            cycles -= core.step() as i32;
+            let step_cycles = core.step();
+            cycles -= step_cycles as i32;
             let addr1 = core.pc << 1;
             if let Option::None = int_ret_addr {
                 if let Op::Rcall { k: 0 } = op_addr.op {
@@ -295,7 +303,7 @@ fn run(
                     int_ret_addr = Option::None;
                 }
             }
-            let int = core.step_hw(cycles as u8);
+            let int = core.step_hw(step_cycles);
             if int {
                 // println!("ENTER INT");
                 int_ret_addr = Some(addr1);
@@ -363,7 +371,7 @@ fn run(
         let now = Instant::now();
         let elapsed = now - start;
         let expected = frame_exp_dur * frame;
-        if elapsed < expected {
+        if elapsed < expected && !turbo {
             ::std::thread::sleep(expected - elapsed);
         }
         let now = Instant::now();

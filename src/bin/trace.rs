@@ -98,6 +98,6 @@ fn main() -> Result<(), io::Error> {
             // }
         }
         let cycles = core.step();
-        core.step_hw(cycles as u8);
+        core.step_hw(cycles);
     }
 }
