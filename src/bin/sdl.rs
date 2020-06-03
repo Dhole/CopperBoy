@@ -175,6 +175,7 @@ fn run(
     let mut int_ret_addr: Option<(u16)> = Option::None;
     let mut fps: f32 = 0.0;
     let mut turbo = false;
+    let mut paused = false;
     let mut start = Instant::now();
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -197,6 +198,7 @@ fn run(
                         Keycode::Z => pin_b &= !PIN_B,
                         Keycode::T => trace = !trace,
                         Keycode::Tab => turbo = true,
+                        Keycode::Space => paused = !paused,
                         _ => {}
                     };
                 }
@@ -228,8 +230,10 @@ fn run(
         core.gpio.set_port(GPIOPort::D, pin_d);
         core.gpio.set_port(GPIOPort::E, pin_e);
         core.gpio.set_port(GPIOPort::F, pin_f);
-        cycles += 16_000_000 / 60;
-        while cycles > 0 {
+        if !paused {
+            cycles += 16_000_000 / 60;
+        }
+        while cycles > 0 && !paused {
             let addr0 = core.pc << 1;
             let (w0, w1, op_addr) = core.next_op();
             // println!("{:04x} !SP: {:04x}", op_addr.addr, 0x0a00 - core.sp);
