@@ -75,13 +75,16 @@ pub struct Display {
     all_pixels_on: bool,
     addr_mode: AddrMode,
     on: bool,
-    column_start_addr: usize, // Column Start Address // TODO: Use this
-    column_end_addr: usize, // Column End Address for Horizontal/Vertical Addressing Mode // TODO: Use this
+    column_start: usize, // Column Start Address // TODO: Use this
+    column_end: usize, // Column End Address for Horizontal/Vertical Addressing Mode // TODO: Use this
     column_range: usize,
     multiplex_ratio: u8,
     vertical_shift: u8,
     display_start_line: u8,
     contrast: u8,
+
+    page_addr_column_start: usize, // Column Start Address // TODO: Use this
+    page_addr_page_start: usize,
 
     page: usize,
     col_rel: usize,
@@ -100,15 +103,17 @@ impl Display {
             vertical_flipped: false,
             horizontal_flipped: false,
             all_pixels_on: false,
-            addr_mode: AddrMode::Horizontal,
+            addr_mode: AddrMode::Page,
             on: false,
-            column_start_addr: 0,
-            column_end_addr: 127,
+            column_start: 0,
+            column_end: 127,
             column_range: 128,
             multiplex_ratio: 64,
             vertical_shift: 0,
             display_start_line: 0,
             contrast: 0x7f,
+            page_addr_column_start: 0,
+            page_addr_page_start: 0,
             page: 0,
             col_rel: 0,
         }
@@ -116,6 +121,10 @@ impl Display {
 
     pub fn set_dc(&mut self, value: bool) {
         self.dc = value;
+    }
+
+    pub fn dc(&self) -> bool {
+        self.dc
     }
 
     fn inc_col(&mut self) -> bool {
@@ -139,7 +148,7 @@ impl Display {
     }
 
     fn paint_8pixels(&mut self, pixels: u8) {
-        self.fb[self.page * WIDTH + self.col_rel + self.column_start_addr] = pixels;
+        self.fb[self.page * WIDTH + self.col_rel + self.column_start] = pixels;
         match self.addr_mode {
             AddrMode::Horizontal => {
                 if self.inc_col() {
@@ -160,6 +169,21 @@ impl Display {
     fn command(&mut self, cmd: u8) {
         match self.cmd_state {
             CmdState::None => match cmd {
+                0x26 | 0x27 => {
+                    warn!("TODO: continuous horizontal scroll setup");
+                }
+                0x29 | 0x2A => {
+                    warn!("TODO: continuous vertical and horizontal scroll setup");
+                }
+                0xA3 => {
+                    warn!("TODO: set vertical scroll area");
+                }
+                0x22 => {
+                    warn!("TODO: set page address");
+                }
+                0xE3 => {
+                    info!("NOP");
+                }
                 CMD_PIXELS_INVERTED => {
                     info!("pixels inverted");
                     self.pixels_inverted = true;
@@ -237,18 +261,28 @@ impl Display {
                     self.cmd_state = CmdState::ClockDivideRatio;
                 }
                 0x00..=0x0F => {
-                    self.column_start_addr =
-                        (self.column_start_addr & 0xf0) | ((cmd as usize & 0x0f) << 0);
-                    info!("column_start_addr (L): {}", self.column_start_addr);
+                    self.page_addr_column_start =
+                        (self.page_addr_column_start & 0xf0) | ((cmd as usize & 0x0f) << 0);
+                    info!(
+                        "page_addr_column_start (L): {}",
+                        self.page_addr_column_start
+                    );
                 }
                 0x10..=0x1F => {
-                    self.column_start_addr =
-                        (self.column_start_addr & 0x0f) | ((cmd as usize & 0x0f) << 4);
-                    info!("column_start_addr (H): {}", self.column_start_addr);
+                    self.page_addr_column_start =
+                        (self.page_addr_column_start & 0x0f) | ((cmd as usize & 0x0f) << 4);
+                    info!(
+                        "page_addr_column_start (H): {}",
+                        self.page_addr_column_start
+                    );
                 }
                 0x40..=0x7F => {
                     self.display_start_line = cmd & 0b0011_1111;
                     info!("display_start_line: {}", self.display_start_line);
+                }
+                0xB0..=0xB7 => {
+                    self.page_addr_page_start = (cmd & 0b0000_0111) as usize;
+                    info!("page_addr_page_start: {}", self.page_addr_page_start);
                 }
                 _ => {
                     warn!("Unknown display command {:02x}", cmd);
@@ -316,16 +350,20 @@ impl Display {
             }
             CmdState::ColumnAddress(s) => match s {
                 StateColumnAddress::Start => {
-                    self.column_start_addr = cmd as usize & 0b0111_1111;
+                    self.column_start = cmd as usize & 0b0111_1111;
                     self.cmd_state = CmdState::ColumnAddress(StateColumnAddress::End);
                 }
                 StateColumnAddress::End => {
-                    self.column_end_addr = cmd as usize & 0b0111_1111;
+                    self.column_end = cmd as usize & 0b0111_1111;
                     info!(
                         "colum_addr start-end: {}-{}",
-                        self.column_start_addr, self.column_end_addr
+                        self.column_start, self.column_end
                     );
-                    self.column_range = self.column_end_addr + 1 - self.column_start_addr;
+                    self.column_range = if self.column_end >= self.column_start {
+                        self.column_end + 1 - self.column_start
+                    } else {
+                        self.column_end + 1 + (WIDTH - self.column_start)
+                    };
                     self.cmd_state = CmdState::None;
                 }
             },

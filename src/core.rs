@@ -596,7 +596,13 @@ impl Core {
                 io_regs::ADMUX => 0, // TODO
                 io_regs::PORTB => 0, // TODO
                 io_regs::PORTC => 0, // TODO
-                io_regs::PORTD => 0, // TODO
+                io_regs::PORTD => {
+                    if self.display.dc() {
+                        1 << 4
+                    } else {
+                        0
+                    }
+                } // TODO
                 io_regs::PORTE => 0, // TODO
                 io_regs::PORTF => 0, // TODO
                 io_regs::DDRC => 0,  // TODO
@@ -1655,7 +1661,7 @@ impl Core {
 
     /// 121. Store Direct to Data Space (STS k, Rr) OK
     fn op_sts(&mut self, k: u16, r: u8) -> usize {
-        self.data_store(k, self.regs[r]);
+        self.data_store(k % (SRAM_ADDR + SRAM_SIZE), self.regs[r]);
         self.pc += 2;
         2
     }
