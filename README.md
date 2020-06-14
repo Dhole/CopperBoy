@@ -53,6 +53,10 @@ cargo run --release --bin sdl -- ROM_PATH
   <img alt="Starduino Turbo" width="40%" src="https://github.com/Dhole/CopperBoy/raw/master/screenshots/Starduino_Turbo_3.png">
 </p>
 
+## License
+
+GPLv3 (see LICENSE file).
+
 ## Reference
 
 - [AVR Instruction Set Manual](https://www.csee.umbc.edu/~alnel1/cmpe311/notes/AtmelAVR8BitISA.pdf)
