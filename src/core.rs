@@ -321,7 +321,7 @@ impl Core {
 
     /// Instruction used to populate the Program Memory Space.  Simulates flashing the flash
     /// memory.
-    pub fn flash(&mut self, addr: u16, v: u8) {
+    pub fn flash_write(&mut self, addr: u16, v: u8) {
         self.program[addr as usize] = v;
         let addr_align = (addr & 0b1111_1111_1111_1110) as usize;
         self.program_ops[(addr >> 1) as usize] = Op::decode(

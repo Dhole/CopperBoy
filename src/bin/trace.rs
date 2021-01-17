@@ -7,25 +7,7 @@ use hex;
 
 use avremu::core::Core;
 use avremu::opcodes::{Op, OpAddr};
-
-fn decode_hex_line(line: &str) -> Result<Option<(u16, Vec<u8>)>, hex::FromHexError> {
-    let line = line.as_bytes();
-    assert_eq!(line[0], b':');
-    let line = &line[1..];
-    let bytes = hex::decode(&line[0..2])?[0] as usize;
-    let addr = hex::decode(&line[2..6])?;
-    let addr = u16::from_be_bytes([addr[0], addr[1]]);
-    let rtype = hex::decode(&line[6..8])?[0];
-
-    Ok(match rtype {
-        0x00 => {
-            let data = hex::decode(&line[8..8 + bytes * 2])?;
-            let _checksum = hex::decode(&line[8 + bytes * 2..8 + bytes * 2 + 2])?[0];
-            Some((addr, data))
-        }
-        _ => None,
-    })
-}
+use avremu::utils::decode_hex_line;
 
 fn bin(w: u16) -> String {
     let s = format!("{:016b}", w);
@@ -44,10 +26,12 @@ fn main() -> Result<(), io::Error> {
         if line.len() == 0 {
             continue;
         }
-        match decode_hex_line(line.as_str()).map_err(|e| io::Error::new(io::ErrorKind::Other, e))? {
+        match decode_hex_line(line.as_str())
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, std::format!("{:?} ", e)))?
+        {
             Some((addr, data)) => {
                 for i in 0..data.len() {
-                    core.flash(addr + i as u16, data[i]);
+                    core.flash_write(addr + i as u16, data[i]);
                 }
             }
             None => {}

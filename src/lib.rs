@@ -50,3 +50,4 @@ pub mod int_vec;
 pub mod io_regs;
 pub mod keys;
 pub mod opcodes;
+pub mod utils;

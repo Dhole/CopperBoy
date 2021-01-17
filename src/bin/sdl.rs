@@ -12,6 +12,7 @@ use avremu::core::{Core, GPIOPort};
 use avremu::display::{HEIGTH, WIDTH};
 use avremu::keys::*;
 use avremu::opcodes::{Op, OpAddr};
+use avremu::utils::{load_hex_file, HexFileError};
 
 // use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use sdl2::event::Event;
@@ -28,13 +29,7 @@ use clap::{App, Arg, SubCommand};
 #[derive(Debug)]
 pub enum FrontError {
     SDL2(String),
-    Io(io::Error),
-}
-
-impl From<io::Error> for FrontError {
-    fn from(err: io::Error) -> Self {
-        Self::Io(err)
-    }
+    HexFile(HexFileError),
 }
 
 impl From<String> for FrontError {
@@ -43,23 +38,10 @@ impl From<String> for FrontError {
     }
 }
 
-fn decode_hex_line(line: &str) -> Result<Option<(u16, Vec<u8>)>, hex::FromHexError> {
-    let line = line.as_bytes();
-    assert_eq!(line[0], b':');
-    let line = &line[1..];
-    let bytes = hex::decode(&line[0..2])?[0] as usize;
-    let addr = hex::decode(&line[2..6])?;
-    let addr = u16::from_be_bytes([addr[0], addr[1]]);
-    let rtype = hex::decode(&line[6..8])?[0];
-
-    Ok(match rtype {
-        0x00 => {
-            let data = hex::decode(&line[8..8 + bytes * 2])?;
-            let _checksum = hex::decode(&line[8 + bytes * 2..8 + bytes * 2 + 2])?[0];
-            Some((addr, data))
-        }
-        _ => None,
-    })
+impl From<HexFileError> for FrontError {
+    fn from(err: HexFileError) -> Self {
+        Self::HexFile(err)
+    }
 }
 
 pub fn main() -> Result<(), FrontError> {
@@ -108,25 +90,10 @@ pub fn main() -> Result<(), FrontError> {
     let trace = app.is_present("trace");
     let calltrace = app.is_present("calltrace");
 
-    let file = fs::File::open(path)?;
-
     let font_path: &Path = Path::new("./assets/DejaVuSansMono.ttf");
 
     let mut core = Core::new();
-    for line in io::BufReader::new(file).lines() {
-        let line = line?;
-        if line.len() == 0 {
-            continue;
-        }
-        match decode_hex_line(line.as_str()).map_err(|e| io::Error::new(io::ErrorKind::Other, e))? {
-            Some((addr, data)) => {
-                for i in 0..data.len() {
-                    core.flash(addr + i as u16, data[i]);
-                }
-            }
-            None => {}
-        }
-    }
+    load_hex_file(&mut core, path)?;
 
     core.reset();
     run(scale, trace, calltrace, font_path, &mut core)
