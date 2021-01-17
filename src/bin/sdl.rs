@@ -17,6 +17,7 @@ use avremu::opcodes::{Op, OpAddr};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
+use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::render::TextureQuery;
 
@@ -160,6 +161,17 @@ fn run(
     let mut event_pump = sdl_context.event_pump()?;
 
     let texture_creator = canvas.texture_creator();
+    let mut tex_display = texture_creator
+        .create_texture_streaming(PixelFormatEnum::RGB24, WIDTH as u32, HEIGTH as u32)
+        .map_err(|e| e.to_string())?;
+
+    let mut surf_fps = font
+        .render(format!("{:02.0}", 0).as_str())
+        .blended(Color::RGBA(100, 200, 100, 200))
+        .map_err(|e| e.to_string())?;
+    let mut tex_fps = texture_creator
+        .create_texture_from_surface(&surf_fps)
+        .map_err(|e| e.to_string())?;
 
     let frame_exp_dur = Duration::from_nanos(1_000_000_000u64 / 60);
     let mut now_end_frame = Instant::now();
@@ -329,37 +341,41 @@ fn run(
 
         core.display.render();
 
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
-        canvas.clear();
-        canvas.set_draw_color(Color::RGB(255, 255, 255));
-
-        for y in 0..HEIGTH {
-            for x in 0..WIDTH {
-                if core.display.frame[y * WIDTH + x] == 1 {
-                    canvas
-                        .fill_rect(Rect::new(
-                            x as i32 * scale as i32,
-                            y as i32 * scale as i32,
-                            scale,
-                            scale,
-                        ))
-                        .unwrap();
+        tex_display.with_lock(None, |buffer: &mut [u8], pitch: usize| {
+            for y in 0..HEIGTH {
+                for x in 0..WIDTH {
+                    let offset = y * pitch + x * 3;
+                    if core.display.frame[y * WIDTH + x] == 1 {
+                        buffer[offset] = 255;
+                        buffer[offset + 1] = 255;
+                        buffer[offset + 2] = 255;
+                    } else {
+                        buffer[offset] = 0;
+                        buffer[offset + 1] = 0;
+                        buffer[offset + 2] = 0;
+                    }
                 }
             }
-        }
+        })?;
 
+        canvas.clear();
+        canvas.copy(&tex_display, None, None)?;
+
+        // Update frame rate texture every k frames
+        if frame % 10 == 0 {
+            surf_fps = font
+                .render(format!("{:02.0}", fps).as_str())
+                .blended(Color::RGBA(100, 200, 100, 200))
+                .map_err(|e| e.to_string())?;
+            tex_fps = texture_creator
+                .create_texture_from_surface(&surf_fps)
+                .map_err(|e| e.to_string())?;
+        }
         // Render frame rate
-        let surface = font
-            .render(format!("{:02.0}", fps).as_str())
-            .blended(Color::RGBA(100, 200, 100, 200))
-            .map_err(|e| e.to_string())?;
-        let texture = texture_creator
-            .create_texture_from_surface(&surface)
-            .map_err(|e| e.to_string())?;
-        let TextureQuery { width, height, .. } = texture.query();
+        let TextureQuery { width, height, .. } = tex_fps.query();
         const padding: i32 = 1;
         canvas.copy(
-            &texture,
+            &tex_fps,
             None,
             Some(Rect::new(
                 padding * scale as i32,
