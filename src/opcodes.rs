@@ -491,6 +491,7 @@ pub enum Op {
     Subi { d: u8, k: u8 },
     Swap { d: u8 },
     Wdr,
+    Zzz, // Custom instruction that is run in sleep mode
     Undefined { w: u16 },
 }
 
@@ -1054,6 +1055,7 @@ impl<'a> fmt::Display for OpAddr {
             Op::Subi { d, k } => write!(f, "SUBI R{}, {}", d, k),
             Op::Swap { d } => write!(f, "SWAP R{}", d),
             Op::Wdr => write!(f, "WDR"),
+            Op::Zzz => write!(f, "(Internal) ZZZ"),
             Op::Undefined { w } => write!(f, "UNDEF ; 0x{}", hex::encode(w.to_le_bytes())),
         }
     }

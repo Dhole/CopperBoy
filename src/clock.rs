@@ -73,6 +73,7 @@ pub struct Clock {
     timer_3_cmp_a_int_enable: bool,
     timer_3_ovf_int_enable: bool, // TIMSK3{TOIE3}
     timer_3_ovf_int: bool,        // TIFR3{TOV3}
+    timer_3_cmp_a_int: bool,      // TIFR3{OFC1A}
     timer_3: u16,
     timer_3_icr: u16,
     timer_3_ocra: u16,
@@ -102,6 +103,7 @@ impl Clock {
             timer_3_cmp_b_int_enable: false,
             timer_3_cmp_a_int_enable: false,
             timer_3_ovf_int: false,
+            timer_3_cmp_a_int: false,
             timer_3_ovf_int_enable: false,
             timer_3: 0,
             timer_3_icr: 0,
@@ -215,7 +217,7 @@ impl Clock {
             _ => unreachable!(),
         };
         self.timer_3 = t;
-        debug!(">>> cycles: {}, timer3: {}", cycles, self.timer_3);
+        // debug!(">>> cycles: {}, timer3: {}", cycles, self.timer_3);
         match self.timer_3_wgm {
             WaveGenMode::Normal => {
                 if overflow {
@@ -248,6 +250,7 @@ impl Clock {
                         self.timer_3 = self.timer_3 % self.timer_3_ocra;
                     }
                     self.timer_3_ovf_int = true;
+                    self.timer_3_cmp_a_int = true;
                 }
             }
             WaveGenMode::PWMPhaseFreqCorrectICR => {
@@ -276,8 +279,12 @@ impl Clock {
         let mut bitmap = 0;
         if self.timer_0_ovf_int_enable && self.timer_0_ovf_int {
             bitmap |= Interrupt::Timer0Ovf.to_u64().unwrap();
-        } else if self.timer_3_ovf_int_enable && self.timer_3_ovf_int {
+        }
+        if self.timer_3_ovf_int_enable && self.timer_3_ovf_int {
             bitmap |= Interrupt::Timer3Ovf.to_u64().unwrap();
+        }
+        if self.timer_3_cmp_a_int_enable && self.timer_3_cmp_a_int {
+            bitmap |= Interrupt::Timer3CompA.to_u64().unwrap();
         }
         bitmap
     }
@@ -288,6 +295,7 @@ impl Clock {
             Interrupt::Timer0CompB => self.timer_0_cmp_b_int = false,
             Interrupt::Timer0Ovf => self.timer_0_ovf_int = false,
             Interrupt::Timer3Ovf => self.timer_3_ovf_int = false,
+            Interrupt::Timer3CompA => self.timer_3_cmp_a_int = false,
             _ => unreachable!(),
         }
     }

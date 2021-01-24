@@ -47,7 +47,7 @@ pub fn decode_hex_line(line: &str) -> Result<Option<(u16, Vec<u8>)>, HexFileErro
             let _checksum = buf[4 + len];
             Some((addr, data.to_vec()))
         }
-        // TODO: Handle other rtype cases
+        // TODO: Handle other type cases
         _ => None,
     })
 }

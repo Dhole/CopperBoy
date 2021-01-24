@@ -46,6 +46,7 @@ impl IndexMut<u16> for Memory {
 pub mod clock;
 pub mod core;
 pub mod display;
+pub mod eeprom;
 pub mod int_vec;
 pub mod io_regs;
 pub mod keys;

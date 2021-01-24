@@ -3,6 +3,7 @@ use num_traits::ToPrimitive;
 
 use super::clock;
 use super::display;
+use super::eeprom;
 use super::int_vec::*;
 use super::io_regs::io_reg_str;
 use super::opcodes::*;
@@ -236,9 +237,11 @@ pub struct Core {
     // op1: Op,
     // Peripherials
     clock: clock::Clock,
+    eeprom: eeprom::Eeprom,
     pub display: display::Display,
     /// Sleeping?
     pub sleep: bool,
+    sleep_op: Op,
     pub gpio: GPIO,
 }
 
@@ -262,6 +265,9 @@ impl GPIO {
     }
 
     pub fn set_port(&mut self, port: GPIOPort, v: u8) {
+        // if let GPIOPort::C = port {
+        //     println!("set port {:?} {:02x}", port, v);
+        // }
         match port {
             GPIOPort::B => self.pin_b = v,
             GPIOPort::C => self.pin_c = v,
@@ -270,8 +276,13 @@ impl GPIO {
             GPIOPort::F => self.pin_f = v,
         }
     }
+
+    pub fn port_c(&self) -> u8 {
+        self.pin_c
+    }
 }
 
+#[derive(Debug)]
 pub enum GPIOPort {
     B,
     C,
@@ -295,7 +306,9 @@ impl Core {
             // op1: Op::Undefined { w: 0x0000 },
             // Peripherials
             clock: clock::Clock::new(),
+            eeprom: eeprom::Eeprom::new(),
             sleep: false,
+            sleep_op: Op::Nop,
             display: display::Display::new(),
             gpio: GPIO::new(),
         }
@@ -323,6 +336,7 @@ impl Core {
     /// memory.
     pub fn flash_write(&mut self, addr: u16, v: u8) {
         self.program[addr as usize] = v;
+        // align address to 16 bit words and store the decoded instruction.
         let addr_align = (addr & 0b1111_1111_1111_1110) as usize;
         self.program_ops[(addr >> 1) as usize] = Op::decode(
             (self.program[addr_align + 0] as u16) | (self.program[addr_align + 1] as u16) << 8,
@@ -333,6 +347,7 @@ impl Core {
         if addr_align < 2 {
             return;
         }
+        // Filter two word ops, and return otherwise
         match self.program_ops[(addr >> 1) as usize - 1] {
             Op::Call { .. } | Op::Jmp { .. } | Op::Lds { .. } | Op::Sts { .. } => {}
             _ => {
@@ -361,11 +376,25 @@ impl Core {
         )
     }
 
+    fn sleep_set(&mut self) {
+        self.sleep = true;
+        self.sleep_op = self.program_ops[self.pc as usize];
+        self.program_ops[self.pc as usize] = Op::Zzz;
+    }
+
+    fn sleep_unset(&mut self) {
+        if !self.sleep {
+            return;
+        }
+        self.sleep = false;
+        self.program_ops[self.pc as usize] = self.sleep_op;
+    }
+
     /// Step one instruction.  Return the number of cycles that have passed.
     pub fn step(&mut self) -> usize {
-        if self.sleep {
-            return 1;
-        }
+        // if self.sleep {
+        //     return 1;
+        // }
         // Load current op from previously fetched next op
         //let op0 = self.op1.clone();
         //// Fetch next op
@@ -382,8 +411,14 @@ impl Core {
         //    self.branch = false;
         //}
         //cycles
+        let op = self.get_next_op();
+        // self.exec_op(self.program_ops[self.pc as usize])
+        self.exec_op(op)
+    }
 
-        self.exec_op(self.program_ops[self.pc as usize])
+    #[inline(always)]
+    fn get_next_op(&self) -> Op {
+        return self.program_ops[self.pc as usize];
     }
 
     // returns true if an interrupt is fired
@@ -391,7 +426,7 @@ impl Core {
         // The interrupts have priority in accordance with their Interrupt Vector position.  The
         // lower the Interrupt Vector address, the higher the priority.
 
-        // The Global Interrupt Enable Register is cleared by hardware afeter an interrupt has
+        // The Global Interrupt Enable Register is cleared by hardware after an interrupt has
         // ocurred.
 
         let mut interrupt_bitmap: u64 = 0;
@@ -412,7 +447,7 @@ impl Core {
             return false;
         }
 
-        self.sleep = false;
+        self.sleep_unset();
         // println!("INTERRUPT 1");
         self.status_reg.i = false;
 
@@ -497,12 +532,16 @@ impl Core {
             TIMER3_CAPT
         } else if interrupt_bitmap & Interrupt::Timer3CompA.to_u64().unwrap() != 0 {
             debug!("Handling interrupt TIMER3_COMPA");
+            // println!("timer3_comp_a int");
+            self.clock.clear_int(Interrupt::Timer3CompA);
             TIMER3_COMPA
         } else if interrupt_bitmap & Interrupt::Timer3CompB.to_u64().unwrap() != 0 {
             debug!("Handling interrupt TIMER3_COMPB");
+            self.clock.clear_int(Interrupt::Timer3CompB);
             TIMER3_COMPB
         } else if interrupt_bitmap & Interrupt::Timer3CompC.to_u64().unwrap() != 0 {
             debug!("Handling interrupt TIMER3_COMPC");
+            self.clock.clear_int(Interrupt::Timer3CompC);
             TIMER3_COMPC
         } else if interrupt_bitmap & Interrupt::Timer3Ovf.to_u64().unwrap() != 0 {
             debug!("Handling interrupt TIMER3_OVF");
@@ -595,7 +634,10 @@ impl Core {
                 io_regs::DDRF => 0,  // TODO
                 io_regs::ADMUX => 0, // TODO
                 io_regs::PORTB => 0, // TODO
-                io_regs::PORTC => 0, // TODO
+                io_regs::PORTC => {
+                    // println!("read  port C: {:08b}", self.gpio.pin_c);
+                    self.gpio.pin_c
+                }
                 io_regs::PORTD => {
                     if self.display.dc() {
                         1 << 4
@@ -603,26 +645,29 @@ impl Core {
                         0
                     }
                 } // TODO
-                io_regs::PORTE => 0, // TODO
-                io_regs::PORTF => 0, // TODO
-                io_regs::DDRC => 0,  // TODO
-                io_regs::SPCR => 0,  // TODO
-                io_regs::SPSR => 0b10000000, // TODO
-                io_regs::SPDR => 0,  // TODO
-                io_regs::PRR0 => 0,  // TODO
-                io_regs::PRR1 => 0,  // TODO
-                io_regs::SMCR => 0,  // TODO
+                io_regs::PORTE => 0,              // TODO
+                io_regs::PORTF => 0,              // TODO
+                io_regs::DDRC => 0,               // TODO
+                io_regs::SPCR => 0,               // TODO
+                io_regs::SPSR => 0b10000000,      // TODO
+                io_regs::SPDR => 0,               // TODO
+                io_regs::PRR0 => 0,               // TODO
+                io_regs::PRR1 => 0,               // TODO
+                io_regs::SMCR => 0,               // TODO
                 io_regs::PINB => self.gpio.pin_b, // TODO
-                io_regs::PINC => self.gpio.pin_c, // TODO
+                io_regs::PINC => {
+                    println!("read pin c {:02x}", self.gpio.pin_c);
+                    self.gpio.pin_c
+                } // TODO
                 io_regs::PIND => self.gpio.pin_d, // TODO
                 io_regs::PINE => self.gpio.pin_e, // TODO
                 io_regs::PINF => self.gpio.pin_f, // TODO
                 io_regs::PLLCSR => self.clock.reg_pllcsr(), // TODO: PLL Control and Status Register
-                io_regs::EEDR => 0,  // TODO
-                io_regs::EECR => 0,  // TODO
-                io_regs::ADCL => 0,  // TODO
-                io_regs::ADCH => 0,  // TODO
-                io_regs::ADCSRB => 0, // TODO
+                io_regs::EEDR => self.eeprom.reg_eedr(), // TODO
+                io_regs::EECR => self.eeprom.reg_eecr(), // TODO
+                io_regs::ADCL => 0,               // TODO
+                io_regs::ADCH => 0,               // TODO
+                io_regs::ADCSRB => 0,             // TODO
                 // 0x20 => 0,            // TODO
                 // 0x21 => 0,            // TODO
                 // 0x22 => 0,            // TODO
@@ -650,6 +695,9 @@ impl Core {
     /// Store a byte into the User Data Space
     fn data_store(&mut self, addr: u16, v: u8) {
         if addr >= SRAM_ADDR {
+            // if 0x0155 <= addr && addr <= 0x0158 {
+            //     println!("write {:04x} <- {:02x}", addr, v);
+            // }
             self.sram[(addr - SRAM_ADDR) as usize] = v;
         } else if addr < IOSPACE_ADDR {
             self.regs[addr as u8] = v;
@@ -695,7 +743,10 @@ impl Core {
                 io_regs::DDRF => {}  // TODO
                 io_regs::ADMUX => {} // TODO
                 io_regs::PORTB => {} // TODO
-                io_regs::PORTC => {} // TODO
+                io_regs::PORTC => {
+                    // println!("write port C: {:08b}", v);
+                    self.gpio.set_port(GPIOPort::C, v);
+                }
                 io_regs::PORTD => self.display.set_dc((v & (1 << 4)) != 0),
                 io_regs::PORTE => {} // TODO
                 io_regs::PORTF => {} // TODO
@@ -707,18 +758,20 @@ impl Core {
                 io_regs::PRR1 => {} // TODO: Power Reduction Register 1
                 io_regs::SMCR => {} // TODO: Sleep Mode Control Register
                 io_regs::PINB => {} // TODO
-                io_regs::PINC => {} // TODO
+                io_regs::PINC => {
+                    // println!("write pin c {:02x}", v);
+                } // TODO
                 io_regs::PIND => {} // TODO
                 io_regs::PINE => {} // TODO
                 io_regs::PINF => {} // TODO
                 io_regs::PLLCSR => self.clock.set_reg_pllcsr(v), // TODO: PLL Control and Status Register
-                io_regs::EEARL => {}                             // TODO
-                io_regs::EEARH => {}                             // TODO
-                io_regs::EECR => {}                              // TODO
+                io_regs::EEARL => self.eeprom.set_reg_eearl(v),  // TODO
+                io_regs::EEARH => self.eeprom.set_reg_eearh(v),  // TODO
+                io_regs::EECR => self.eeprom.set_reg_eecr(v),    // TODO
                 io_regs::TCCR3C => {}                            // TODO
                 io_regs::ICR3H => self.clock.set_reg_icr3h(v),   // TODO
                 io_regs::ICR3L => self.clock.set_reg_icr3l(v),   // TODO
-                io_regs::EEDR => {}                              // TODO
+                io_regs::EEDR => self.eeprom.set_reg_eedr(v),    // TODO
                 io_regs::OCR3AH => self.clock.set_reg_ocr3ah(v),
                 io_regs::OCR3AL => self.clock.set_reg_ocr3al(v),
                 io_regs::TCNT3H => self.clock.set_reg_tcnt3h(v),
@@ -1615,8 +1668,8 @@ impl Core {
     /// 115. SLEEP (SLEEP) OK
     fn op_sleep(&mut self) -> usize {
         debug!("Entering sleep");
-        self.sleep = true;
         self.pc += 1;
+        self.sleep_set();
         1
     }
     /// 116. Store Program Memory (SPM) OK
@@ -1788,6 +1841,7 @@ impl Core {
             Op::Subi { d, k } => self.op_subi(d, k),
             Op::Swap { d } => self.op_swap(d),
             Op::Wdr => self.op_wdr(),
+            Op::Zzz => 1,
             Op::Undefined { w } => {
                 warn!(
                     "Tried to execute undefined op 0x{:04x} at address 0x{:04x}",

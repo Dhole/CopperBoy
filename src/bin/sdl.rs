@@ -15,6 +15,7 @@ use avremu::opcodes::{Op, OpAddr};
 use avremu::utils::{load_hex_file, HexFileError};
 
 // use sdl2::audio::{AudioCallback, AudioSpecDesired};
+use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -41,6 +42,27 @@ impl From<String> for FrontError {
 impl From<HexFileError> for FrontError {
     fn from(err: HexFileError) -> Self {
         Self::HexFile(err)
+    }
+}
+
+const SAMPLE_SIZE: u16 = 1024;
+struct AudioSample {
+    bytes: [u8; SAMPLE_SIZE as usize],
+    position: usize,
+}
+
+impl AudioCallback for AudioSample {
+    type Channel = u8;
+
+    fn callback(&mut self, out: &mut [u8]) {
+        let start = self.position;
+        let end = std::cmp::min(self.bytes.len(), self.position + out.len());
+        self.position = end;
+
+        let audio_data = &self.bytes[start..end];
+        for (src, dst) in audio_data.iter().zip(out.iter_mut()) {
+            *dst = *src;
+        }
     }
 }
 
@@ -108,7 +130,26 @@ fn run(
 ) -> Result<(), FrontError> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
+    let audio_subsystem = sdl_context.audio().unwrap();
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
+
+    const AUDIO_FREQ: i32 = 44100;
+    let desired_spec = AudioSpecDesired {
+        freq: Some(AUDIO_FREQ),
+        channels: Some(1),          // mono
+        samples: Some(SAMPLE_SIZE), // default sample size
+    };
+
+    let mut sample = [127; SAMPLE_SIZE as usize];
+    let mut audio = audio_subsystem
+        .open_playback(None, &desired_spec, |spec| {
+            // initialize the audio callback
+            AudioSample {
+                bytes: sample.clone(),
+                position: 0,
+            }
+        })
+        .unwrap();
 
     let window = video_subsystem
         .window("avremu-rs", WIDTH as u32 * scale, HEIGTH as u32 * scale)
@@ -143,9 +184,11 @@ fn run(
     let frame_exp_dur = Duration::from_nanos(1_000_000_000u64 / 60);
     let mut now_end_frame = Instant::now();
 
+    const SAMPLE_CYCLES: i32 = 16_000_000 / AUDIO_FREQ;
+
     let mut pin_b = 0xff as u8;
-    let mut pin_c = 0xff as u8;
-    let mut pin_d = 0xff as u8;
+    // let mut pin_c = 0xff as u8;
+    // let mut pin_d = 0xff as u8;
     let mut pin_e = 0xff as u8;
     let mut pin_f = 0xff as u8;
     let mut cycles: i32 = 0;
@@ -155,6 +198,7 @@ fn run(
     let mut fps: f32 = 0.0;
     let mut turbo = false;
     let mut paused = false;
+    let mut step_cycles_sample: i32 = 0;
     let mut start = Instant::now();
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -205,16 +249,16 @@ fn run(
         }
 
         core.gpio.set_port(GPIOPort::B, pin_b);
-        core.gpio.set_port(GPIOPort::C, pin_c);
-        core.gpio.set_port(GPIOPort::D, pin_d);
+        // core.gpio.set_port(GPIOPort::C, pin_c);
+        // core.gpio.set_port(GPIOPort::D, pin_d);
         core.gpio.set_port(GPIOPort::E, pin_e);
         core.gpio.set_port(GPIOPort::F, pin_f);
         if !paused {
             cycles += 16_000_000 / 60;
+            step_cycles_sample = SAMPLE_CYCLES;
         }
         while cycles > 0 && !paused {
             let addr0 = core.pc << 1;
-            let (w0, w1, op_addr) = core.next_op();
             // println!("{:04x} !SP: {:04x}", op_addr.addr, 0x0a00 - core.sp);
             // trace = if 0x573a <= op_addr.addr && op_addr.addr <= 0x576a
             //     || 0x4662 <= op_addr.addr && op_addr.addr <= 0x4668
@@ -223,6 +267,18 @@ fn run(
             // } else {
             //     false
             // };
+            let mut w0 = 0;
+            let mut w1 = 0;
+            let mut op_addr = OpAddr {
+                op: Op::Nop,
+                addr: 0,
+            };
+            if trace || calltrace {
+                let (_w0, _w1, _op_addr) = core.next_op();
+                w0 = _w0;
+                w1 = _w1;
+                op_addr = _op_addr;
+            }
             if trace && !core.sleep {
                 print!("{:04x} ", op_addr.addr);
                 match op_addr.op.words() {
@@ -241,15 +297,32 @@ fn run(
                 }
                 println!("; SP = {:04x}", core.sp);
             }
-            let step_cycles = core.step();
+
+            // if core.pc == 0x197c / 2 {
+            // trace = false;
+            // println!("===");
+            //  }
+            let mut step_cycles = 0;
+            const N_STEPS: usize = 1;
+            const M_ITERS: usize = 1;
+            if !core.sleep {
+                for _ in 0..M_ITERS {
+                    step_cycles += core.step();
+                    // step_cycles += core.step();
+                    // step_cycles += core.step();
+                    // step_cycles += core.step();
+                }
+            } else {
+                step_cycles += M_ITERS * N_STEPS;
+            }
             cycles -= step_cycles as i32;
             let addr1 = core.pc << 1;
-            if let Option::None = int_ret_addr {
-                if let Op::Rcall { k: 0 } = op_addr.op {
-                } else {
-                    match op_addr.op {
-                        Op::Call { .. } | Op::Icall { .. } | Op::Rcall { .. } => {
-                            if calltrace {
+            if calltrace {
+                if let Option::None = int_ret_addr {
+                    if let Op::Rcall { k: 0 } = op_addr.op {
+                    } else {
+                        match op_addr.op {
+                            Op::Call { .. } | Op::Icall { .. } | Op::Rcall { .. } => {
                                 println!(
                                     "{pad:<2} {0:<pad$}{1:04x} -> {2:04x} call",
                                     "",
@@ -257,16 +330,14 @@ fn run(
                                     core.pc << 1,
                                     pad = d,
                                 );
+                                d += 1;
                             }
-                            d += 1;
-                        }
-                        Op::Ret { .. } | Op::Reti { .. } => {
-                            if d != 0 {
-                                d -= 1;
-                            } else {
-                                println!("D UNDERFLOW");
-                            }
-                            if calltrace {
+                            Op::Ret { .. } | Op::Reti { .. } => {
+                                if d != 0 {
+                                    d -= 1;
+                                } else {
+                                    println!("D UNDERFLOW");
+                                }
                                 println!(
                                     "{pad:<2} {0:<pad$}{2:04x} <- {1:04x} ret",
                                     "",
@@ -275,8 +346,8 @@ fn run(
                                     pad = d,
                                 );
                             }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
             }
@@ -300,12 +371,35 @@ fn run(
                 // );
                 // d += 1;
             }
+            step_cycles_sample -= step_cycles as i32;
+            if step_cycles_sample < 0 {
+                let v = if (core.gpio.port_c() & (1 << 6)) != 0 {
+                    255
+                } else {
+                    127
+                };
+                sample[std::cmp::max(
+                    0,
+                    ((SAMPLE_SIZE - 1) as i32 - cycles / SAMPLE_CYCLES) as usize,
+                )] = v;
+                step_cycles_sample += SAMPLE_CYCLES;
+            }
+            // if core.pc == avremu::int_vec::TIMER3_COMPA {
+            // trace = true;
+            // }
         }
         if d > 100 {
             println!("D OVERFLOW");
             d = 0;
         }
 
+        {
+            let mut audio_sample = audio.lock();
+            audio_sample.position = 0;
+            audio_sample.bytes = sample.clone();
+        }
+
+        audio.resume();
         core.display.render();
 
         tex_display.with_lock(None, |buffer: &mut [u8], pitch: usize| {
