@@ -45,7 +45,7 @@ impl From<HexFileError> for FrontError {
     }
 }
 
-const SAMPLE_SIZE: u16 = 1024;
+const SAMPLE_SIZE: u16 = 735;
 struct AudioSample {
     bytes: [u8; SAMPLE_SIZE as usize],
     position: usize,
@@ -133,6 +133,7 @@ fn run(
     let audio_subsystem = sdl_context.audio().unwrap();
     let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
 
+    // const AUDIO_FREQ: i32 = 44100;
     const AUDIO_FREQ: i32 = 44100;
     let desired_spec = AudioSpecDesired {
         freq: Some(AUDIO_FREQ),
@@ -150,6 +151,7 @@ fn run(
             }
         })
         .unwrap();
+    audio.resume();
 
     let window = video_subsystem
         .window("avremu-rs", WIDTH as u32 * scale, HEIGTH as u32 * scale)
@@ -185,6 +187,7 @@ fn run(
     let mut now_end_frame = Instant::now();
 
     const SAMPLE_CYCLES: i32 = 16_000_000 / AUDIO_FREQ;
+    const SAMPLES_FRAME: i32 = AUDIO_FREQ / 60;
 
     let mut pin_b = 0xff as u8;
     // let mut pin_c = 0xff as u8;
@@ -378,10 +381,7 @@ fn run(
                 } else {
                     127
                 };
-                sample[std::cmp::max(
-                    0,
-                    ((SAMPLE_SIZE - 1) as i32 - cycles / SAMPLE_CYCLES) as usize,
-                )] = v;
+                sample[std::cmp::max(0, SAMPLES_FRAME - 1 - cycles / SAMPLE_CYCLES) as usize] = v;
                 step_cycles_sample += SAMPLE_CYCLES;
             }
             // if core.pc == avremu::int_vec::TIMER3_COMPA {
@@ -399,7 +399,6 @@ fn run(
             audio_sample.bytes = sample.clone();
         }
 
-        audio.resume();
         core.display.render();
 
         tex_display.with_lock(None, |buffer: &mut [u8], pitch: usize| {

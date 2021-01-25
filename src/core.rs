@@ -674,6 +674,8 @@ impl Core {
                 // 0x32 => 0,            // TODO
                 // 0x33 => 0,            // TODO
                 // 0x34 => 0,            // TODO
+                io_regs::WDTCSR => 0, // TODO
+                io_regs::CLKPR => 0,  // TODO
                 _ => {
                     warn!(
                         "[{:04x}] I/O Registers / Extended I/O Space unimplemented load at 0x{:04x} {:?}",
@@ -785,6 +787,9 @@ impl Core {
                 io_regs::GPIOR0 => {
                     warn!("DBG: {:02x}", v);
                 }
+                io_regs::TC4H => {}  // TODO
+                io_regs::OCR4C => {} // TODO
+                io_regs::OCR4B => {} // TODO
                 _ => {
                     warn!(
                         "I/O Registers / Extended I/O Space unimplemented store (0x{:02x}) at 0x{:04x} {:?}",
