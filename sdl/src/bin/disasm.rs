@@ -5,8 +5,8 @@ use std::io::{self, BufRead};
 
 use hex;
 
-use avremu::opcodes::{Op, OpAddr};
-use avremu::utils::decode_hex_line;
+use arduboy::opcodes::{Op, OpAddr};
+use arduboy::utils::decode_hex_line;
 
 fn main() -> Result<(), io::Error> {
     let filename = env::args().nth(1).unwrap();

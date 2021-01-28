@@ -3,3 +3,4 @@ roms/*
 flamegraph.svg
 perf.data
 perf.data.old
+.ccls-cache/*

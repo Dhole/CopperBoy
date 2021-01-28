@@ -5,9 +5,9 @@ use std::io::{self, BufRead};
 
 use hex;
 
-use avremu::core::Core;
-use avremu::opcodes::{Op, OpAddr};
-use avremu::utils::decode_hex_line;
+use arduboy::core::Core;
+use arduboy::opcodes::{Op, OpAddr};
+use arduboy::utils::decode_hex_line;
 
 fn bin(w: u16) -> String {
     let s = format!("{:016b}", w);

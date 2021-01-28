@@ -8,11 +8,11 @@ use std::time::Instant;
 
 use hex;
 
-use avremu::core::{Core, GPIOPort};
-use avremu::display::{HEIGTH, WIDTH};
-use avremu::keys::*;
-use avremu::opcodes::{Op, OpAddr};
-use avremu::utils::{load_hex_file, HexFileError};
+use arduboy::core::{Core, GPIOPort};
+use arduboy::display::{HEIGTH, WIDTH};
+use arduboy::keys::*;
+use arduboy::opcodes::{Op, OpAddr};
+use arduboy::utils::{load_hex_file, HexFileError};
 
 // use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
@@ -68,7 +68,7 @@ impl AudioCallback for AudioSample {
 
 pub fn main() -> Result<(), FrontError> {
     env_logger::init();
-    let app = App::new("Avremu-rs")
+    let app = App::new("Copperboy")
         .version("0.0.1")
         .author("Dhole")
         .arg(
@@ -154,7 +154,7 @@ fn run(
     audio.resume();
 
     let window = video_subsystem
-        .window("avremu-rs", WIDTH as u32 * scale, HEIGTH as u32 * scale)
+        .window("Copperboy", WIDTH as u32 * scale, HEIGTH as u32 * scale)
         .position_centered()
         .opengl()
         .build()
@@ -384,7 +384,7 @@ fn run(
                 sample[std::cmp::max(0, SAMPLES_FRAME - 1 - cycles / SAMPLE_CYCLES) as usize] = v;
                 step_cycles_sample += SAMPLE_CYCLES;
             }
-            // if core.pc == avremu::int_vec::TIMER3_COMPA {
+            // if core.pc == arduboy::int_vec::TIMER3_COMPA {
             // trace = true;
             // }
         }

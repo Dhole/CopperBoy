@@ -1,0 +1,18 @@
+[package]
+name = "sdl"
+version = "0.1.0"
+authors = ["Dhole <dhole@riseup.net>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arduboy = { path = "../arduboy" }
+hex = "0.3.2"
+env_logger = "0.7.0"
+clap = "2.33.0"
+
+[dependencies.sdl2]
+version = "0.33.0"
+default-features = false
+features = ["ttf"]
