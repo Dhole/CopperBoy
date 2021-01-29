@@ -1,4 +1,4 @@
-use super::core::Core;
+use super::core::{Core, GPIOPort};
 use super::utils::{decode_hex_line, HexFileError};
 use std::str;
 
@@ -31,17 +31,17 @@ impl From<str::Utf8Error> for Error {
 // type CbVideoRefresh = fn(&[u16], u32, u32, usize);
 
 pub struct Emulator {
-    core: Core,
+    pub core: Core,
     cpu_freq: isize,
     cycles: isize,
-    samples: [(i16, i16); FRAME_SAMPLES as usize],
+    pub samples: [(i16, i16); FRAME_SAMPLES as usize],
     // cb_audio_sample_batch: CbAudioSampleBatch,
     // cb_video_refresh: CbVideoRefresh,
 }
 
 pub const AUDIO_SAMPLE_FREQ: isize = 44100;
 pub const FPS: isize = 60;
-const FRAME_SAMPLES: isize = AUDIO_SAMPLE_FREQ / FPS;
+pub const FRAME_SAMPLES: isize = AUDIO_SAMPLE_FREQ / FPS;
 
 impl Emulator {
     pub fn new(// cb_audio_sample_batch: CbAudioSampleBatch,
@@ -72,6 +72,7 @@ impl Emulator {
                 None => {}
             }
         }
+        self.core.reset();
         Ok(())
     }
 
@@ -82,6 +83,14 @@ impl Emulator {
         }
         let mut sample_cycles = cycles_per_sample;
         self.cycles += self.cpu_freq / FPS;
+
+        let mut pin_b = 0xff as u8;
+        let mut pin_e = 0xff as u8;
+        let mut pin_f = 0xff as u8;
+
+        self.core.gpio.set_port(GPIOPort::B, pin_b);
+        self.core.gpio.set_port(GPIOPort::E, pin_e);
+        self.core.gpio.set_port(GPIOPort::F, pin_f);
 
         while self.cycles > 0 {
             // In each iteration, emulate M * N instructions of the CPU, and the emulate the
@@ -115,5 +124,6 @@ impl Emulator {
 
             self.cycles -= hw_step_cycles as isize;
         }
+        self.core.display.render();
     }
 }
