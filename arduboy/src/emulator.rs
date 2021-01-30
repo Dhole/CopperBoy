@@ -76,7 +76,7 @@ impl Emulator {
         Ok(())
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, port_b: u8, port_e: u8, port_f: u8) {
         let cycles_per_sample = self.cpu_freq / AUDIO_SAMPLE_FREQ;
         for s in self.samples.iter_mut() {
             *s = (0, 0);
@@ -84,13 +84,9 @@ impl Emulator {
         let mut sample_cycles = cycles_per_sample;
         self.cycles += self.cpu_freq / FPS;
 
-        let mut pin_b = 0xff as u8;
-        let mut pin_e = 0xff as u8;
-        let mut pin_f = 0xff as u8;
-
-        self.core.gpio.set_port(GPIOPort::B, pin_b);
-        self.core.gpio.set_port(GPIOPort::E, pin_e);
-        self.core.gpio.set_port(GPIOPort::F, pin_f);
+        self.core.gpio.set_port(GPIOPort::B, port_b);
+        self.core.gpio.set_port(GPIOPort::E, port_e);
+        self.core.gpio.set_port(GPIOPort::F, port_f);
 
         while self.cycles > 0 {
             // In each iteration, emulate M * N instructions of the CPU, and the emulate the
