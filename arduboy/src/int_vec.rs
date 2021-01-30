@@ -1,4 +1,4 @@
-use num_traits::ToPrimitive;
+// use num_traits::ToPrimitive;
 
 // Values are pc
 
@@ -40,43 +40,81 @@ pub const TIMER4_COMPD: u16 = 0x0050;
 pub const TIMER4_OVF: u16 = 0x0052;
 pub const TIMER4_FPF: u16 = 0x0054;
 
-#[derive(ToPrimitive, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum Interrupt {
-    Reset = 1 << 0,
-    Int0 = 1 << 1,
-    Int1 = 1 << 2,
-    Int2 = 1 << 3,
-    Int3 = 1 << 4,
-    Int6 = 1 << 5,
-    Pcint0 = 1 << 6,
-    UsbGeneral = 1 << 7,
-    UsbEndpoint = 1 << 8,
-    Wdt = 1 << 9,
-    Timer1Capt = 1 << 10,
-    Timer1CompA = 1 << 11,
-    Timer1CompB = 1 << 12,
-    Timer1CompC = 1 << 13,
-    Timer1Ovf = 1 << 14,
-    Timer0CompA = 1 << 15,
-    Timer0CompB = 1 << 16,
-    Timer0Ovf = 1 << 17,
-    SpiStc = 1 << 18,
-    Usart1Rx = 1 << 19,
-    Usart2Udre = 1 << 20,
-    Usart1Tx = 1 << 21,
-    AnalogComp = 1 << 22,
-    Adc = 1 << 23,
-    EeReady = 1 << 24,
-    Timer3Capt = 1 << 25,
-    Timer3CompA = 1 << 26,
-    Timer3CompB = 1 << 27,
-    Timer3CompC = 1 << 28,
-    Timer3Ovf = 1 << 29,
-    Twi = 1 << 30,
-    StmReady = 1 << 31,
-    Timer4CompA = 1 << 32,
-    Timer4CompB = 1 << 33,
-    Timer4CompD = 1 << 34,
-    Timer4Ovf = 1 << 35,
-    Timer4Fpf = 1 << 36,
+    Reset,
+    Int0,
+    Int1,
+    Int2,
+    Int3,
+    Int6,
+    Pcint0,
+    UsbGeneral,
+    UsbEndpoint,
+    Wdt,
+    Timer1Capt,
+    Timer1CompA,
+    Timer1CompB,
+    Timer1CompC,
+    Timer1Ovf,
+    Timer0CompA,
+    Timer0CompB,
+    Timer0Ovf,
+    SpiStc,
+    Usart1Rx,
+    Usart2Udre,
+    Usart1Tx,
+    AnalogComp,
+    Adc,
+    EeReady,
+    Timer3Capt,
+    Timer3CompA,
+    Timer3CompB,
+    Timer3CompC,
+    Timer3Ovf,
+    Twi,
+    StmReady,
+    Timer4CompA,
+    Timer4CompB,
+    Timer4CompD,
+    Timer4Ovf,
+    Timer4Fpf,
 }
+
+pub const RESET_BIT: u64 = 1 << 0;
+pub const INT0_BIT: u64 = 1 << 1;
+pub const INT1_BIT: u64 = 1 << 2;
+pub const INT2_BIT: u64 = 1 << 3;
+pub const INT3_BIT: u64 = 1 << 4;
+pub const INT6_BIT: u64 = 1 << 5;
+pub const PCINT0_BIT: u64 = 1 << 6;
+pub const USB_GENERAL_BIT: u64 = 1 << 7;
+pub const USB_ENDPOINT_BIT: u64 = 1 << 8;
+pub const WDT_BIT: u64 = 1 << 9;
+pub const TIMER1_CAPT_BIT: u64 = 1 << 10;
+pub const TIMER1_COMPA_BIT: u64 = 1 << 11;
+pub const TIMER1_COMPB_BIT: u64 = 1 << 12;
+pub const TIMER1_COMPC_BIT: u64 = 1 << 13;
+pub const TIMER1_OVF_BIT: u64 = 1 << 14;
+pub const TIMER0_COMPA_BIT: u64 = 1 << 15;
+pub const TIMER0_COMPB_BIT: u64 = 1 << 16;
+pub const TIMER0_OVF_BIT: u64 = 1 << 17;
+pub const SPI_STC_BIT: u64 = 1 << 18;
+pub const USART1_RX_BIT: u64 = 1 << 19;
+pub const USART2_UDRE_BIT: u64 = 1 << 20;
+pub const USART1_TX_BIT: u64 = 1 << 21;
+pub const ANALOG_COMP_BIT: u64 = 1 << 22;
+pub const ADC_BIT: u64 = 1 << 23;
+pub const EE_READY_BIT: u64 = 1 << 24;
+pub const TIMER3_CAPT_BIT: u64 = 1 << 25;
+pub const TIMER3_COMPA_BIT: u64 = 1 << 26;
+pub const TIMER3_COMPB_BIT: u64 = 1 << 27;
+pub const TIMER3_COMPC_BIT: u64 = 1 << 28;
+pub const TIMER3_OVF_BIT: u64 = 1 << 29;
+pub const TWI_BIT: u64 = 1 << 30;
+pub const STM_READY_BIT: u64 = 1 << 31;
+pub const TIMER4_COMPA_BIT: u64 = 1 << 32;
+pub const TIMER4_COMPB_BIT: u64 = 1 << 33;
+pub const TIMER4_COMPD_BIT: u64 = 1 << 34;
+pub const TIMER4_OVF_BIT: u64 = 1 << 35;
+pub const TIMER4_FPF_BIT: u64 = 1 << 36;

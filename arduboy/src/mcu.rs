@@ -1,5 +1,8 @@
 use log::{debug, warn};
-use num_traits::ToPrimitive;
+// use num_traits::ToPrimitive;
+
+#[cfg(feature = "std")]
+use std::fmt;
 
 use super::clock;
 use super::display;
@@ -63,6 +66,7 @@ impl IndexMut<u8> for StatusRegister {
     }
 }
 
+#[cfg(feature = "std")]
 impl fmt::Debug for StatusRegister {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -451,121 +455,121 @@ impl Core {
         // println!("INTERRUPT 1");
         self.status_reg.i = false;
 
-        let pc = if interrupt_bitmap & Interrupt::Reset.to_u64().unwrap() != 0 {
+        let pc = if interrupt_bitmap & RESET_BIT != 0 {
             debug!("Handling interrupt RESET");
             RESET
-        } else if interrupt_bitmap & Interrupt::Int0.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & INT0_BIT != 0 {
             debug!("Handling interrupt INT0");
             INT0
-        } else if interrupt_bitmap & Interrupt::Int1.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & INT1_BIT != 0 {
             debug!("Handling interrupt INT1");
             INT1
-        } else if interrupt_bitmap & Interrupt::Int2.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & INT2_BIT != 0 {
             debug!("Handling interrupt INT2");
             INT2
-        } else if interrupt_bitmap & Interrupt::Int3.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & INT3_BIT != 0 {
             debug!("Handling interrupt INT3");
             INT3
-        } else if interrupt_bitmap & Interrupt::Int6.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & INT6_BIT != 0 {
             debug!("Handling interrupt INT6");
             INT6
-        } else if interrupt_bitmap & Interrupt::Pcint0.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & PCINT0_BIT != 0 {
             debug!("Handling interrupt PCINT0");
             PCINT0
-        } else if interrupt_bitmap & Interrupt::UsbGeneral.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & USB_GENERAL_BIT != 0 {
             debug!("Handling interrupt USB_GENERAL");
             USB_GENERAL
-        } else if interrupt_bitmap & Interrupt::UsbEndpoint.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & USB_ENDPOINT_BIT != 0 {
             debug!("Handling interrupt USB_ENDPOINT");
             USB_ENDPOINT
-        } else if interrupt_bitmap & Interrupt::Wdt.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & WDT_BIT != 0 {
             debug!("Handling interrupt WDT");
             WDT
-        } else if interrupt_bitmap & Interrupt::Timer1Capt.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER1_CAPT_BIT != 0 {
             debug!("Handling interrupt TIMER1_CAPT");
             TIMER1_CAPT
-        } else if interrupt_bitmap & Interrupt::Timer1CompA.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER1_COMPA_BIT != 0 {
             debug!("Handling interrupt TIMER1_COMPA");
             TIMER1_COMPA
-        } else if interrupt_bitmap & Interrupt::Timer1CompB.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER1_COMPB_BIT != 0 {
             debug!("Handling interrupt TIMER1_COMPB");
             TIMER1_COMPB
-        } else if interrupt_bitmap & Interrupt::Timer1CompC.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER1_COMPC_BIT != 0 {
             debug!("Handling interrupt TIMER1_COMPC");
             TIMER1_COMPC
-        } else if interrupt_bitmap & Interrupt::Timer1Ovf.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER1_OVF_BIT != 0 {
             debug!("Handling interrupt TIMER1_OVF");
             TIMER1_OVF
-        } else if interrupt_bitmap & Interrupt::Timer0CompA.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER0_COMPA_BIT != 0 {
             debug!("Handling interrupt TIMER0_COMPA");
             TIMER0_COMPA
-        } else if interrupt_bitmap & Interrupt::Timer0CompB.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER0_COMPB_BIT != 0 {
             debug!("Handling interrupt TIMER0_COMPB");
             TIMER0_COMPB
-        } else if interrupt_bitmap & Interrupt::Timer0Ovf.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER0_OVF_BIT != 0 {
             debug!("Handling interrupt TIMER0_OVF");
             self.clock.clear_int(Interrupt::Timer0Ovf);
             TIMER0_OVF
-        } else if interrupt_bitmap & Interrupt::SpiStc.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & SPI_STC_BIT != 0 {
             debug!("Handling interrupt SPI_STC");
             SPI_STC
-        } else if interrupt_bitmap & Interrupt::Usart1Rx.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & USART1_RX_BIT != 0 {
             debug!("Handling interrupt USART1_RX");
             USART1_RX
-        } else if interrupt_bitmap & Interrupt::Usart2Udre.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & USART2_UDRE_BIT != 0 {
             debug!("Handling interrupt USART2_UDRE");
             USART2_UDRE
-        } else if interrupt_bitmap & Interrupt::Usart1Tx.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & USART1_TX_BIT != 0 {
             debug!("Handling interrupt USART1_TX");
             USART1_TX
-        } else if interrupt_bitmap & Interrupt::AnalogComp.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & ANALOG_COMP_BIT != 0 {
             debug!("Handling interrupt ANALOG_COMP");
             ANALOG_COMP
-        } else if interrupt_bitmap & Interrupt::Adc.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & ADC_BIT != 0 {
             debug!("Handling interrupt ADC");
             ADC
-        } else if interrupt_bitmap & Interrupt::EeReady.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & EE_READY_BIT != 0 {
             debug!("Handling interrupt EE_READY");
             EE_READY
-        } else if interrupt_bitmap & Interrupt::Timer3Capt.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER3_CAPT_BIT != 0 {
             debug!("Handling interrupt TIMER3_CAPT");
             TIMER3_CAPT
-        } else if interrupt_bitmap & Interrupt::Timer3CompA.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER3_COMPA_BIT != 0 {
             debug!("Handling interrupt TIMER3_COMPA");
             // println!("timer3_comp_a int");
             self.clock.clear_int(Interrupt::Timer3CompA);
             TIMER3_COMPA
-        } else if interrupt_bitmap & Interrupt::Timer3CompB.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER3_COMPB_BIT != 0 {
             debug!("Handling interrupt TIMER3_COMPB");
             self.clock.clear_int(Interrupt::Timer3CompB);
             TIMER3_COMPB
-        } else if interrupt_bitmap & Interrupt::Timer3CompC.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER3_COMPC_BIT != 0 {
             debug!("Handling interrupt TIMER3_COMPC");
             self.clock.clear_int(Interrupt::Timer3CompC);
             TIMER3_COMPC
-        } else if interrupt_bitmap & Interrupt::Timer3Ovf.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER3_OVF_BIT != 0 {
             debug!("Handling interrupt TIMER3_OVF");
             self.clock.clear_int(Interrupt::Timer3Ovf);
             TIMER3_OVF
-        } else if interrupt_bitmap & Interrupt::Twi.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TWI_BIT != 0 {
             debug!("Handling interrupt TWI");
             TWI
-        } else if interrupt_bitmap & Interrupt::StmReady.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & STM_READY_BIT != 0 {
             debug!("Handling interrupt STM_READY");
             STM_READY
-        } else if interrupt_bitmap & Interrupt::Timer4CompA.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER4_COMPA_BIT != 0 {
             debug!("Handling interrupt TIMER4_COMPA");
             TIMER4_COMPA
-        } else if interrupt_bitmap & Interrupt::Timer4CompB.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER4_COMPB_BIT != 0 {
             debug!("Handling interrupt TIMER4_COMPB");
             TIMER4_COMPB
-        } else if interrupt_bitmap & Interrupt::Timer4CompD.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER4_COMPD_BIT != 0 {
             debug!("Handling interrupt TIMER4_COMPD");
             TIMER4_COMPD
-        } else if interrupt_bitmap & Interrupt::Timer4Ovf.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER4_OVF_BIT != 0 {
             debug!("Handling interrupt TIMER4_OVF");
             TIMER4_OVF
-        } else if interrupt_bitmap & Interrupt::Timer4Fpf.to_u64().unwrap() != 0 {
+        } else if interrupt_bitmap & TIMER4_FPF_BIT != 0 {
             debug!("Handling interrupt TIMER4_FPF");
             TIMER4_FPF
         } else {
@@ -656,7 +660,7 @@ impl Core {
                 io_regs::SMCR => 0,               // TODO
                 io_regs::PINB => self.gpio.pin_b, // TODO
                 io_regs::PINC => {
-                    println!("read pin c {:02x}", self.gpio.pin_c);
+                    // println!("read pin c {:02x}", self.gpio.pin_c);
                     self.gpio.pin_c
                 } // TODO
                 io_regs::PIND => self.gpio.pin_d, // TODO

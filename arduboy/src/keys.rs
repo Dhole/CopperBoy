@@ -1,4 +1,4 @@
-use super::core::GPIOPort;
+use super::mcu::GPIOPort;
 
 pub const PORT_ARROW: GPIOPort = GPIOPort::F;
 pub const PIN_LEFT: u8 = 1 << 5;

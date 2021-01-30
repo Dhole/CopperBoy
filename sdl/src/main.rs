@@ -1,16 +1,16 @@
 #[allow(unused_assignments)]
-use std::env;
-use std::fs;
-use std::io::{self, BufRead};
+// use std::env;
+// use std::fs;
+// use std::io::{self, BufRead};
 use std::path::Path;
 use std::time::Duration;
 use std::time::Instant;
 
 use hex;
 
-use arduboy::core::{Core, GPIOPort};
 use arduboy::display::{HEIGTH, WIDTH};
 use arduboy::keys::*;
+use arduboy::mcu::{Core, GPIOPort};
 use arduboy::opcodes::{Op, OpAddr};
 use arduboy::utils::{load_hex_file, HexFileError};
 
@@ -25,7 +25,7 @@ use sdl2::render::TextureQuery;
 
 // use rand::{self, RngCore};
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg};
 
 #[derive(Debug)]
 pub enum FrontError {
@@ -197,7 +197,7 @@ fn run(
     let mut cycles: i32 = 0;
     let mut frame: u32 = 0;
     let mut d = 0;
-    let mut int_ret_addr: Option<(u16)> = Option::None;
+    let mut int_ret_addr: Option<u16> = Option::None;
     let mut fps: f32 = 0.0;
     let mut turbo = false;
     let mut paused = false;

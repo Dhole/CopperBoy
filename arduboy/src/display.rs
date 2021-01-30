@@ -311,7 +311,7 @@ impl Display {
                 self.cmd_state = CmdState::None;
             }
             CmdState::MultiplexRatio => {
-                self.multiplex_ratio = std::cmp::max(15, cmd & 0b0011_1111) + 1;
+                self.multiplex_ratio = core::cmp::max(15, cmd & 0b0011_1111) + 1;
                 info!("multiplex_ratio: {}", self.multiplex_ratio);
                 self.cmd_state = CmdState::None;
             }

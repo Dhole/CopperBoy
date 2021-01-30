@@ -1,18 +1,11 @@
-use super::core::{Core, GPIOPort};
+use super::mcu::{Core, GPIOPort};
 use super::utils::{decode_hex_line, HexFileError};
-use std::str;
+use core::str;
 
-#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub enum Error {
-    SDL2(String),
     HexFile(HexFileError),
     Utf8(str::Utf8Error),
-}
-
-impl From<String> for Error {
-    fn from(err: String) -> Self {
-        Self::SDL2(err)
-    }
 }
 
 impl From<HexFileError> for Error {
@@ -59,14 +52,15 @@ impl Emulator {
 
     pub fn load_game(&mut self, data: &[u8]) -> Result<(), Error> {
         let data = str::from_utf8(data)?;
+        let mut out = [0u8; 32];
         for line in data.lines() {
             if line.len() == 0 {
                 continue;
             }
-            match decode_hex_line(line)? {
-                Some((addr, data)) => {
-                    for i in 0..data.len() {
-                        self.core.flash_write(addr + i as u16, data[i]);
+            match decode_hex_line(line, &mut out[..])? {
+                Some((addr, len)) => {
+                    for i in 0..len {
+                        self.core.flash_write(addr + i as u16, out[i]);
                     }
                 }
                 None => {}
@@ -109,11 +103,11 @@ impl Emulator {
             sample_cycles -= hw_step_cycles as isize;
             if sample_cycles < 0 {
                 let v = if (self.core.gpio.port_c() & (1 << 6)) != 0 {
-                    std::i16::MAX
+                    core::i16::MAX
                 } else {
                     0
                 };
-                self.samples[std::cmp::max(0, FRAME_SAMPLES - 1 - self.cycles / cycles_per_sample)
+                self.samples[core::cmp::max(0, FRAME_SAMPLES - 1 - self.cycles / cycles_per_sample)
                     as usize] = (v, v);
                 sample_cycles += cycles_per_sample;
             }

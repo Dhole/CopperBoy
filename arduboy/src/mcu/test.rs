@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 use super::*;
 
 const SRAM_END: u16 = SRAM_ADDR + SRAM_SIZE;

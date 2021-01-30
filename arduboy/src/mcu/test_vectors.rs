@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 use super::*;
 use hex;
 use std::collections::HashMap;

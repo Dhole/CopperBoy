@@ -1,7 +1,8 @@
-use log::{debug, warn};
+// use log::{debug, warn};
+use log::warn;
 
 use num_traits::FromPrimitive;
-use num_traits::ToPrimitive;
+// use num_traits::ToPrimitive;
 
 use super::int_vec::*;
 
@@ -278,13 +279,13 @@ impl Clock {
     pub fn int(&self) -> u64 {
         let mut bitmap = 0;
         if self.timer_0_ovf_int_enable && self.timer_0_ovf_int {
-            bitmap |= Interrupt::Timer0Ovf.to_u64().unwrap();
+            bitmap |= TIMER0_OVF_BIT;
         }
         if self.timer_3_ovf_int_enable && self.timer_3_ovf_int {
-            bitmap |= Interrupt::Timer3Ovf.to_u64().unwrap();
+            bitmap |= TIMER3_OVF_BIT;
         }
         if self.timer_3_cmp_a_int_enable && self.timer_3_cmp_a_int {
-            bitmap |= Interrupt::Timer3CompA.to_u64().unwrap();
+            bitmap |= TIMER3_COMPA_BIT;
         }
         bitmap
     }

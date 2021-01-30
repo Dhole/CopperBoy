@@ -1,5 +1,9 @@
-use super::core::IOSPACE_ADDR;
+#[cfg(feature = "std")]
 use super::io_regs::io_reg_str;
+#[cfg(feature = "std")]
+use super::mcu::IOSPACE_ADDR;
+
+#[cfg(feature = "std")]
 use std::fmt;
 
 // 5
@@ -395,6 +399,7 @@ impl Into<u8> for LdStIndex {
     }
 }
 
+#[cfg(feature = "std")]
 impl fmt::Display for LdStIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -869,6 +874,7 @@ pub struct OpAddr {
     pub addr: u16,
 }
 
+#[cfg(feature = "std")]
 impl<'a> fmt::Display for OpAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pc = self.addr >> 1;
@@ -1102,6 +1108,7 @@ impl OpAddr {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a> fmt::Display for OpAddrAlt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pc = self.addr >> 1;

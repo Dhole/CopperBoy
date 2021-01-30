@@ -1,15 +1,16 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 pub mod libretro_h;
 
-use std::os::raw::c_void;
-// use arduboy::core::{Core, GPIOPort};
 use arduboy::display::{HEIGTH, WIDTH};
 use arduboy::emulator::{Emulator, AUDIO_SAMPLE_FREQ, FPS, FRAME_SAMPLES};
 use arduboy::keys::{PIN_A, PIN_B, PIN_DOWN, PIN_LEFT, PIN_RIGHT, PIN_UP};
+use core::ffi::c_void;
 use libretro_h::*;
 
 macro_rules! c_str {
     ($lit:expr) => {
-        concat!($lit, "\0").as_ptr() as *const std::os::raw::c_char
+        concat!($lit, "\0").as_ptr() as *const c_char
     };
 }
 
@@ -19,31 +20,6 @@ macro_rules! as_mut_c_void {
     };
 }
 
-// #[allow(dead_code)]
-// struct Callbacks {
-//     video_refresh: unsafe extern "C" fn(
-//         data: *const ::std::os::raw::c_void,
-//         width: ::std::os::raw::c_uint,
-//         height: ::std::os::raw::c_uint,
-//         pitch: size_t,
-//     ),
-//     input_poll: unsafe extern "C" fn(),
-//     input_state: unsafe extern "C" fn(
-//         port: ::std::os::raw::c_uint,
-//         device: ::std::os::raw::c_uint,
-//         index: ::std::os::raw::c_uint,
-//         id: ::std::os::raw::c_uint,
-//     ) -> i16,
-//     audio_sample_batch: unsafe extern "C" fn(data: *const i16, frames: size_t) -> size_t,
-//     audio_sample: unsafe extern "C" fn(left: i16, right: i16),
-//     environment: unsafe extern "C" fn(
-//         cmd: ::std::os::raw::c_uint,
-//         data: *mut ::std::os::raw::c_void,
-//     ) -> bool,
-//     log_printf:
-//         unsafe extern "C" fn(level: retro_log_level, fmt: *const ::std::os::raw::c_char, ...),
-// }
-
 const BYTES_PIXEL: usize = 2;
 
 #[allow(non_upper_case_globals)]
@@ -52,8 +28,6 @@ static mut emulator: Option<Emulator> = None;
 static mut framebuffer: [u8; (WIDTH * HEIGTH * BYTES_PIXEL) as usize] =
     [0; (WIDTH * HEIGTH * BYTES_PIXEL) as usize];
 
-// #[allow(non_upper_case_globals)]
-// static mut callbacks: Option<Callbacks> = None;
 #[allow(non_upper_case_globals)]
 static mut callback_video_refresh: retro_video_refresh_t = None;
 #[allow(non_upper_case_globals)]
@@ -112,11 +86,7 @@ pub extern "C" fn retro_set_input_state(cb: retro_input_state_t) {
 }
 
 #[no_mangle]
-pub extern "C" fn retro_set_controller_port_device(
-    _port: std::os::raw::c_uint,
-    _device: std::os::raw::c_uint,
-) {
-}
+pub extern "C" fn retro_set_controller_port_device(_port: c_uint, _device: c_uint) {}
 
 #[no_mangle]
 pub extern "C" fn retro_serialize_size() -> size_t {
@@ -124,22 +94,17 @@ pub extern "C" fn retro_serialize_size() -> size_t {
 }
 
 #[no_mangle]
-pub extern "C" fn retro_serialize(_data: *mut ::std::os::raw::c_void, _size: size_t) -> bool {
+pub extern "C" fn retro_serialize(_data: *mut c_void, _size: size_t) -> bool {
     false
 }
 #[no_mangle]
-pub extern "C" fn retro_unserialize(_data: *const ::std::os::raw::c_void, _size: size_t) -> bool {
+pub extern "C" fn retro_unserialize(_data: *const c_void, _size: size_t) -> bool {
     false
 }
 #[no_mangle]
 pub extern "C" fn retro_cheat_reset() {}
 #[no_mangle]
-pub extern "C" fn retro_cheat_set(
-    _index: ::std::os::raw::c_uint,
-    _enabled: bool,
-    _code: *const ::std::os::raw::c_char,
-) {
-}
+pub extern "C" fn retro_cheat_set(_index: c_uint, _enabled: bool, _code: *const c_char) {}
 
 #[no_mangle]
 pub extern "C" fn retro_get_system_av_info(info: *mut retro_system_av_info) {
@@ -180,18 +145,6 @@ pub extern "C" fn retro_init() {
         }
     }
     let cb_log_printf = unsafe { callback_log_printf.unwrap() };
-    // unsafe {
-    //     callbacks = Some(Callbacks {
-    //         video_refresh: cb_video_refresh.unwrap(),
-    //         input_poll: cb_input_poll.unwrap(),
-    //         input_state: cb_input_state.unwrap(),
-    //         audio_sample_batch: cb_audio_sample_batch.unwrap(),
-    //         audio_sample: cb_audio_sample.unwrap(),
-    //         environment: cb_environment.unwrap(),
-    //         log_printf: cb_log_printf.unwrap(),
-    //     });
-    // }
-    // let cbs = unsafe { callbacks.as_ref().unwrap() };
 
     let mut fmt = RETRO_PIXEL_FORMAT_RGB565;
     unsafe {
@@ -200,11 +153,11 @@ pub extern "C" fn retro_init() {
         }
     }
 
-    let new_desc = |port: ::std::os::raw::c_uint,
-                    device: ::std::os::raw::c_uint,
-                    index: ::std::os::raw::c_uint,
-                    id: ::std::os::raw::c_uint,
-                    description: *const ::std::os::raw::c_char|
+    let new_desc = |port: c_uint,
+                    device: c_uint,
+                    index: c_uint,
+                    id: c_uint,
+                    description: *const c_char|
      -> retro_input_descriptor {
         retro_input_descriptor {
             port,
@@ -252,7 +205,7 @@ pub extern "C" fn retro_load_game(game: *const retro_game_info) -> bool {
     let emu = unsafe { emulator.as_mut().unwrap() };
     let game = unsafe { game.as_ref().unwrap() };
     let game_data =
-        unsafe { std::slice::from_raw_parts(game.data as *const u8, game.size as usize) };
+        unsafe { core::slice::from_raw_parts(game.data as *const u8, game.size as usize) };
     // println!(">>> load_game size: {}", game_data.len());
     match emu.load_game(game_data) {
         Ok(_) => true,
@@ -265,7 +218,7 @@ pub extern "C" fn retro_load_game(game: *const retro_game_info) -> bool {
 
 #[no_mangle]
 pub extern "C" fn retro_load_game_special(
-    _game_type: ::std::os::raw::c_uint,
+    _game_type: c_uint,
     _info: *const retro_game_info,
     _num_info: size_t,
 ) -> bool {
@@ -276,17 +229,15 @@ pub extern "C" fn retro_load_game_special(
 pub extern "C" fn retro_unload_game() {}
 
 #[no_mangle]
-pub extern "C" fn retro_get_region() -> ::std::os::raw::c_uint {
+pub extern "C" fn retro_get_region() -> c_uint {
     0
 }
 #[no_mangle]
-pub extern "C" fn retro_get_memory_data(
-    _id: ::std::os::raw::c_uint,
-) -> *mut ::std::os::raw::c_void {
-    std::ptr::null_mut()
+pub extern "C" fn retro_get_memory_data(_id: c_uint) -> *mut c_void {
+    core::ptr::null_mut()
 }
 #[no_mangle]
-pub extern "C" fn retro_get_memory_size(_id: ::std::os::raw::c_uint) -> size_t {
+pub extern "C" fn retro_get_memory_size(_id: c_uint) -> size_t {
     0
 }
 
@@ -346,13 +297,12 @@ pub extern "C" fn retro_run() {
         }
     }
     // println!(">>> C");
-    // let mut _fb: &mut [u8] = fb;
     unsafe {
         cb_video_refresh(
             fb.as_ptr() as *const c_void,
             WIDTH as u32,
             HEIGTH as u32,
-            (WIDTH * BYTES_PIXEL) as u64,
+            (WIDTH * BYTES_PIXEL) as size_t,
         );
     }
     unsafe {
