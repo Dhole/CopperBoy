@@ -43,71 +43,57 @@ static mut callback_environment: retro_environment_t = None;
 #[allow(non_upper_case_globals)]
 static mut callback_log_printf: retro_log_printf_t = None;
 
-#[no_mangle]
-pub extern "C" fn retro_api_version() -> u32 {
+pub fn retro_api_version() -> u32 {
     RETRO_API_VERSION
 }
 
-#[no_mangle]
-pub extern "C" fn retro_set_environment(cb: retro_environment_t) {
+pub fn retro_set_environment(cb: retro_environment_t) {
     unsafe {
         callback_environment = cb;
     }
 }
-#[no_mangle]
-pub extern "C" fn retro_set_video_refresh(cb: retro_video_refresh_t) {
+pub fn retro_set_video_refresh(cb: retro_video_refresh_t) {
     unsafe {
         callback_video_refresh = cb;
     }
 }
-#[no_mangle]
-pub extern "C" fn retro_set_audio_sample(cb: retro_audio_sample_t) {
+pub fn retro_set_audio_sample(cb: retro_audio_sample_t) {
     unsafe {
         callback_audio_sample = cb;
     }
 }
-#[no_mangle]
-pub extern "C" fn retro_set_audio_sample_batch(cb: retro_audio_sample_batch_t) {
+pub fn retro_set_audio_sample_batch(cb: retro_audio_sample_batch_t) {
     unsafe {
         callback_audio_sample_batch = cb;
     }
 }
-#[no_mangle]
-pub extern "C" fn retro_set_input_poll(cb: retro_input_poll_t) {
+pub fn retro_set_input_poll(cb: retro_input_poll_t) {
     unsafe {
         callback_input_poll = cb;
     }
 }
-#[no_mangle]
-pub extern "C" fn retro_set_input_state(cb: retro_input_state_t) {
+pub fn retro_set_input_state(cb: retro_input_state_t) {
     unsafe {
         callback_input_state = cb;
     }
 }
 
-#[no_mangle]
-pub extern "C" fn retro_set_controller_port_device(_port: c_uint, _device: c_uint) {}
+pub fn retro_set_controller_port_device(_port: c_uint, _device: c_uint) {}
 
-#[no_mangle]
-pub extern "C" fn retro_serialize_size() -> size_t {
+pub fn retro_serialize_size() -> size_t {
     0
 }
 
-#[no_mangle]
-pub extern "C" fn retro_serialize(_data: *mut c_void, _size: size_t) -> bool {
+pub fn retro_serialize(_data: *mut c_void, _size: size_t) -> bool {
     false
 }
-#[no_mangle]
-pub extern "C" fn retro_unserialize(_data: *const c_void, _size: size_t) -> bool {
+pub fn retro_unserialize(_data: *const c_void, _size: size_t) -> bool {
     false
 }
-#[no_mangle]
-pub extern "C" fn retro_cheat_reset() {}
-#[no_mangle]
-pub extern "C" fn retro_cheat_set(_index: c_uint, _enabled: bool, _code: *const c_char) {}
+pub fn retro_cheat_reset() {}
+pub fn retro_cheat_set(_index: c_uint, _enabled: bool, _code: *const c_char) {}
 
-#[no_mangle]
-pub extern "C" fn retro_get_system_av_info(info: *mut retro_system_av_info) {
+pub fn retro_get_system_av_info(info: *mut retro_system_av_info) {
     let mut info = unsafe { info.as_mut().unwrap() };
     info.geometry = retro_game_geometry {
         base_width: WIDTH as u32,
@@ -122,8 +108,7 @@ pub extern "C" fn retro_get_system_av_info(info: *mut retro_system_av_info) {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn retro_get_system_info(info: *mut retro_system_info) {
+pub fn retro_get_system_info(info: *mut retro_system_info) {
     let info = unsafe { info.as_mut().unwrap() };
     *info = retro_system_info {
         library_name: c_str!("CopperBoy"),
@@ -134,8 +119,7 @@ pub extern "C" fn retro_get_system_info(info: *mut retro_system_info) {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn retro_init() {
+pub fn retro_init() {
     // println!(">>> retro_init");
     let cb_environment = unsafe { callback_environment.unwrap() };
     let mut log = retro_log_callback { log: None };
@@ -191,15 +175,13 @@ pub extern "C" fn retro_init() {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn retro_deinit() {
+pub fn retro_deinit() {
     unsafe {
         emulator = None;
     }
 }
 
-#[no_mangle]
-pub extern "C" fn retro_load_game(game: *const retro_game_info) -> bool {
+pub fn retro_load_game(game: *const retro_game_info) -> bool {
     // println!(">>> load_game");
     let cb_log_printf = unsafe { callback_log_printf.unwrap() };
     let emu = unsafe { emulator.as_mut().unwrap() };
@@ -216,8 +198,7 @@ pub extern "C" fn retro_load_game(game: *const retro_game_info) -> bool {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn retro_load_game_special(
+pub fn retro_load_game_special(
     _game_type: c_uint,
     _info: *const retro_game_info,
     _num_info: size_t,
@@ -225,27 +206,21 @@ pub extern "C" fn retro_load_game_special(
     false
 }
 
-#[no_mangle]
-pub extern "C" fn retro_unload_game() {}
+pub fn retro_unload_game() {}
 
-#[no_mangle]
-pub extern "C" fn retro_get_region() -> c_uint {
+pub fn retro_get_region() -> c_uint {
     0
 }
-#[no_mangle]
-pub extern "C" fn retro_get_memory_data(_id: c_uint) -> *mut c_void {
+pub fn retro_get_memory_data(_id: c_uint) -> *mut c_void {
     core::ptr::null_mut()
 }
-#[no_mangle]
-pub extern "C" fn retro_get_memory_size(_id: c_uint) -> size_t {
+pub fn retro_get_memory_size(_id: c_uint) -> size_t {
     0
 }
 
-#[no_mangle]
-pub extern "C" fn retro_reset() {}
+pub fn retro_reset() {}
 
-#[no_mangle]
-pub extern "C" fn retro_run() {
+pub fn retro_run() {
     // println!(">>> retro_run");
     let cb_input_poll = unsafe { callback_input_poll.unwrap() };
     let cb_input_state = unsafe { callback_input_state.unwrap() };
@@ -309,4 +284,17 @@ pub extern "C" fn retro_run() {
         cb_audio_sample_batch(emu.samples.as_ptr() as *const i16, FRAME_SAMPLES as size_t);
     }
     // println!(">>> D");
+}
+
+#[macro_export]
+macro_rules! export {
+    (fn $name:ident($( $arg:ident : $type:ty ),*) -> $ret:ty) => {
+        #[no_mangle]
+        pub unsafe extern "C" fn $name($( $arg : $type),*) -> $ret {
+            libretro::$name($( $arg ),*)
+        }
+    };
+    (fn $name:ident($( $arg:ident : $type:ty ),*)) => {
+        export!(fn $name($( $arg : $type),*) -> ());
+    }
 }

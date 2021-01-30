@@ -4,6 +4,8 @@ members = [
     "arduboy",
     "sdl",
     "libretro",
+    "libretro_std",
+    "libretro_psvita",
 ]
 
 [profile.release]

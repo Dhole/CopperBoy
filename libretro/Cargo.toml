@@ -10,10 +10,10 @@ edition = "2018"
 arduboy = { path = "../arduboy", default-features  = false}
 # env_logger = "0.7.0"
 
-[lib]
-name = "retro"
+# [lib]
+# name = "retro"
 # crate-type = ["cdylib"]
-crate-type = ["staticlib"]
+# # crate-type = ["staticlib"]
 
 [features]
 default = ["std"]

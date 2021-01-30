@@ -40,6 +40,7 @@ pub fn decode_hex_line(line: &str, out: &mut [u8]) -> Result<Option<(u16, usize)
         return Err(HexFileError::InvalidLength);
     }
     let mut buf = [0u8; 32];
+    let buf = &mut buf[..line.len() / 2];
     hex::decode_to_slice(&line, &mut buf[..line.len() / 2])?;
     let len = buf[0] as usize;
     let addr = u16::from_be_bytes([buf[1], buf[2]]);
