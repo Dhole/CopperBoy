@@ -15,6 +15,6 @@ name = "retro_psvita"
 crate-type = ["staticlib"]
 
 [package.metadata.cargo-xbuild]
-memcpy = true
+memcpy = false
 sysroot_path = "target/sysroot"
 panic_immediate_abort = false

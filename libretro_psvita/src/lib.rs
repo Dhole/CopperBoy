@@ -35,17 +35,18 @@ export!(fn retro_run());
 fn panic_impl(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
-use core::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
 
-struct MyAllocator;
-
-unsafe impl GlobalAlloc for MyAllocator {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-        null_mut()
-    }
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
-}
-
-#[global_allocator]
-static A: MyAllocator = MyAllocator;
+// use core::alloc::{GlobalAlloc, Layout};
+// use core::ptr::null_mut;
+//
+// struct MyAllocator;
+//
+// unsafe impl GlobalAlloc for MyAllocator {
+//     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
+//         null_mut()
+//     }
+//     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
+// }
+//
+// #[global_allocator]
+// static A: MyAllocator = MyAllocator;

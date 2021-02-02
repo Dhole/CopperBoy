@@ -3,6 +3,13 @@ use log::{debug, warn};
 
 #[cfg(feature = "std")]
 use std::fmt;
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 use super::clock;
 use super::display;
@@ -13,7 +20,7 @@ use super::opcodes::*;
 use super::*;
 
 #[derive(PartialEq)]
-struct StatusRegister {
+pub struct StatusRegister {
     /// Global Interrupt Enable
     i: bool,
     /// Bit Copy Storage
@@ -85,7 +92,7 @@ impl fmt::Debug for StatusRegister {
 }
 
 impl StatusRegister {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             i: false,
             t: false,
@@ -129,7 +136,7 @@ pub struct GeneralRegisters {
 }
 
 impl GeneralRegisters {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { reg: [0; 32] }
     }
 }
@@ -232,8 +239,8 @@ pub struct Core {
     /// SRAM
     sram: [u8; SRAM_SIZE as usize],
     /// Program Memory
-    pub program: [u8; PROGRAM_SIZE as usize],
-    pub program_ops: [Op; PROGRAM_SIZE as usize],
+    pub program: Vec<u8>,
+    pub program_ops: Vec<Op>,
     /// Set if the previos instruction branched.  This flag is used to know if the instruction
     /// ahead must be fetched.
     branch: bool,
@@ -303,8 +310,8 @@ impl Core {
             status_reg: StatusRegister::new(),
             pc: 0,
             sram: [0; SRAM_SIZE as usize],
-            program: [0; PROGRAM_SIZE as usize],
-            program_ops: [Op::Nop; PROGRAM_SIZE as usize],
+            program: vec![0; PROGRAM_SIZE as usize],
+            program_ops: vec![Op::Nop; PROGRAM_SIZE as usize],
             sp: SRAM_ADDR + SRAM_SIZE - 1,
             branch: false,
             // op1: Op::Undefined { w: 0x0000 },

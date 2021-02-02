@@ -6,4 +6,5 @@ linker = "arm-vita-eabi-ld"
 rustflags = [
     "-Clink-arg=-mfloat-abi=hard",
     "-Clink-arg=-mfpu=vfp",
+    "-Ctarget-feature=-neon",
 ]

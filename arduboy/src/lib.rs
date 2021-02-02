@@ -10,6 +10,9 @@ use core::ops::{Index, IndexMut};
 #[macro_use]
 extern crate num_derive;
 
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 // macro_rules! debug {
 //     ($($arg:tt)+) => (
 //         #[cfg(feature = "std")]

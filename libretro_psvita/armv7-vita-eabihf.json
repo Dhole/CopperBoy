@@ -16,7 +16,7 @@
   "env": "",
   "exe-suffix": ".elf",
   "executables": true,
-  "features": "+v7,+neon",
+  "features": "+v7,-neon,+vfp3",
   "linker": "arm-vita-eabi-ld",
   "linker-flavor": "ld",
   "linker-is-gnu": true,
