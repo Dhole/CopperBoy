@@ -421,15 +421,17 @@ impl Core {
         //    self.branch = false;
         //}
         //cycles
-        let op = self.get_next_op();
+        // let op = self.get_next_op();
+        let op = unsafe { *self.program_ops.as_ptr().add(self.pc as usize) };
         // self.exec_op(self.program_ops[self.pc as usize])
         self.exec_op(op)
     }
 
-    #[inline(always)]
-    fn get_next_op(&self) -> Op {
-        return self.program_ops[self.pc as usize];
-    }
+    // #[inline(always)]
+    // fn get_next_op(&self) -> Op {
+    //     unsafe { *self.program_ops.as_ptr().add(self.pc as usize) }
+    //     // return self.program_ops[self.pc as usize];
+    // }
 
     // returns true if an interrupt is fired
     pub fn step_hw(&mut self, cycles: usize) -> bool {
@@ -595,7 +597,8 @@ impl Core {
     /// Load a byte from the User Data Space
     pub fn data_load(&self, addr: u16) -> u8 {
         if addr >= SRAM_ADDR {
-            self.sram[(addr - SRAM_ADDR) as usize]
+            // self.sram[(addr - SRAM_ADDR) as usize]
+            unsafe { *self.sram.as_ptr().add((addr - SRAM_ADDR) as usize) }
         } else if addr < IOSPACE_ADDR {
             self.regs[addr as u8]
         } else {
@@ -710,7 +713,8 @@ impl Core {
             // if 0x0155 <= addr && addr <= 0x0158 {
             //     println!("write {:04x} <- {:02x}", addr, v);
             // }
-            self.sram[(addr - SRAM_ADDR) as usize] = v;
+            // self.sram[(addr - SRAM_ADDR) as usize] = v;
+            unsafe { *self.sram.as_mut_ptr().add((addr - SRAM_ADDR) as usize) = v };
         } else if addr < IOSPACE_ADDR {
             self.regs[addr as u8] = v;
         } else {
@@ -823,8 +827,17 @@ impl Core {
     /// Push a word into the stack
     fn push_u16(&mut self, v: u16) {
         let bytes = v.to_le_bytes();
-        self.sram[(self.sp - SRAM_ADDR - 1) as usize] = bytes[0];
-        self.sram[(self.sp - SRAM_ADDR) as usize] = bytes[1];
+        // self.sram[(self.sp - SRAM_ADDR - 1) as usize] = bytes[0];
+        // self.sram[(self.sp - SRAM_ADDR) as usize] = bytes[1];
+        unsafe {
+            *self
+                .sram
+                .as_mut_ptr()
+                .add((self.sp - SRAM_ADDR - 1) as usize) = bytes[0];
+        }
+        unsafe {
+            *self.sram.as_mut_ptr().add((self.sp - SRAM_ADDR) as usize) = bytes[1];
+        }
         self.sp -= 2;
     }
 
@@ -832,8 +845,10 @@ impl Core {
     fn pop_u16(&mut self) -> u16 {
         self.sp += 2;
         u16::from_le_bytes([
-            self.sram[(self.sp - SRAM_ADDR - 1) as usize],
-            self.sram[(self.sp - SRAM_ADDR) as usize],
+            // self.sram[(self.sp - SRAM_ADDR - 1) as usize],
+            // self.sram[(self.sp - SRAM_ADDR) as usize],
+            unsafe { *self.sram.as_ptr().add((self.sp - SRAM_ADDR - 1) as usize) },
+            unsafe { *self.sram.as_ptr().add((self.sp - SRAM_ADDR) as usize) },
         ])
     }
 
