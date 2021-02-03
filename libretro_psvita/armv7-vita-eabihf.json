@@ -16,7 +16,8 @@
   "env": "",
   "exe-suffix": ".elf",
   "executables": true,
-  "features": "+v7,-neon,+vfp3",
+  "features": "+v7,+neon,+vfp3,+a9",
+  "disable-redzone": true,
   "linker": "arm-vita-eabi-ld",
   "linker-flavor": "ld",
   "linker-is-gnu": true,
@@ -30,5 +31,11 @@
   "target-c-int-width": "32",
   "target-endian": "little",
   "target-pointer-width": "32",
-  "vendor":"sony"
+  "vendor":"sony",
+  "pre-link-args": {
+    "gcc": ["-march=armv7", "-mfloat-abi=hard"]
+  },
+  "post-link-args": {
+    "gcc": ["-lgcc", "-lc", "-Wl,-q"]
+  }
 }

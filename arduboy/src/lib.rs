@@ -13,26 +13,47 @@ extern crate num_derive;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-// macro_rules! debug {
-//     ($($arg:tt)+) => (
-//         #[cfg(feature = "std")]
-//         log::debug!($($arg)+)
-//     )
-// }
-//
-// macro_rules! warn {
-//     ($($arg:tt)+) => (
-//         #[cfg(feature = "std")]
-//         log::warn!($($arg)+)
-//     )
-// }
-//
-// macro_rules! info {
-//     ($($arg:tt)+) => (
-//         #[cfg(feature = "std")]
-//         log::info!($($arg)+)
-//     )
-// }
+#[cfg(feature = "std")]
+macro_rules! debug {
+    ($($arg:tt)+) => (
+        log::debug!($($arg)+)
+    )
+}
+
+#[cfg(not(feature = "std"))]
+macro_rules! debug {
+    ($($arg:tt)+) => {
+        ()
+    };
+}
+
+#[cfg(feature = "std")]
+macro_rules! warn {
+    ($($arg:tt)+) => (
+        log::warn!($($arg)+)
+    )
+}
+
+#[cfg(not(feature = "std"))]
+macro_rules! warn {
+    ($($arg:tt)+) => {
+        ()
+    };
+}
+
+#[cfg(feature = "std")]
+macro_rules! info {
+    ($($arg:tt)+) => (
+        log::info!($($arg)+)
+    )
+}
+
+#[cfg(not(feature = "std"))]
+macro_rules! info {
+    ($($arg:tt)+) => {
+        ()
+    };
+}
 
 // #[derive(PartialEq, Debug)]
 // struct Memory {

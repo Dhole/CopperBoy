@@ -10,3 +10,8 @@ members = [
 
 [profile.release]
 debug = true
+panic = 'abort'
+# lto = true
+lto = "fat"
+codegen-units = 1
+

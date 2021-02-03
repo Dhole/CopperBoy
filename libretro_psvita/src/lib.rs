@@ -50,3 +50,8 @@ fn panic_impl(_info: &core::panic::PanicInfo) -> ! {
 //
 // #[global_allocator]
 // static A: MyAllocator = MyAllocator;
+
+use vitallocator::Vitallocator;
+
+#[global_allocator]
+static ALLOC: Vitallocator = Vitallocator::new();

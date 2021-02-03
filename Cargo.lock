@@ -144,6 +144,7 @@ name = "libretro_psvita"
 version = "0.1.0"
 dependencies = [
  "libretro",
+ "vitallocator",
 ]
 
 [[package]]
@@ -202,6 +203,12 @@ checksum = "1e0704ee1a7e00d7bb417d0770ea303c1bccbabf0ef1667dae92b5967f5f8a71"
 dependencies = [
  "unicode-xid",
 ]
+
+[[package]]
+name = "psp2-sys"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afd224aa3812a64fc6d44fa7304ff609339aec31f78844975afede18aecf12ff"
 
 [[package]]
 name = "quick-error"
@@ -270,6 +277,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "spin"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13287b4da9d1207a4f4929ac390916d64eacfe236a487e9a9f5b3be392be5162"
+
+[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -330,6 +343,14 @@ name = "vec_map"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
+
+[[package]]
+name = "vitallocator"
+version = "0.1.1"
+dependencies = [
+ "psp2-sys",
+ "spin",
+]
 
 [[package]]
 name = "winapi"

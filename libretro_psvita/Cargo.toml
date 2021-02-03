@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 libretro = { path = "../libretro", default-features  = false}
+vitallocator = { path = "/home/dev/git/vitallocator" }
 # libretro = { path = "../libretro"}
 
 [lib]
@@ -15,6 +16,6 @@ name = "retro_psvita"
 crate-type = ["staticlib"]
 
 [package.metadata.cargo-xbuild]
-memcpy = false
+memcpy = true
 sysroot_path = "target/sysroot"
 panic_immediate_abort = false

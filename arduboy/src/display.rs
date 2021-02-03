@@ -1,5 +1,4 @@
 // SSD
-use log::{info, warn};
 
 pub const WIDTH: usize = 128;
 pub const HEIGTH: usize = 64;
