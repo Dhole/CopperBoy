@@ -55,6 +55,34 @@ macro_rules! info {
     };
 }
 
+#[cfg(not(feature = "vec_unchecked"))]
+macro_rules! vec_get {
+    ($vec:expr, $index:expr) => {
+        $vec[$index]
+    };
+}
+
+#[cfg(feature = "vec_unchecked")]
+macro_rules! vec_get {
+    ($vec:expr, $index:expr) => {
+        unsafe { *$vec.get_unchecked($index) }
+    };
+}
+
+#[cfg(not(feature = "vec_unchecked"))]
+macro_rules! vec_set {
+    ($vec:expr, $index:expr, $value:expr) => {
+        $vec[$index] = $value
+    };
+}
+
+#[cfg(feature = "vec_unchecked")]
+macro_rules! vec_set {
+    ($vec:expr, $index:expr, $value:expr) => {
+        unsafe { *$vec.get_unchecked_mut($index) = $value }
+    };
+}
+
 // #[derive(PartialEq, Debug)]
 // struct Memory {
 //     buf: Vec<u8>,

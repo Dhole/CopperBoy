@@ -9,11 +9,13 @@ edition = "2018"
 [dependencies]
 # hex = { version = "0.4", default-features = false }
 hex = { git = "https://github.com/KokaKiwi/rust-hex", default-features = false, rev = "a354af249b95c476057baec455314d2fb9f52ffa" }
-log = { version = "0.4.8", default-features = false }
+log = { version = "0.4.8", optional = true, default-features = false }
 # env_logger = "0.7.0"
 num-traits = { version = "0.2", default-features = false }
 num-derive = "0.3"
 
 [features]
 default = ["std"]
-std = []
+std = ["hex/std", "log"]
+vec_unchecked = []
+stats = []

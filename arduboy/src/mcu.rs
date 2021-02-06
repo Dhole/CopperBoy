@@ -217,6 +217,27 @@ fn set_lo(v: &mut u16, lo: u8) {
     *v |= lo as u16;
 }
 
+#[cfg(feature = "stats")]
+use std::collections::HashMap;
+
+#[cfg(feature = "stats")]
+pub struct Stats {
+    pub loads: Vec<usize>,
+    pub stores: Vec<usize>,
+    pub ops: HashMap<String, usize>,
+}
+
+#[cfg(feature = "stats")]
+impl Stats {
+    fn new() -> Self {
+        Self {
+            loads: vec![0; 0xb00],
+            stores: vec![0; 0xb00],
+            ops: HashMap::new(),
+        }
+    }
+}
+
 pub const SRAM_SIZE: u16 = 0x0a00;
 pub const SRAM_ADDR: u16 = 0x0100;
 pub const IOSPACE_SIZE: u16 = 0x0040;
@@ -253,6 +274,8 @@ pub struct Core {
     pub sleep: bool,
     sleep_op: Op,
     pub gpio: GPIO,
+    #[cfg(feature = "stats")]
+    pub stats: Stats,
 }
 
 pub struct GPIO {
@@ -321,6 +344,8 @@ impl Core {
             sleep_op: Op::Nop,
             display: display::Display::new(),
             gpio: GPIO::new(),
+            #[cfg(feature = "stats")]
+            stats: Stats::new(),
         }
     }
 
@@ -422,16 +447,10 @@ impl Core {
         //}
         //cycles
         // let op = self.get_next_op();
-        let op = unsafe { *self.program_ops.as_ptr().add(self.pc as usize) };
+        let op = vec_get!(self.program_ops, self.pc as usize);
         // self.exec_op(self.program_ops[self.pc as usize])
         self.exec_op(op)
     }
-
-    // #[inline(always)]
-    // fn get_next_op(&self) -> Op {
-    //     unsafe { *self.program_ops.as_ptr().add(self.pc as usize) }
-    //     // return self.program_ops[self.pc as usize];
-    // }
 
     // returns true if an interrupt is fired
     pub fn step_hw(&mut self, cycles: usize) -> bool {
@@ -595,10 +614,15 @@ impl Core {
     }
 
     /// Load a byte from the User Data Space
-    pub fn data_load(&self, addr: u16) -> u8 {
+    pub fn data_load(&mut self, addr: u16) -> u8 {
+        #[cfg(feature = "stats")]
+        {
+            self.stats.loads[addr as usize] += 1;
+        }
+
         if addr >= SRAM_ADDR {
             // self.sram[(addr - SRAM_ADDR) as usize]
-            unsafe { *self.sram.as_ptr().add((addr - SRAM_ADDR) as usize) }
+            vec_get!(self.sram, (addr - SRAM_ADDR) as usize)
         } else if addr < IOSPACE_ADDR {
             self.regs[addr as u8]
         } else {
@@ -703,18 +727,23 @@ impl Core {
     }
 
     /// Load a word from the User Data Space
-    fn data_load_u16(&self, addr: u16) -> u16 {
+    fn data_load_u16(&mut self, addr: u16) -> u16 {
         u16::from_le_bytes([self.data_load(addr), self.data_load(addr + 1)])
     }
 
     /// Store a byte into the User Data Space
     fn data_store(&mut self, addr: u16, v: u8) {
+        #[cfg(feature = "stats")]
+        {
+            self.stats.stores[addr as usize] += 1;
+        }
+
         if addr >= SRAM_ADDR {
             // if 0x0155 <= addr && addr <= 0x0158 {
             //     println!("write {:04x} <- {:02x}", addr, v);
             // }
             // self.sram[(addr - SRAM_ADDR) as usize] = v;
-            unsafe { *self.sram.as_mut_ptr().add((addr - SRAM_ADDR) as usize) = v };
+            vec_set!(self.sram, (addr - SRAM_ADDR) as usize, v);
         } else if addr < IOSPACE_ADDR {
             self.regs[addr as u8] = v;
         } else {
@@ -799,7 +828,12 @@ impl Core {
                 io_regs::OCR1BH => {} // TODO
                 io_regs::ADCSRB => {} // TODO
                 io_regs::GPIOR0 => {
+                    // TODO
                     warn!("DBG: {:02x}", v);
+                }
+                io_regs::GPIOR2 => {
+                    // TODO
+                    // warn!("DBG: {:02x}", v);
                 }
                 io_regs::TC4H => {}  // TODO
                 io_regs::OCR4C => {} // TODO
@@ -828,16 +862,9 @@ impl Core {
     fn push_u16(&mut self, v: u16) {
         let bytes = v.to_le_bytes();
         // self.sram[(self.sp - SRAM_ADDR - 1) as usize] = bytes[0];
+        vec_set!(self.sram, (self.sp - SRAM_ADDR - 1) as usize, bytes[0]);
         // self.sram[(self.sp - SRAM_ADDR) as usize] = bytes[1];
-        unsafe {
-            *self
-                .sram
-                .as_mut_ptr()
-                .add((self.sp - SRAM_ADDR - 1) as usize) = bytes[0];
-        }
-        unsafe {
-            *self.sram.as_mut_ptr().add((self.sp - SRAM_ADDR) as usize) = bytes[1];
-        }
+        vec_set!(self.sram, (self.sp - SRAM_ADDR) as usize, bytes[1]);
         self.sp -= 2;
     }
 
@@ -846,9 +873,9 @@ impl Core {
         self.sp += 2;
         u16::from_le_bytes([
             // self.sram[(self.sp - SRAM_ADDR - 1) as usize],
+            vec_get!(self.sram, (self.sp - SRAM_ADDR - 1) as usize),
             // self.sram[(self.sp - SRAM_ADDR) as usize],
-            unsafe { *self.sram.as_ptr().add((self.sp - SRAM_ADDR - 1) as usize) },
-            unsafe { *self.sram.as_ptr().add((self.sp - SRAM_ADDR) as usize) },
+            vec_get!(self.sram, (self.sp - SRAM_ADDR) as usize),
         ])
     }
 
@@ -1795,6 +1822,16 @@ impl Core {
     // 128. Exchange (XCH) (NOT APPLICABLE)
 
     fn exec_op(&mut self, op: Op) -> usize {
+        #[cfg(feature = "stats")]
+        {
+            let asm = format!("{}", OpAddr { op, addr: self.pc });
+            let op_str = asm.split_ascii_whitespace().nth(0).unwrap().to_string();
+            if let Some(key) = self.stats.ops.get_mut(&op_str) {
+                *key += 1;
+            } else {
+                self.stats.ops.insert(op_str, 1);
+            }
+        }
         match op {
             Op::Adc { d, r } => self.op_adc(d, r),
             Op::Add { d, r } => self.op_add(d, r),

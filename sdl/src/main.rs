@@ -466,6 +466,7 @@ fn run(
         fps = (1.0 - update) * fps + update * (1_000_000_000.0 / frame_dur.subsec_nanos() as f32);
         now_end_frame = now;
     }
+    println!("ops: {:?}", core.stats.ops);
 
     Ok(())
 }
