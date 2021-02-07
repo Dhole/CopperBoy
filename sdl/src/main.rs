@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::io;
+use std::io::{Read, Write};
 #[allow(unused_assignments)]
 // use std::env;
 // use std::fs;
@@ -34,6 +37,8 @@ pub enum FrontError {
     SDL2(String),
     HexFile(HexFileError),
     Serde(ron::Error),
+    Postcard(postcard::Error),
+    Io(io::Error),
 }
 
 impl From<String> for FrontError {
@@ -51,6 +56,18 @@ impl From<HexFileError> for FrontError {
 impl From<ron::Error> for FrontError {
     fn from(err: ron::Error) -> Self {
         Self::Serde(err)
+    }
+}
+
+impl From<postcard::Error> for FrontError {
+    fn from(err: postcard::Error) -> Self {
+        Self::Postcard(err)
+    }
+}
+
+impl From<io::Error> for FrontError {
+    fn from(err: io::Error) -> Self {
+        Self::Io(err)
     }
 }
 
@@ -124,6 +141,12 @@ pub fn main() -> Result<(), FrontError> {
                 .index(1)
                 .required(true),
         )
+        .arg(
+            Arg::with_name("sav_path")
+                .long("sav_path")
+                .help("Save path")
+                .takes_value(true),
+        )
         .get_matches();
 
     let scale = app
@@ -131,7 +154,7 @@ pub fn main() -> Result<(), FrontError> {
         .map(|s| s.parse::<u32>().unwrap())
         .unwrap();
     let path = app.value_of("path").unwrap();
-    let trace = app.is_present("trace");
+    let mut trace = app.is_present("trace");
     let calltrace = app.is_present("calltrace");
     let record = app.is_present("record");
     let input: Vec<KeyEvent> = match app.value_of("input") {
@@ -146,18 +169,14 @@ pub fn main() -> Result<(), FrontError> {
     load_hex_file(&mut core, path)?;
 
     core.reset();
-    run(scale, record, trace, calltrace, font_path, input, &mut core)
-}
+    let serialize_len = core.serialize_len()?;
+    println!("serialize_len = {}", serialize_len);
 
-fn run(
-    scale: u32,
-    record: bool,
-    mut trace: bool,
-    mut calltrace: bool,
-    font_path: &Path,
-    input: Vec<KeyEvent>,
-    core: &mut Core,
-) -> Result<(), FrontError> {
+    let save_path = app
+        .value_of("sav_path")
+        .map(|p| Path::new(p).to_path_buf())
+        .unwrap_or(Path::new(path).with_extension("sav"));
+
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
     let audio_subsystem = sdl_context.audio().unwrap();
@@ -218,6 +237,9 @@ fn run(
 
     const SAMPLE_CYCLES: i32 = 16_000_000 / AUDIO_FREQ;
     const SAMPLES_FRAME: i32 = AUDIO_FREQ / 60;
+
+    let mut save = false;
+    let mut load = false;
 
     let mut port_b = 0xff as u8;
     // let mut pin_c = 0xff as u8;
@@ -294,6 +316,12 @@ fn run(
                         Keycode::T => trace = !trace,
                         Keycode::Tab => turbo = true,
                         Keycode::Space => paused = !paused,
+                        Keycode::F1 => {
+                            save = true;
+                        }
+                        Keycode::F2 => {
+                            load = true;
+                        }
                         _ => {}
                     };
                 }
@@ -594,6 +622,20 @@ fn run(
         const update: f32 = 0.2;
         fps = (1.0 - update) * fps + update * (1_000_000_000.0 / frame_dur.subsec_nanos() as f32);
         now_end_frame = now;
+        if save {
+            let mut file = File::create(&save_path).unwrap();
+            let mut bin = vec![0; serialize_len + 10];
+            core.serialize(&mut bin)?;
+            file.write_all(&bin)?;
+            save = false;
+        }
+        if load {
+            let mut file = File::open(&save_path).unwrap();
+            let mut bin = Vec::new();
+            file.read_to_end(&mut bin)?;
+            core.deserialize(&bin)?;
+            load = false;
+        }
     }
     if record {
         // let key_log = serde_json::to_string(&key_events)?;

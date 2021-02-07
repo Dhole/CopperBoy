@@ -13,6 +13,8 @@ use alloc::vec;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
+use core::mem;
+
 use serde::{self, Deserialize, Serialize};
 
 use super::clock;
@@ -331,7 +333,9 @@ pub struct Core {
     /// SRAM
     sram: Vec<u8>,
     /// Program Memory
+    #[serde(skip)]
     pub program: Vec<u8>,
+    #[serde(skip)]
     pub program_ops: Vec<Op>,
     /// Set if the previos instruction branched.  This flag is used to know if the instruction
     /// ahead must be fetched.
@@ -422,10 +426,21 @@ impl Core {
         }
     }
 
-    fn deserialize(&mut self, bin: &[u8]) {}
-
-    fn serialize(&self, bin: &mut [u8]) -> postcard::Result<()> {
+    pub fn serialize(&self, bin: &mut [u8]) -> postcard::Result<()> {
         postcard::to_slice(&self, bin)?;
+        Ok(())
+    }
+
+    pub fn serialize_len(&self) -> postcard::Result<usize> {
+        let bin = postcard::to_stdvec(&self)?;
+        Ok(bin.len())
+    }
+
+    pub fn deserialize(&mut self, bin: &[u8]) -> postcard::Result<()> {
+        let mut new: Core = postcard::from_bytes(bin)?;
+        mem::swap(&mut new.program, &mut self.program);
+        mem::swap(&mut new.program_ops, &mut self.program_ops);
+        *self = new;
         Ok(())
     }
 

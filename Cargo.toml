@@ -13,6 +13,6 @@ members = [
 debug = true
 panic = 'abort'
 # lto = true
-lto = "fat"
-codegen-units = 1
+# lto = "fat"
+# codegen-units = 1
 

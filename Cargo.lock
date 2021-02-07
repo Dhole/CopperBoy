@@ -420,6 +420,7 @@ dependencies = [
  "clap",
  "env_logger",
  "hex 0.3.2",
+ "postcard",
  "ron",
  "sdl2",
 ]
