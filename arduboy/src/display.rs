@@ -63,7 +63,7 @@ enum CmdState {
 
 pub struct Display {
     pub frame: [u8; WIDTH * HEIGTH],
-    fb: [u8; FB_LEN], // Frame Buffer
+    pub fb: [u8; FB_LEN], // Frame Buffer
     // p: usize,         // Cursor Pointer
     dc: bool, // Data/Command Flag {false -> command, true -> data}
     // Internal registers
@@ -407,6 +407,6 @@ impl Display {
 fn draw_8px(frame: &mut [u8; WIDTH * HEIGTH], pixels: u8, x: usize, row: usize, flip_v: bool) {
     let x = if flip_v { WIDTH - 1 - x } else { x };
     for dy in 0..8 {
-        frame[(row * 8 + dy) * WIDTH + x] = if pixels & (1 << dy) != 0 { 1 } else { 0 };
+        frame[(row * 8 + dy) * WIDTH + x] = if pixels & (1 << dy) != 0 { 255 } else { 0 };
     }
 }

@@ -1,3 +1,5 @@
+use crunchy::unroll;
+
 use super::mcu::{Core, GPIOPort};
 use super::utils::{decode_hex_line, HexFileError};
 use core::str;
@@ -85,46 +87,17 @@ impl Emulator {
         while self.cycles > 0 {
             // In each iteration, emulate M * N instructions of the CPU, and the emulate the
             // corresponding cycles in the hardware
-            const N_INSTS: usize = 32;
-            const M_ITERS: usize = 1;
+            const N_INSTS: usize = 8;
             let mut hw_step_cycles = 0;
             if !self.core.sleep {
-                // for _ in 0..M_ITERS {
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                hw_step_cycles += self.core.step();
-                // }
+                debug_assert_eq!(N_INSTS, 8);
+                unroll! {
+                    for i in 0..8 {
+                        hw_step_cycles += self.core.step();
+                    }
+                }
             } else {
-                hw_step_cycles += M_ITERS * N_INSTS;
+                hw_step_cycles += N_INSTS;
             }
             self.core.step_hw(hw_step_cycles);
 

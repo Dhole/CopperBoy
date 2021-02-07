@@ -1,4 +1,5 @@
-// use num_traits::ToPrimitive;
+#[cfg(feature = "stats")]
+use num_traits::{FromPrimitive, ToPrimitive};
 
 #[cfg(feature = "std")]
 use std::fmt;
@@ -218,13 +219,10 @@ fn set_lo(v: &mut u16, lo: u8) {
 }
 
 #[cfg(feature = "stats")]
-use std::collections::HashMap;
-
-#[cfg(feature = "stats")]
 pub struct Stats {
     pub loads: Vec<usize>,
     pub stores: Vec<usize>,
-    pub ops: HashMap<String, usize>,
+    pub ops: Vec<usize>,
 }
 
 #[cfg(feature = "stats")]
@@ -233,7 +231,65 @@ impl Stats {
         Self {
             loads: vec![0; 0xb00],
             stores: vec![0; 0xb00],
-            ops: HashMap::new(),
+            ops: vec![0; OpType::Undefined.to_usize().unwrap()],
+        }
+    }
+
+    pub fn print_summary(&self, n_loads: usize, n_stores: usize, n_ops: usize) {
+        let mut loads: Vec<(usize, usize)> = self
+            .loads
+            .iter()
+            .enumerate()
+            .map(|(addr, count)| (addr, *count))
+            .collect();
+        loads.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
+        println!("# Loads");
+        let width = format!("{}", loads[0].1).len();
+        for (addr, count) in loads.iter().take(n_loads) {
+            println!(
+                "0x{:04x}: {:width$} ; {:?}",
+                addr,
+                count,
+                io_reg_str(*addr as u16).unwrap_or(("", "")),
+                width = width,
+            );
+        }
+
+        let mut stores: Vec<(usize, usize)> = self
+            .stores
+            .iter()
+            .enumerate()
+            .map(|(addr, count)| (addr, *count))
+            .collect();
+        stores.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
+        println!("# Stores");
+        let width = format!("{}", stores[0].1).len();
+        for (addr, count) in stores.iter().take(n_stores) {
+            println!(
+                "0x{:04x}: {:width$} ; {:?}",
+                addr,
+                count,
+                io_reg_str(*addr as u16).unwrap_or(("", "")),
+                width = width,
+            );
+        }
+
+        let mut ops: Vec<(OpType, usize)> = self
+            .ops
+            .iter()
+            .enumerate()
+            .map(|(op_num, count)| (OpType::from_usize(op_num).unwrap(), *count))
+            .collect();
+        ops.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
+        println!("# Ops");
+        let width = format!("{}", ops[0].1).len();
+        for (op, count) in ops.iter().take(n_ops) {
+            println!(
+                "{:<6}: {:width$}",
+                format!("{:?}", op),
+                count,
+                width = width
+            );
         }
     }
 }
@@ -617,7 +673,9 @@ impl Core {
     pub fn data_load(&mut self, addr: u16) -> u8 {
         #[cfg(feature = "stats")]
         {
-            self.stats.loads[addr as usize] += 1;
+            if addr < SRAM_ADDR {
+                self.stats.loads[addr as usize] += 1;
+            }
         }
 
         if addr >= SRAM_ADDR {
@@ -735,7 +793,9 @@ impl Core {
     fn data_store(&mut self, addr: u16, v: u8) {
         #[cfg(feature = "stats")]
         {
-            self.stats.stores[addr as usize] += 1;
+            if addr < SRAM_ADDR {
+                self.stats.stores[addr as usize] += 1;
+            }
         }
 
         if addr >= SRAM_ADDR {
@@ -1824,13 +1884,7 @@ impl Core {
     fn exec_op(&mut self, op: Op) -> usize {
         #[cfg(feature = "stats")]
         {
-            let asm = format!("{}", OpAddr { op, addr: self.pc });
-            let op_str = asm.split_ascii_whitespace().nth(0).unwrap().to_string();
-            if let Some(key) = self.stats.ops.get_mut(&op_str) {
-                *key += 1;
-            } else {
-                self.stats.ops.insert(op_str, 1);
-            }
+            self.stats.ops[OpType::new_from_op(op).to_usize().unwrap()] += 1;
         }
         match op {
             Op::Adc { d, r } => self.op_adc(d, r),

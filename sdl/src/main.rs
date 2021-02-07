@@ -12,7 +12,7 @@ use arduboy::display::{HEIGTH, WIDTH};
 use arduboy::keys::*;
 use arduboy::mcu::{Core, GPIOPort};
 use arduboy::opcodes::{Op, OpAddr};
-use arduboy::utils::{load_hex_file, HexFileError};
+use arduboy::utils::{load_hex_file, HexFileError, Key, KeyEvent};
 
 // use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
@@ -23,6 +23,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::render::TextureQuery;
 
+use serde_json;
 // use rand::{self, RngCore};
 
 use clap::{App, Arg};
@@ -31,6 +32,7 @@ use clap::{App, Arg};
 pub enum FrontError {
     SDL2(String),
     HexFile(HexFileError),
+    Serde(serde_json::Error),
 }
 
 impl From<String> for FrontError {
@@ -42,6 +44,12 @@ impl From<String> for FrontError {
 impl From<HexFileError> for FrontError {
     fn from(err: HexFileError) -> Self {
         Self::HexFile(err)
+    }
+}
+
+impl From<serde_json::Error> for FrontError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::Serde(err)
     }
 }
 
@@ -203,7 +211,15 @@ fn run(
     let mut paused = false;
     let mut step_cycles_sample: i32 = 0;
     let mut start = Instant::now();
+    let mut key_events: Vec<KeyEvent> = Vec::new();
+    let mut total_frames = 0;
     'running: loop {
+        total_frames += 1;
+        let mut key_event = KeyEvent {
+            frame: total_frames,
+            up: Vec::new(),
+            down: Vec::new(),
+        };
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
@@ -216,12 +232,30 @@ fn run(
                     ..
                 } => {
                     match keycode {
-                        Keycode::Left => pin_f &= !PIN_LEFT,
-                        Keycode::Right => pin_f &= !PIN_RIGHT,
-                        Keycode::Up => pin_f &= !PIN_UP,
-                        Keycode::Down => pin_f &= !PIN_DOWN,
-                        Keycode::X => pin_e &= !PIN_A,
-                        Keycode::Z => pin_b &= !PIN_B,
+                        Keycode::Left => {
+                            pin_f &= !PIN_LEFT;
+                            key_event.down.push(Key::Left)
+                        }
+                        Keycode::Right => {
+                            pin_f &= !PIN_RIGHT;
+                            key_event.down.push(Key::Right)
+                        }
+                        Keycode::Up => {
+                            pin_f &= !PIN_UP;
+                            key_event.down.push(Key::Up)
+                        }
+                        Keycode::Down => {
+                            pin_f &= !PIN_DOWN;
+                            key_event.down.push(Key::Down)
+                        }
+                        Keycode::X => {
+                            pin_e &= !PIN_A;
+                            key_event.down.push(Key::A)
+                        }
+                        Keycode::Z => {
+                            pin_b &= !PIN_B;
+                            key_event.down.push(Key::B)
+                        }
                         Keycode::T => trace = !trace,
                         Keycode::Tab => turbo = true,
                         Keycode::Space => paused = !paused,
@@ -233,12 +267,30 @@ fn run(
                     ..
                 } => {
                     match keycode {
-                        Keycode::Left => pin_f |= PIN_LEFT,
-                        Keycode::Right => pin_f |= PIN_RIGHT,
-                        Keycode::Up => pin_f |= PIN_UP,
-                        Keycode::Down => pin_f |= PIN_DOWN,
-                        Keycode::X => pin_e |= PIN_A,
-                        Keycode::Z => pin_b |= PIN_B,
+                        Keycode::Left => {
+                            pin_f |= PIN_LEFT;
+                            key_event.up.push(Key::Left)
+                        }
+                        Keycode::Right => {
+                            pin_f |= PIN_RIGHT;
+                            key_event.up.push(Key::Right)
+                        }
+                        Keycode::Up => {
+                            pin_f |= PIN_UP;
+                            key_event.up.push(Key::Up)
+                        }
+                        Keycode::Down => {
+                            pin_f |= PIN_DOWN;
+                            key_event.up.push(Key::Down)
+                        }
+                        Keycode::X => {
+                            pin_e |= PIN_A;
+                            key_event.up.push(Key::A)
+                        }
+                        Keycode::Z => {
+                            pin_b |= PIN_B;
+                            key_event.up.push(Key::B)
+                        }
                         Keycode::Tab => {
                             start = Instant::now();
                             frame = 0;
@@ -249,6 +301,9 @@ fn run(
                 }
                 _ => {}
             }
+        }
+        if key_event.up.len() != 0 || key_event.down.len() != 0 {
+            key_events.push(key_event);
         }
 
         core.gpio.set_port(GPIOPort::B, pin_b);
@@ -405,7 +460,7 @@ fn run(
             for y in 0..HEIGTH {
                 for x in 0..WIDTH {
                     let offset = y * pitch + x * 3;
-                    if core.display.frame[y * WIDTH + x] == 1 {
+                    if core.display.frame[y * WIDTH + x] != 0 {
                         buffer[offset] = 255;
                         buffer[offset + 1] = 255;
                         buffer[offset + 2] = 255;
@@ -466,7 +521,10 @@ fn run(
         fps = (1.0 - update) * fps + update * (1_000_000_000.0 / frame_dur.subsec_nanos() as f32);
         now_end_frame = now;
     }
-    println!("ops: {:?}", core.stats.ops);
+    let key_log = serde_json::to_string(&key_events)?;
+    println!("{}", key_log);
+    // core.stats.print_summary(16, 16, 32);
+    // println!("ops: {:?}", core.stats.ops);
 
     Ok(())
 }

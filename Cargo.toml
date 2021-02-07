@@ -3,6 +3,7 @@
 members = [
     "arduboy",
     "sdl",
+    "report",
     "libretro",
     "libretro_std",
     "libretro_psvita",

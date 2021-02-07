@@ -85,3 +85,34 @@ pub fn load_hex_file(core: &mut Core, path: &str) -> Result<(), HexFileError> {
     }
     Ok(())
 }
+
+#[cfg(feature = "std")]
+use serde::{self, Deserialize, Serialize};
+
+#[cfg(feature = "std")]
+#[derive(Serialize, Deserialize)]
+pub enum Key {
+    #[serde(rename = "l")]
+    Left,
+    #[serde(rename = "r")]
+    Right,
+    #[serde(rename = "u")]
+    Up,
+    #[serde(rename = "d")]
+    Down,
+    #[serde(rename = "a")]
+    A,
+    #[serde(rename = "b")]
+    B,
+}
+
+#[cfg(feature = "std")]
+#[derive(Serialize, Deserialize)]
+pub struct KeyEvent {
+    #[serde(rename = "f")]
+    pub frame: usize,
+    #[serde(rename = "d")]
+    pub down: Vec<Key>,
+    #[serde(rename = "u")]
+    pub up: Vec<Key>,
+}
