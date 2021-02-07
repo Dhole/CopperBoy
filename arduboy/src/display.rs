@@ -1,4 +1,10 @@
 // SSD
+use serde::{self, Deserialize, Serialize};
+
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 pub const WIDTH: usize = 128;
 pub const HEIGTH: usize = 64;
@@ -33,20 +39,20 @@ const CMD_CLOCK_DIVIDE_RATIO: u8 = 0xD5;
 const CMD_ON: u8 = 0xAF;
 const CMD_OFF: u8 = 0xAE;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 enum AddrMode {
     Vertical,
     Horizontal,
     Page,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 enum StateColumnAddress {
     Start,
     End,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 enum CmdState {
     None,
     AddressingMode,
@@ -61,9 +67,10 @@ enum CmdState {
     ClockDivideRatio,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Display {
-    pub frame: [u8; WIDTH * HEIGTH],
-    pub fb: [u8; FB_LEN], // Frame Buffer
+    pub frame: Vec<u8>,
+    pub fb: Vec<u8>, // Frame Buffer
     // p: usize,         // Cursor Pointer
     dc: bool, // Data/Command Flag {false -> command, true -> data}
     // Internal registers
@@ -92,8 +99,8 @@ pub struct Display {
 impl Display {
     pub fn new() -> Self {
         Self {
-            frame: [0; WIDTH * HEIGTH],
-            fb: [0; FB_LEN],
+            frame: vec![0; WIDTH * HEIGTH],
+            fb: vec![0; FB_LEN],
             // p: 0,
             dc: false,
             //
@@ -404,7 +411,7 @@ impl Display {
     }
 }
 
-fn draw_8px(frame: &mut [u8; WIDTH * HEIGTH], pixels: u8, x: usize, row: usize, flip_v: bool) {
+fn draw_8px(frame: &mut [u8], pixels: u8, x: usize, row: usize, flip_v: bool) {
     let x = if flip_v { WIDTH - 1 - x } else { x };
     for dy in 0..8 {
         frame[(row * 8 + dy) * WIDTH + x] = if pixels & (1 << dy) != 0 { 255 } else { 0 };

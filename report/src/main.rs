@@ -24,7 +24,7 @@ use clap::{App, Arg};
 pub enum FrontError {
     Emulator(emulator::Error),
     Io(io::Error),
-    Serde(serde_json::Error),
+    Serde(ron::Error),
 }
 
 impl From<emulator::Error> for FrontError {
@@ -39,8 +39,8 @@ impl From<io::Error> for FrontError {
     }
 }
 
-impl From<serde_json::Error> for FrontError {
-    fn from(err: serde_json::Error) -> Self {
+impl From<ron::Error> for FrontError {
+    fn from(err: ron::Error) -> Self {
         Self::Serde(err)
     }
 }
@@ -52,19 +52,6 @@ pub fn main() -> Result<(), FrontError> {
     let app = App::new("Copperboy")
         .version("0.0.1")
         .author("Dhole")
-        .arg(
-            Arg::with_name("scale")
-                .short("s")
-                .long("scale")
-                .value_name("N")
-                .help("Sets the scaling factor")
-                .takes_value(true)
-                .default_value("8")
-                .validator(|v| match v.parse::<u32>() {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(format!("{}", e)),
-                }),
-        )
         .arg(
             Arg::with_name("path")
                 .help("Path to the rom file")
@@ -108,8 +95,7 @@ pub fn main() -> Result<(), FrontError> {
         .arg(
             Arg::with_name("out_path")
                 .help("Output path to store results")
-                .index(2)
-                .required(true),
+                .index(2),
         )
         .get_matches();
 
@@ -126,9 +112,9 @@ pub fn main() -> Result<(), FrontError> {
         .map(|s| s.parse::<usize>().unwrap())
         .unwrap();
     let path = app.value_of("path").unwrap();
-    let out_path = app.value_of("out_path").unwrap();
+    let out_path = app.value_of("out_path").map(|s| Path::new(s));
     let input: Vec<KeyEvent> = match app.value_of("input") {
-        Some(input) => serde_json::from_str(input)?,
+        Some(input) => ron::from_str(input)?,
         None => vec![],
     };
 
@@ -149,27 +135,12 @@ pub fn main() -> Result<(), FrontError> {
             .unwrap(),
     );
 
-    let out_path = Path::new(out_path).join(name);
-    fs::create_dir_all(&out_path)?;
+    let out_path = out_path.map(|p| p.join(name));
+    if let Some(ref out_path) = out_path {
+        fs::remove_dir_all(&out_path)?;
+        fs::create_dir_all(&out_path)?;
+    }
 
-    run(
-        scale,
-        seconds,
-        screenshot_interval,
-        out_path,
-        input,
-        &mut emu,
-    )
-}
-
-fn run(
-    scale: u32,
-    seconds: usize,
-    screenshot_interval: usize,
-    out_path: PathBuf,
-    input: Vec<KeyEvent>,
-    emu: &mut Emulator,
-) -> Result<(), FrontError> {
     // const AUDIO_FREQ: i32 = 44100;
 
     // let mut sample = [127; SAMPLE_SIZE as usize];
@@ -224,17 +195,19 @@ fn run(
 
             emu.run(port_b, port_e, port_f);
 
-            if total_frames % screenshot_interval == 0 {
-                let path = out_path.join(format!("frame_{:08}.png", total_frames));
-                let file = File::create(path).unwrap();
-                let ref mut w = BufWriter::new(file);
+            if let Some(ref out_path) = out_path {
+                if total_frames % screenshot_interval == 0 {
+                    let path = out_path.join(format!("frame_{:08}.png", total_frames));
+                    let file = File::create(path).unwrap();
+                    let ref mut w = BufWriter::new(file);
 
-                let mut encoder = png::Encoder::new(w, WIDTH as u32, HEIGTH as u32);
-                encoder.set_color(png::ColorType::Grayscale);
-                encoder.set_depth(png::BitDepth::Eight);
-                let mut writer = encoder.write_header().unwrap();
+                    let mut encoder = png::Encoder::new(w, WIDTH as u32, HEIGTH as u32);
+                    encoder.set_color(png::ColorType::Grayscale);
+                    encoder.set_depth(png::BitDepth::Eight);
+                    let mut writer = encoder.write_header().unwrap();
 
-                writer.write_image_data(&emu.core.display.frame).unwrap(); // Save
+                    writer.write_image_data(&emu.core.display.frame).unwrap(); // Save
+                }
             }
 
             // let now = Instant::now();
@@ -247,7 +220,12 @@ fn run(
             // now_end_frame = now;
         }
     }
-    emu.core.stats.print_summary(16, 16, 32);
+    if let Some(out_path) = out_path {
+        let path = out_path.join("stats.txt");
+        let file = File::create(path).unwrap();
+        let ref mut w = BufWriter::new(file);
+        emu.core.stats.write_summary(w, 32, 32, 64);
+    }
     // println!("ops: {:?}", core.stats.ops);
 
     Ok(())

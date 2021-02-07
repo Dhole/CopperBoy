@@ -1,4 +1,6 @@
 #[cfg(feature = "stats")]
+use core::fmt::Write;
+#[cfg(feature = "stats")]
 use num_traits::{FromPrimitive, ToPrimitive};
 
 #[cfg(feature = "std")]
@@ -11,6 +13,8 @@ use alloc::vec;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
+use serde::{self, Deserialize, Serialize};
+
 use super::clock;
 use super::display;
 use super::eeprom;
@@ -19,7 +23,7 @@ use super::io_regs::io_reg_str;
 use super::opcodes::*;
 use super::*;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Serialize, Deserialize)]
 pub struct StatusRegister {
     /// Global Interrupt Enable
     i: bool,
@@ -130,7 +134,7 @@ impl StatusRegister {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct GeneralRegisters {
     reg: [u8; 32],
 }
@@ -219,6 +223,7 @@ fn set_lo(v: &mut u16, lo: u8) {
 }
 
 #[cfg(feature = "stats")]
+#[derive(Serialize, Deserialize)]
 pub struct Stats {
     pub loads: Vec<usize>,
     pub stores: Vec<usize>,
@@ -235,7 +240,13 @@ impl Stats {
         }
     }
 
-    pub fn print_summary(&self, n_loads: usize, n_stores: usize, n_ops: usize) {
+    pub fn write_summary<W: std::io::Write>(
+        &self,
+        mut out: W,
+        n_loads: usize,
+        n_stores: usize,
+        n_ops: usize,
+    ) -> Result<(), std::io::Error> {
         let mut loads: Vec<(usize, usize)> = self
             .loads
             .iter()
@@ -243,16 +254,17 @@ impl Stats {
             .map(|(addr, count)| (addr, *count))
             .collect();
         loads.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
-        println!("# Loads");
+        writeln!(out, "# Loads")?;
         let width = format!("{}", loads[0].1).len();
         for (addr, count) in loads.iter().take(n_loads) {
-            println!(
+            writeln!(
+                out,
                 "0x{:04x}: {:width$} ; {:?}",
                 addr,
                 count,
                 io_reg_str(*addr as u16).unwrap_or(("", "")),
                 width = width,
-            );
+            )?;
         }
 
         let mut stores: Vec<(usize, usize)> = self
@@ -262,16 +274,17 @@ impl Stats {
             .map(|(addr, count)| (addr, *count))
             .collect();
         stores.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
-        println!("# Stores");
+        writeln!(out, "\n# Stores")?;
         let width = format!("{}", stores[0].1).len();
         for (addr, count) in stores.iter().take(n_stores) {
-            println!(
+            writeln!(
+                out,
                 "0x{:04x}: {:width$} ; {:?}",
                 addr,
                 count,
                 io_reg_str(*addr as u16).unwrap_or(("", "")),
                 width = width,
-            );
+            )?;
         }
 
         let mut ops: Vec<(OpType, usize)> = self
@@ -281,16 +294,18 @@ impl Stats {
             .map(|(op_num, count)| (OpType::from_usize(op_num).unwrap(), *count))
             .collect();
         ops.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
-        println!("# Ops");
+        writeln!(out, "\n# Ops")?;
         let width = format!("{}", ops[0].1).len();
         for (op, count) in ops.iter().take(n_ops) {
-            println!(
+            writeln!(
+                out,
                 "{:<6}: {:width$}",
                 format!("{:?}", op),
                 count,
                 width = width
-            );
+            )?;
         }
+        Ok(())
     }
 }
 
@@ -301,19 +316,20 @@ pub const IOSPACE_ADDR: u16 = 0x0020;
 pub const DATA_SIZE: u16 = 0x0b00;
 pub const PROGRAM_SIZE: u16 = 0x8000;
 
+#[derive(Serialize, Deserialize)]
 pub struct Core {
     /// Status Register
     status_reg: StatusRegister,
     /// General Purpose Register File
     pub regs: GeneralRegisters,
     /// IO Registers
-    io_space: [u8; IOSPACE_SIZE as usize],
+    io_space: Vec<u8>,
     /// Program Counter
     pub pc: u16,
     /// Stack Pointer
     pub sp: u16,
     /// SRAM
-    sram: [u8; SRAM_SIZE as usize],
+    sram: Vec<u8>,
     /// Program Memory
     pub program: Vec<u8>,
     pub program_ops: Vec<Op>,
@@ -334,6 +350,7 @@ pub struct Core {
     pub stats: Stats,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct GPIO {
     pin_b: u8,
     pin_c: u8,
@@ -384,10 +401,10 @@ impl Core {
     pub fn new() -> Self {
         Self {
             regs: GeneralRegisters::new(),
-            io_space: [0; IOSPACE_SIZE as usize],
+            io_space: vec![0; IOSPACE_SIZE as usize],
             status_reg: StatusRegister::new(),
             pc: 0,
-            sram: [0; SRAM_SIZE as usize],
+            sram: vec![0; SRAM_SIZE as usize],
             program: vec![0; PROGRAM_SIZE as usize],
             program_ops: vec![Op::Nop; PROGRAM_SIZE as usize],
             sp: SRAM_ADDR + SRAM_SIZE - 1,
@@ -403,6 +420,13 @@ impl Core {
             #[cfg(feature = "stats")]
             stats: Stats::new(),
         }
+    }
+
+    fn deserialize(&mut self, bin: &[u8]) {}
+
+    fn serialize(&self, bin: &mut [u8]) -> postcard::Result<()> {
+        postcard::to_slice(&self, bin)?;
+        Ok(())
     }
 
     /// Load a word from Program Memory by PC

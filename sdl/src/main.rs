@@ -23,7 +23,8 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::render::TextureQuery;
 
-use serde_json;
+use ron;
+// use serde_json;
 // use rand::{self, RngCore};
 
 use clap::{App, Arg};
@@ -32,7 +33,7 @@ use clap::{App, Arg};
 pub enum FrontError {
     SDL2(String),
     HexFile(HexFileError),
-    Serde(serde_json::Error),
+    Serde(ron::Error),
 }
 
 impl From<String> for FrontError {
@@ -47,8 +48,8 @@ impl From<HexFileError> for FrontError {
     }
 }
 
-impl From<serde_json::Error> for FrontError {
-    fn from(err: serde_json::Error) -> Self {
+impl From<ron::Error> for FrontError {
+    fn from(err: ron::Error) -> Self {
         Self::Serde(err)
     }
 }
@@ -105,6 +106,19 @@ pub fn main() -> Result<(), FrontError> {
                 .help("Trace all calls"),
         )
         .arg(
+            Arg::with_name("record")
+                .short("r")
+                .long("record")
+                .help("Record all key events"),
+        )
+        .arg(
+            Arg::with_name("input")
+                .long("input")
+                // .help("Key events to use as input in JSON")
+                .help("Key events to use as input in RON")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("path")
                 .help("Path to the rom file")
                 .index(1)
@@ -119,6 +133,12 @@ pub fn main() -> Result<(), FrontError> {
     let path = app.value_of("path").unwrap();
     let trace = app.is_present("trace");
     let calltrace = app.is_present("calltrace");
+    let record = app.is_present("record");
+    let input: Vec<KeyEvent> = match app.value_of("input") {
+        // Some(input) => serde_json::from_str(input)?,
+        Some(input) => ron::from_str(input)?,
+        None => vec![],
+    };
 
     let font_path: &Path = Path::new("./assets/DejaVuSansMono.ttf");
 
@@ -126,14 +146,16 @@ pub fn main() -> Result<(), FrontError> {
     load_hex_file(&mut core, path)?;
 
     core.reset();
-    run(scale, trace, calltrace, font_path, &mut core)
+    run(scale, record, trace, calltrace, font_path, input, &mut core)
 }
 
 fn run(
     scale: u32,
+    record: bool,
     mut trace: bool,
     mut calltrace: bool,
     font_path: &Path,
+    input: Vec<KeyEvent>,
     core: &mut Core,
 ) -> Result<(), FrontError> {
     let sdl_context = sdl2::init()?;
@@ -197,11 +219,11 @@ fn run(
     const SAMPLE_CYCLES: i32 = 16_000_000 / AUDIO_FREQ;
     const SAMPLES_FRAME: i32 = AUDIO_FREQ / 60;
 
-    let mut pin_b = 0xff as u8;
+    let mut port_b = 0xff as u8;
     // let mut pin_c = 0xff as u8;
     // let mut pin_d = 0xff as u8;
-    let mut pin_e = 0xff as u8;
-    let mut pin_f = 0xff as u8;
+    let mut port_e = 0xff as u8;
+    let mut port_f = 0xff as u8;
     let mut cycles: i32 = 0;
     let mut frame: u32 = 0;
     let mut d = 0;
@@ -213,6 +235,7 @@ fn run(
     let mut start = Instant::now();
     let mut key_events: Vec<KeyEvent> = Vec::new();
     let mut total_frames = 0;
+    let mut input_index = 0;
     'running: loop {
         total_frames += 1;
         let mut key_event = KeyEvent {
@@ -233,28 +256,40 @@ fn run(
                 } => {
                     match keycode {
                         Keycode::Left => {
-                            pin_f &= !PIN_LEFT;
-                            key_event.down.push(Key::Left)
+                            port_f &= !PIN_LEFT;
+                            if record {
+                                key_event.down.push(Key::Left);
+                            }
                         }
                         Keycode::Right => {
-                            pin_f &= !PIN_RIGHT;
-                            key_event.down.push(Key::Right)
+                            port_f &= !PIN_RIGHT;
+                            if record {
+                                key_event.down.push(Key::Right);
+                            }
                         }
                         Keycode::Up => {
-                            pin_f &= !PIN_UP;
-                            key_event.down.push(Key::Up)
+                            port_f &= !PIN_UP;
+                            if record {
+                                key_event.down.push(Key::Up);
+                            }
                         }
                         Keycode::Down => {
-                            pin_f &= !PIN_DOWN;
-                            key_event.down.push(Key::Down)
+                            port_f &= !PIN_DOWN;
+                            if record {
+                                key_event.down.push(Key::Down);
+                            }
                         }
                         Keycode::X => {
-                            pin_e &= !PIN_A;
-                            key_event.down.push(Key::A)
+                            port_e &= !PIN_A;
+                            if record {
+                                key_event.down.push(Key::A);
+                            }
                         }
                         Keycode::Z => {
-                            pin_b &= !PIN_B;
-                            key_event.down.push(Key::B)
+                            port_b &= !PIN_B;
+                            if record {
+                                key_event.down.push(Key::B);
+                            }
                         }
                         Keycode::T => trace = !trace,
                         Keycode::Tab => turbo = true,
@@ -268,28 +303,40 @@ fn run(
                 } => {
                     match keycode {
                         Keycode::Left => {
-                            pin_f |= PIN_LEFT;
-                            key_event.up.push(Key::Left)
+                            port_f |= PIN_LEFT;
+                            if record {
+                                key_event.up.push(Key::Left);
+                            }
                         }
                         Keycode::Right => {
-                            pin_f |= PIN_RIGHT;
-                            key_event.up.push(Key::Right)
+                            port_f |= PIN_RIGHT;
+                            if record {
+                                key_event.up.push(Key::Right);
+                            }
                         }
                         Keycode::Up => {
-                            pin_f |= PIN_UP;
-                            key_event.up.push(Key::Up)
+                            port_f |= PIN_UP;
+                            if record {
+                                key_event.up.push(Key::Up);
+                            }
                         }
                         Keycode::Down => {
-                            pin_f |= PIN_DOWN;
-                            key_event.up.push(Key::Down)
+                            port_f |= PIN_DOWN;
+                            if record {
+                                key_event.up.push(Key::Down);
+                            }
                         }
                         Keycode::X => {
-                            pin_e |= PIN_A;
-                            key_event.up.push(Key::A)
+                            port_e |= PIN_A;
+                            if record {
+                                key_event.up.push(Key::A);
+                            }
                         }
                         Keycode::Z => {
-                            pin_b |= PIN_B;
-                            key_event.up.push(Key::B)
+                            port_b |= PIN_B;
+                            if record {
+                                key_event.up.push(Key::B);
+                            }
                         }
                         Keycode::Tab => {
                             start = Instant::now();
@@ -302,15 +349,42 @@ fn run(
                 _ => {}
             }
         }
-        if key_event.up.len() != 0 || key_event.down.len() != 0 {
-            key_events.push(key_event);
+        if record {
+            if key_event.up.len() != 0 || key_event.down.len() != 0 {
+                key_events.push(key_event);
+            }
         }
 
-        core.gpio.set_port(GPIOPort::B, pin_b);
+        if input_index < input.len() && input[input_index].frame == total_frames {
+            let key_event = &input[input_index];
+            for down in &key_event.down {
+                match down {
+                    Key::Left => port_f &= !PIN_LEFT,
+                    Key::Right => port_f &= !PIN_RIGHT,
+                    Key::Up => port_f &= !PIN_UP,
+                    Key::Down => port_f &= !PIN_DOWN,
+                    Key::A => port_e &= !PIN_A,
+                    Key::B => port_b &= !PIN_B,
+                }
+            }
+            for up in &key_event.up {
+                match up {
+                    Key::Left => port_f |= PIN_LEFT,
+                    Key::Right => port_f |= PIN_RIGHT,
+                    Key::Up => port_f |= PIN_UP,
+                    Key::Down => port_f |= PIN_DOWN,
+                    Key::A => port_e |= PIN_A,
+                    Key::B => port_b |= PIN_B,
+                }
+            }
+            input_index += 1;
+        }
+
+        core.gpio.set_port(GPIOPort::B, port_b);
         // core.gpio.set_port(GPIOPort::C, pin_c);
         // core.gpio.set_port(GPIOPort::D, pin_d);
-        core.gpio.set_port(GPIOPort::E, pin_e);
-        core.gpio.set_port(GPIOPort::F, pin_f);
+        core.gpio.set_port(GPIOPort::E, port_e);
+        core.gpio.set_port(GPIOPort::F, port_f);
         if !paused {
             cycles += 16_000_000 / 60;
             step_cycles_sample = SAMPLE_CYCLES;
@@ -521,8 +595,11 @@ fn run(
         fps = (1.0 - update) * fps + update * (1_000_000_000.0 / frame_dur.subsec_nanos() as f32);
         now_end_frame = now;
     }
-    let key_log = serde_json::to_string(&key_events)?;
-    println!("{}", key_log);
+    if record {
+        // let key_log = serde_json::to_string(&key_events)?;
+        let key_log = ron::to_string(&key_events)?;
+        println!("{}", key_log);
+    }
     // core.stats.print_summary(16, 16, 32);
     // println!("ops: {:?}", core.stats.ops);
 

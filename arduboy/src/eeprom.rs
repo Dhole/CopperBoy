@@ -1,3 +1,5 @@
+use serde::{self, Deserialize, Serialize};
+
 pub const EERE: u8 = 1 << 0;
 pub const EEPE: u8 = 1 << 1;
 pub const EEMPE: u8 = 1 << 2;
@@ -7,8 +9,9 @@ pub const EEPM1: u8 = 1 << 5;
 
 pub const EEPROM_SIZE: u16 = 0x400;
 
+#[derive(Serialize, Deserialize)]
 pub struct Eeprom {
-    rom: [u8; EEPROM_SIZE as usize],
+    rom: Vec<u8>,
     addr: u16,
     data: u8,
 }
@@ -16,7 +19,7 @@ pub struct Eeprom {
 impl Eeprom {
     pub fn new() -> Self {
         Self {
-            rom: [0xff; EEPROM_SIZE as usize],
+            rom: vec![0xff; EEPROM_SIZE as usize],
             addr: 0,
             data: 0,
         }

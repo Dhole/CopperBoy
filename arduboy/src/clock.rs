@@ -1,15 +1,16 @@
 use num_traits::FromPrimitive;
 // use num_traits::ToPrimitive;
+use serde::{self, Deserialize, Serialize};
 
 use super::int_vec::*;
 
-#[derive(FromPrimitive, Clone, Copy)]
+#[derive(FromPrimitive, Clone, Copy, Serialize, Deserialize)]
 enum PllInputPrescaler {
     Mhz8 = 0b0000_0000,
     Mhz16 = 0b0001_0000,
 }
 
-#[derive(FromPrimitive, Clone, Copy)]
+#[derive(FromPrimitive, Clone, Copy, Serialize, Deserialize)]
 enum Mode {
     Normal = 0b00,
     PWMPhaseCorrect = 0b01,
@@ -17,7 +18,7 @@ enum Mode {
     PWMFast = 0b11,
 }
 
-#[derive(FromPrimitive, ToPrimitive, Clone, Copy)]
+#[derive(FromPrimitive, ToPrimitive, Clone, Copy, Serialize, Deserialize)]
 enum WaveGenMode {
     Normal = 0b0000,
     PWMPhaseCorrect8b = 0b0001,
@@ -37,7 +38,7 @@ enum WaveGenMode {
     FASTPWMOCR = 0b1111,
 }
 
-#[derive(FromPrimitive, Clone, Copy)]
+#[derive(FromPrimitive, Clone, Copy, Serialize, Deserialize)]
 enum ClockSelect {
     No = 0b000,
     Clk = 0b001,
@@ -49,6 +50,7 @@ enum ClockSelect {
     ExtRising = 0b111,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Clock {
     pll_input_prescaler: PllInputPrescaler,
     pll_enable: bool,

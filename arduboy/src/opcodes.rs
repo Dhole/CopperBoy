@@ -1,3 +1,5 @@
+use serde::{self, Deserialize, Serialize};
+
 #[cfg(feature = "std")]
 use super::io_regs::io_reg_str;
 #[cfg(feature = "std")]
@@ -382,7 +384,7 @@ const OPCODE_OP_SWAP_MASK: u16 = 0b1111_1110_0000_1111;
 const OPCODE_OP_WDR_BITS: u16 = 0b1001_0101_1010_1000;
 const OPCODE_OP_WDR_MASK: u16 = 0b1111_1111_1111_1111;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum LdStIndex {
     X,
     Y,
@@ -410,7 +412,7 @@ impl fmt::Display for LdStIndex {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub enum LdStExt {
     None,
     PostInc,
@@ -419,7 +421,7 @@ pub enum LdStExt {
 }
 
 // NOTE: Review undefined combinations
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
 pub enum Op {
     Adc { d: u8, r: u8 },
     Add { d: u8, r: u8 },
