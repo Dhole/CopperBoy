@@ -556,6 +556,7 @@ checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
 [[package]]
 name = "vitallocator"
 version = "0.1.1"
+source = "git+https://github.com/Dhole/vitallocator?rev=cfd7f8d88a10254ebe9673fb2aa76501f425b68f#cfd7f8d88a10254ebe9673fb2aa76501f425b68f"
 dependencies = [
  "psp2-sys",
  "spin",

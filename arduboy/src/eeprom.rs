@@ -1,5 +1,13 @@
 use serde::{self, Deserialize, Serialize};
 
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 pub const EERE: u8 = 1 << 0;
 pub const EEPE: u8 = 1 << 1;
 pub const EEMPE: u8 = 1 << 2;

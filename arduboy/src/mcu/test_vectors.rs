@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 
-const PATH_VECTORS: &'static str = "test-framework/vectors";
+const PATH_VECTORS: &'static str = "../test-framework/vectors";
 
 #[derive(PartialEq)]
 struct OpAlu0 {

@@ -431,6 +431,7 @@ impl Core {
         Ok(())
     }
 
+    #[cfg(feature = "std")]
     pub fn serialize_len(&self) -> postcard::Result<usize> {
         let bin = postcard::to_stdvec(&self)?;
         Ok(bin.len())
@@ -2016,5 +2017,6 @@ impl Core {
 #[cfg(test)]
 mod test;
 
+#[cfg(feature = "test_vectors")]
 #[cfg(test)]
 mod test_vectors;
