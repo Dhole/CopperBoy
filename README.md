@@ -16,10 +16,7 @@ ArduboyCollection](https://github.com/eried/ArduboyCollection).
 - The full AVR ISA is implemented.
 - Not all atmega32u4 hardware is implemented.  I've been implementing what the
   games I tested needed to work.
-- No optimizations.  Currently the emulator takes about 60% of a single core in
-  my PC (Intel(R) Core(TM) i5-4590) when emulating games at 60 fps, when
-  running in release mode.  I haven't profiled it yet to optimize it.
-- Sound is not yet implemented.
+- Sound is fully working.
 
 ## Usage
 
