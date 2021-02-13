@@ -27,18 +27,19 @@ Currently there's an SDL frontend included in the emulator.
 
 ### Building
 
-First you need to install the `sdl2` and `sdl2_ttf` libraries with your operating system's package manager. 
+First you need to install the `sdl2` and `sdl2_ttf` libraries with your
+operating system's package manager. 
 
 Then you can build the rust binary:
 ```
-cargo build --release --bin sdl
+./ci/build-bin.sh sdl linux-gnu-x86_64
 ```
 
 ### Running
 
 You can run the emulator with cargo:
 ```
-cargo run --release --bin sdl -- ROM_PATH
+./target/x86_64-unknown-linux-gnu/release/sdl ROM_PATH
 ```
 
 ## Screenshots
@@ -53,22 +54,11 @@ cargo run --release --bin sdl -- ROM_PATH
   <img alt="Starduino Turbo" width="40%" src="https://github.com/Dhole/CopperBoy/raw/master/screenshots/Starduino_Turbo_3.png">
 </p>
 
-### Other utilities
-
-Trace:
-```
-cargo build --release --bin trace
-```
-
-Disasm:
-```
-cargo build --release --bin disasm
-```
+### Other builds
 
 libretro:
 ```
-cd retro
-cargo build --lib
+./ci/build-libretro.sh linux-gnu-x86_64
 ```
 
 ## License
