@@ -1,23 +1,18 @@
-[package]
-name = "avremu"
-version = "0.1.0"
-authors = ["Dhole <dhole@riseup.net>"]
-edition = "2018"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-hex = "0.3.2"
-log = "0.4.8"
-env_logger = "0.7.0"
-num-traits = "0.2"
-num-derive = "0.3"
-clap = "2.33.0"
-
-[dependencies.sdl2]
-version = "0.33.0"
-default-features = false
-features = ["ttf"]
+members = [
+    "arduboy",
+    "sdl",
+    "report",
+    "libretro",
+    "libretro_std",
+    "libretro_psvita",
+]
 
 [profile.release]
 debug = true
+panic = 'abort'
+# lto = true
+# lto = "fat"
+# codegen-units = 1
+

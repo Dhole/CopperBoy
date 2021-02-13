@@ -53,6 +53,24 @@ cargo run --release --bin sdl -- ROM_PATH
   <img alt="Starduino Turbo" width="40%" src="https://github.com/Dhole/CopperBoy/raw/master/screenshots/Starduino_Turbo_3.png">
 </p>
 
+### Other utilities
+
+Trace:
+```
+cargo build --release --bin trace
+```
+
+Disasm:
+```
+cargo build --release --bin disasm
+```
+
+libretro:
+```
+cd retro
+cargo build --lib
+```
+
 ## License
 
 GPLv3 (see LICENSE file).

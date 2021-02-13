@@ -1,0 +1,47 @@
+name: Build
+
+on: [push]
+
+jobs:
+  build-sdl-linux-gnu-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            override: true
+      - run: ci/setup.sh sdl
+      - run: ci/build-bin.sh sdl linux-gnu-x86_64
+      - uses: actions/upload-artifact@v2
+        with:
+            name: sdl_linux-gnu-x86_64
+            path: target/x86_64-unknown-linux-gnu/release/sdl
+  build-libretro-linux-gnu-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            override: true
+      - run: ci/setup.sh
+      - run: ci/build-libretro.sh linux-gnu-x86_64
+      - uses: actions/upload-artifact@v2
+        with:
+            name: libretro_linux-gnu-x86_64.so
+            path: target/x86_64-unknown-linux-gnu/release/libretro_std.so
+  build-libretro-psvita:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            override: true
+      - run: ci/setup.sh psvita
+      - run: ci/build-libretro.sh psvita
+      - uses: actions/upload-artifact@v2
+        with:
+            name: libretro_psvita.a
+            path: target/armv7-vita-eabihf/release/libretro_psvita.a

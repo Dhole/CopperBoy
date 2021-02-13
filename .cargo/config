@@ -1,0 +1,10 @@
+[build]
+target = "armv7-vita-eabihf"
+
+[target.armv7-vita-eabihf]
+linker = "arm-vita-eabi-ld"
+rustflags = [
+    "-Clink-arg=-mfloat-abi=hard",
+    "-Clink-arg=-mfpu=vfp",
+    "-Ctarget-feature=-neon",
+]
