@@ -2,7 +2,10 @@ use crunchy::unroll;
 
 use super::mcu::{Core, GPIOPort};
 use super::utils::{decode_hex_line, HexFileError};
+use core::mem;
 use core::str;
+
+use serde::{self, Deserialize, Serialize};
 
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Error {
@@ -22,16 +25,13 @@ impl From<str::Utf8Error> for Error {
     }
 }
 
-// type CbAudioSampleBatch = fn(&[(i16, i16)]);
-// type CbVideoRefresh = fn(&[u16], u32, u32, usize);
-
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
+#[derive(Serialize, Deserialize)]
 pub struct Emulator {
     pub core: Core,
     cpu_freq: isize,
     cycles: isize,
-    pub samples: [(i16, i16); FRAME_SAMPLES as usize],
-    // cb_audio_sample_batch: CbAudioSampleBatch,
-    // cb_video_refresh: CbVideoRefresh,
+    pub samples: Vec<(i16, i16)>,
 }
 
 pub const AUDIO_SAMPLE_FREQ: isize = 44100;
@@ -39,16 +39,12 @@ pub const FPS: isize = 60;
 pub const FRAME_SAMPLES: isize = AUDIO_SAMPLE_FREQ / FPS;
 
 impl Emulator {
-    pub fn new(// cb_audio_sample_batch: CbAudioSampleBatch,
-        // cb_video_refresh: CbVideoRefresh,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
             core: Core::new(),
             cpu_freq: 16_000_000,
             cycles: 0,
-            samples: [(0, 0); FRAME_SAMPLES as usize],
-            // cb_audio_sample_batch,
-            // cb_video_refresh,
+            samples: vec![(0, 0); FRAME_SAMPLES as usize],
         }
     }
 
@@ -69,6 +65,26 @@ impl Emulator {
             }
         }
         self.core.reset();
+        Ok(())
+    }
+
+    pub fn serialize_len(&self) -> postcard::Result<usize> {
+        const BUF_LEN: usize = 0x10000;
+        let mut buf = vec![0; BUF_LEN];
+        let bin = postcard::to_slice(&self, &mut buf)?;
+        Ok(bin.len())
+    }
+
+    pub fn serialize(&self, bin: &mut [u8]) -> postcard::Result<()> {
+        postcard::to_slice(&self, bin)?;
+        Ok(())
+    }
+
+    pub fn deserialize(&mut self, bin: &[u8]) -> postcard::Result<()> {
+        let mut new: Emulator = postcard::from_bytes(bin)?;
+        mem::swap(&mut new.core.program, &mut self.core.program);
+        mem::swap(&mut new.core.program_ops, &mut self.core.program_ops);
+        *self = new;
         Ok(())
     }
 
@@ -118,3 +134,6 @@ impl Emulator {
         self.core.display.render();
     }
 }
+
+#[cfg(test)]
+mod test;

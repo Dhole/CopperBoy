@@ -3,17 +3,16 @@ use core::fmt::Write;
 #[cfg(feature = "stats")]
 use num_traits::{FromPrimitive, ToPrimitive};
 
-#[cfg(feature = "std")]
-use std::fmt;
-#[cfg(feature = "std")]
-use std::vec::Vec;
+// #[cfg(feature = "std")]
+// use std::vec::Vec;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use core::mem;
+use core::fmt;
+// use core::mem;
 
 use serde::{self, Deserialize, Serialize};
 
@@ -79,7 +78,7 @@ impl IndexMut<u8> for StatusRegister {
     }
 }
 
-#[cfg(feature = "std")]
+// #[cfg(feature = "std")]
 impl fmt::Debug for StatusRegister {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -225,7 +224,6 @@ fn set_lo(v: &mut u16, lo: u8) {
 }
 
 #[cfg(feature = "stats")]
-#[derive(Serialize, Deserialize)]
 pub struct Stats {
     pub loads: Vec<usize>,
     pub stores: Vec<usize>,
@@ -318,6 +316,7 @@ pub const IOSPACE_ADDR: u16 = 0x0020;
 pub const DATA_SIZE: u16 = 0x0b00;
 pub const PROGRAM_SIZE: u16 = 0x8000;
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(Serialize, Deserialize)]
 pub struct Core {
     /// Status Register
@@ -351,9 +350,11 @@ pub struct Core {
     sleep_op: Op,
     pub gpio: GPIO,
     #[cfg(feature = "stats")]
+    #[serde(skip)]
     pub stats: Stats,
 }
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(Serialize, Deserialize)]
 pub struct GPIO {
     pin_b: u8,
@@ -426,24 +427,25 @@ impl Core {
         }
     }
 
-    pub fn serialize(&self, bin: &mut [u8]) -> postcard::Result<()> {
-        postcard::to_slice(&self, bin)?;
-        Ok(())
-    }
+    // pub fn serialize_len(&self) -> postcard::Result<usize> {
+    //     const BUF_LEN: usize = 0x10000;
+    //     let mut buf = vec![0; BUF_LEN];
+    //     let bin = postcard::to_slice(&self, &mut buf)?;
+    //     Ok(bin.len())
+    // }
 
-    #[cfg(feature = "std")]
-    pub fn serialize_len(&self) -> postcard::Result<usize> {
-        let bin = postcard::to_stdvec(&self)?;
-        Ok(bin.len())
-    }
+    // pub fn serialize(&self, bin: &mut [u8]) -> postcard::Result<()> {
+    //     postcard::to_slice(&self, bin)?;
+    //     Ok(())
+    // }
 
-    pub fn deserialize(&mut self, bin: &[u8]) -> postcard::Result<()> {
-        let mut new: Core = postcard::from_bytes(bin)?;
-        mem::swap(&mut new.program, &mut self.program);
-        mem::swap(&mut new.program_ops, &mut self.program_ops);
-        *self = new;
-        Ok(())
-    }
+    // pub fn deserialize(&mut self, bin: &[u8]) -> postcard::Result<()> {
+    //     let mut new: Core = postcard::from_bytes(bin)?;
+    //     mem::swap(&mut new.program, &mut self.program);
+    //     mem::swap(&mut new.program_ops, &mut self.program_ops);
+    //     *self = new;
+    //     Ok(())
+    // }
 
     /// Load a word from Program Memory by PC
     fn program_load_u16(&self, pc: u16) -> u16 {
@@ -2016,6 +2018,9 @@ impl Core {
 
 #[cfg(test)]
 mod test;
+
+#[cfg(test)]
+mod test_ops;
 
 #[cfg(feature = "test_vectors")]
 #[cfg(test)]

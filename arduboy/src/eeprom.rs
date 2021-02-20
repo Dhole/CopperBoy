@@ -17,6 +17,7 @@ pub const EEPM1: u8 = 1 << 5;
 
 pub const EEPROM_SIZE: u16 = 0x400;
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(Serialize, Deserialize)]
 pub struct Eeprom {
     rom: Vec<u8>,

@@ -1,7 +1,8 @@
 #!/bin/sh
 set -ex
 
-ROOT=$(git rev-parse --show-toplevel)
+ROOT=${ROOT:-$(git rev-parse --show-toplevel)}
+export PATH=$HOME/.cargo/bin:$PATH
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 TARGET"

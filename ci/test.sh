@@ -1,7 +1,8 @@
 #!/bin/sh
 set -ex
 
-ROOT=$(git rev-parse --show-toplevel)
+ROOT=${ROOT:-$(git rev-parse --show-toplevel)}
+export PATH=$HOME/.cargo/bin:$PATH
 
 if [ $# -lt 1 ]; then
     echo "Usage: $0 TESTNAME [FEATURES]"
@@ -18,14 +19,14 @@ case $testname in
         ;;
     unit)
         cd ${ROOT}/arduboy
-        cargo test --target x86_64-unknown-linux-gnu --no-default-features --features "${features}"
+        cargo test -v --target x86_64-unknown-linux-gnu --no-default-features --features "${features}" $3
         ;;
     vector)
         cd ${ROOT}/test-framework
         tar -xf vectors.tar.xz
 
         cd ${ROOT}/arduboy
-        cargo test --target x86_64-unknown-linux-gnu --features test_vectors test_vectors
+        cargo test --target x86_64-unknown-linux-gnu --features test_vectors test_vectors $3
 
         cd ${ROOT}/test-framework
         rm -r vectors

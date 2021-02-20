@@ -4,12 +4,14 @@ use serde::{self, Deserialize, Serialize};
 
 use super::int_vec::*;
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(FromPrimitive, Clone, Copy, Serialize, Deserialize)]
 enum PllInputPrescaler {
     Mhz8 = 0b0000_0000,
     Mhz16 = 0b0001_0000,
 }
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(FromPrimitive, Clone, Copy, Serialize, Deserialize)]
 enum Mode {
     Normal = 0b00,
@@ -18,6 +20,7 @@ enum Mode {
     PWMFast = 0b11,
 }
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(FromPrimitive, ToPrimitive, Clone, Copy, Serialize, Deserialize)]
 enum WaveGenMode {
     Normal = 0b0000,
@@ -38,6 +41,7 @@ enum WaveGenMode {
     FASTPWMOCR = 0b1111,
 }
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(FromPrimitive, Clone, Copy, Serialize, Deserialize)]
 enum ClockSelect {
     No = 0b000,
@@ -50,6 +54,7 @@ enum ClockSelect {
     ExtRising = 0b111,
 }
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(Serialize, Deserialize)]
 pub struct Clock {
     pll_input_prescaler: PllInputPrescaler,
