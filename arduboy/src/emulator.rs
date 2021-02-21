@@ -1,7 +1,8 @@
 use crunchy::unroll;
 
 use super::mcu::{Core, GPIOPort};
-use super::utils::{decode_hex_line, HexFileError};
+use super::opcodes::Op;
+use super::utils::{decode_hex_line, HexFileError, KeysState};
 use core::mem;
 use core::str;
 
@@ -26,7 +27,7 @@ impl From<str::Utf8Error> for Error {
 }
 
 #[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Emulator {
     pub core: Core,
     cpu_freq: isize,
@@ -81,14 +82,16 @@ impl Emulator {
     }
 
     pub fn deserialize(&mut self, bin: &[u8]) -> postcard::Result<()> {
+        self.core.deserialize_pre();
         let mut new: Emulator = postcard::from_bytes(bin)?;
         mem::swap(&mut new.core.program, &mut self.core.program);
         mem::swap(&mut new.core.program_ops, &mut self.core.program_ops);
         *self = new;
+        self.core.deserialize_post();
         Ok(())
     }
 
-    pub fn run(&mut self, port_b: u8, port_e: u8, port_f: u8) {
+    pub fn run(&mut self, keys_state: &KeysState) {
         let cycles_per_sample = self.cpu_freq / AUDIO_SAMPLE_FREQ;
         for s in self.samples.iter_mut() {
             *s = (0, 0);
@@ -96,6 +99,7 @@ impl Emulator {
         let mut sample_cycles = cycles_per_sample;
         self.cycles += self.cpu_freq / FPS;
 
+        let (port_b, port_e, port_f) = keys_state.to_gpio();
         self.core.gpio.set_port(GPIOPort::B, port_b);
         self.core.gpio.set_port(GPIOPort::E, port_e);
         self.core.gpio.set_port(GPIOPort::F, port_f);
@@ -105,7 +109,7 @@ impl Emulator {
             // corresponding cycles in the hardware
             const N_INSTS: usize = 8;
             let mut hw_step_cycles = 0;
-            if !self.core.sleep {
+            if !self.core.sleeping() {
                 debug_assert_eq!(N_INSTS, 8);
                 unroll! {
                     for i in 0..8 {

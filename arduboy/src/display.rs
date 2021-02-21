@@ -71,8 +71,9 @@ enum CmdState {
 }
 
 #[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Display {
+    #[serde(skip)]
     pub frame: Vec<u8>,
     pub fb: Vec<u8>, // Frame Buffer
     // p: usize,         // Cursor Pointer
@@ -127,6 +128,10 @@ impl Display {
             page: 0,
             col_rel: 0,
         }
+    }
+
+    pub fn deserialize_post(&mut self) {
+        self.frame = vec![0; WIDTH * HEIGTH];
     }
 
     pub fn set_dc(&mut self, value: bool) {

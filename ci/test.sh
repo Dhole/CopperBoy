@@ -19,7 +19,7 @@ case $testname in
         ;;
     unit)
         cd ${ROOT}/arduboy
-        cargo test -v --target x86_64-unknown-linux-gnu --no-default-features --features "${features}" $3
+        cargo test --target x86_64-unknown-linux-gnu --no-default-features --features "${features}" $3
         ;;
     vector)
         cd ${ROOT}/test-framework

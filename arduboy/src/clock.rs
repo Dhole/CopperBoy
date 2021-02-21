@@ -55,7 +55,7 @@ enum ClockSelect {
 }
 
 #[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Clock {
     pll_input_prescaler: PllInputPrescaler,
     pll_enable: bool,

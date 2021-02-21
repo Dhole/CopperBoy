@@ -26,6 +26,18 @@ case $bin in
                 ;;
         esac
         ;;
+    report)
+        cd ${ROOT}/report
+        case $target in
+            linux-gnu-x86_64)
+                cargo build ${OPTS} --target x86_64-unknown-linux-gnu --bin report
+                ;;
+            *)
+                echo "Unknown target ${target}"
+                exit 1
+                ;;
+        esac
+        ;;
     *)
         echo "Unknown bin ${bin}"
         ;;

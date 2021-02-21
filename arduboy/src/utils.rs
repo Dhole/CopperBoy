@@ -1,4 +1,6 @@
 #[cfg(feature = "std")]
+use super::keys::*;
+#[cfg(feature = "std")]
 use super::mcu::Core;
 use hex;
 #[cfg(feature = "std")]
@@ -115,4 +117,77 @@ pub struct KeyEvent {
     pub down: Vec<Key>,
     #[serde(rename = "u")]
     pub up: Vec<Key>,
+}
+
+// true indicates key down, false key up
+#[derive(Default)]
+pub struct KeysState {
+    left: bool,
+    right: bool,
+    up: bool,
+    down: bool,
+    a: bool,
+    b: bool,
+}
+
+impl KeysState {
+    // returns (port_b, port_e, port_f)
+    pub fn to_gpio(&self) -> (u8, u8, u8) {
+        let mut port_b = 0xff as u8;
+        let mut port_e = 0xff as u8;
+        let mut port_f = 0xff as u8;
+        if self.left {
+            port_f &= !PIN_LEFT;
+        }
+        if self.right {
+            port_f &= !PIN_RIGHT;
+        }
+        if self.up {
+            port_f &= !PIN_UP;
+        }
+        if self.down {
+            port_f &= !PIN_DOWN;
+        }
+        if self.a {
+            port_e &= !PIN_A;
+        }
+        if self.b {
+            port_b &= !PIN_B;
+        }
+        (port_b, port_e, port_f)
+    }
+}
+
+pub fn replay_keys_state(
+    frame: usize,
+    replay_index: usize,
+    replay: &Vec<KeyEvent>,
+    keys_state: &mut KeysState,
+) -> usize {
+    let mut replay_index = replay_index;
+    if replay_index < replay.len() && replay[replay_index].frame == frame {
+        let key_event = &replay[replay_index];
+        for down in &key_event.down {
+            match down {
+                Key::Left => keys_state.left = true,
+                Key::Right => keys_state.right = true,
+                Key::Up => keys_state.up = true,
+                Key::Down => keys_state.down = true,
+                Key::A => keys_state.a = true,
+                Key::B => keys_state.b = true,
+            }
+        }
+        for up in &key_event.up {
+            match up {
+                Key::Left => keys_state.left = false,
+                Key::Right => keys_state.right = false,
+                Key::Up => keys_state.up = false,
+                Key::Down => keys_state.down = false,
+                Key::A => keys_state.a = false,
+                Key::B => keys_state.b = false,
+            }
+        }
+        replay_index += 1;
+    }
+    replay_index
 }

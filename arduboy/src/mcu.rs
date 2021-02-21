@@ -12,7 +12,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use core::fmt;
-// use core::mem;
+use core::mem;
 
 use serde::{self, Deserialize, Serialize};
 
@@ -24,7 +24,7 @@ use super::io_regs::io_reg_str;
 use super::opcodes::*;
 use super::*;
 
-#[derive(PartialEq, Serialize, Deserialize)]
+#[derive(PartialEq, Serialize, Deserialize, Clone)]
 pub struct StatusRegister {
     /// Global Interrupt Enable
     i: bool,
@@ -135,7 +135,7 @@ impl StatusRegister {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct GeneralRegisters {
     reg: [u8; 32],
 }
@@ -309,6 +309,13 @@ impl Stats {
     }
 }
 
+#[cfg(feature = "stats")]
+impl Default for Stats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub const SRAM_SIZE: u16 = 0x0a00;
 pub const SRAM_ADDR: u16 = 0x0100;
 pub const IOSPACE_SIZE: u16 = 0x0040;
@@ -317,7 +324,7 @@ pub const DATA_SIZE: u16 = 0x0b00;
 pub const PROGRAM_SIZE: u16 = 0x8000;
 
 #[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Core {
     /// Status Register
     status_reg: StatusRegister,
@@ -346,8 +353,10 @@ pub struct Core {
     eeprom: eeprom::Eeprom,
     pub display: display::Display,
     /// Sleeping?
-    pub sleep: bool,
-    sleep_op: Op,
+    // pub sleep: bool,
+    // Sleep is None when not sleeping, and the Op at pc when sleeping
+    sleep: Option<Op>,
+    // sleep_op: Op,
     pub gpio: GPIO,
     #[cfg(feature = "stats")]
     #[serde(skip)]
@@ -355,7 +364,7 @@ pub struct Core {
 }
 
 #[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct GPIO {
     pin_b: u8,
     pin_c: u8,
@@ -418,8 +427,8 @@ impl Core {
             // Peripherials
             clock: clock::Clock::new(),
             eeprom: eeprom::Eeprom::new(),
-            sleep: false,
-            sleep_op: Op::Nop,
+            sleep: None,
+            // sleep_op: Op::Nop,
             display: display::Display::new(),
             gpio: GPIO::new(),
             #[cfg(feature = "stats")]
@@ -427,25 +436,36 @@ impl Core {
         }
     }
 
-    // pub fn serialize_len(&self) -> postcard::Result<usize> {
-    //     const BUF_LEN: usize = 0x10000;
-    //     let mut buf = vec![0; BUF_LEN];
-    //     let bin = postcard::to_slice(&self, &mut buf)?;
-    //     Ok(bin.len())
-    // }
+    pub fn serialize_len(&self) -> postcard::Result<usize> {
+        const BUF_LEN: usize = 0x10000;
+        let mut buf = vec![0; BUF_LEN];
+        let bin = postcard::to_slice(&self, &mut buf)?;
+        Ok(bin.len())
+    }
 
-    // pub fn serialize(&self, bin: &mut [u8]) -> postcard::Result<()> {
-    //     postcard::to_slice(&self, bin)?;
-    //     Ok(())
-    // }
+    pub fn serialize(&self, bin: &mut [u8]) -> postcard::Result<()> {
+        postcard::to_slice(&self, bin)?;
+        Ok(())
+    }
 
-    // pub fn deserialize(&mut self, bin: &[u8]) -> postcard::Result<()> {
-    //     let mut new: Core = postcard::from_bytes(bin)?;
-    //     mem::swap(&mut new.program, &mut self.program);
-    //     mem::swap(&mut new.program_ops, &mut self.program_ops);
-    //     *self = new;
-    //     Ok(())
-    // }
+    pub fn deserialize_pre(&mut self) {
+        self.sleep_unset();
+    }
+
+    pub fn deserialize_post(&mut self) {
+        if let Some(_) = self.sleep {
+            self.program_ops[self.pc as usize] = Op::Zzz;
+        }
+        self.display.deserialize_post();
+    }
+
+    pub fn deserialize(&mut self, bin: &[u8]) -> postcard::Result<()> {
+        let mut new: Core = postcard::from_bytes(bin)?;
+        mem::swap(&mut new.program, &mut self.program);
+        mem::swap(&mut new.program_ops, &mut self.program_ops);
+        *self = new;
+        Ok(())
+    }
 
     /// Load a word from Program Memory by PC
     fn program_load_u16(&self, pc: u16) -> u16 {
@@ -509,18 +529,26 @@ impl Core {
         )
     }
 
+    pub fn sleeping(&self) -> bool {
+        if let Some(_) = self.sleep {
+            true
+        } else {
+            false
+        }
+    }
+
     fn sleep_set(&mut self) {
-        self.sleep = true;
-        self.sleep_op = self.program_ops[self.pc as usize];
+        self.sleep = Some(self.program_ops[self.pc as usize]);
+        // self.sleep = true;
+        // self.sleep_op = self.program_ops[self.pc as usize];
         self.program_ops[self.pc as usize] = Op::Zzz;
     }
 
-    fn sleep_unset(&mut self) {
-        if !self.sleep {
-            return;
+    pub fn sleep_unset(&mut self) {
+        match self.sleep.take() {
+            None => {}
+            Some(op) => self.program_ops[self.pc as usize] = op,
         }
-        self.sleep = false;
-        self.program_ops[self.pc as usize] = self.sleep_op;
     }
 
     /// Step one instruction.  Return the number of cycles that have passed.

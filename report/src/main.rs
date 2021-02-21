@@ -16,7 +16,7 @@ use arduboy::emulator::{self, Emulator};
 use arduboy::keys::*;
 use arduboy::mcu::GPIOPort;
 use arduboy::opcodes::{Op, OpAddr};
-use arduboy::utils::{load_hex_file, HexFileError, Key, KeyEvent};
+use arduboy::utils::{load_hex_file, replay_keys_state, HexFileError, Key, KeyEvent, KeysState};
 
 use clap::{App, Arg};
 
@@ -87,9 +87,15 @@ pub fn main() -> Result<(), FrontError> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("input")
-                .long("input")
-                .help("Key events to use as input in JSON")
+            Arg::with_name("replay")
+                .long("replay")
+                .help("Key events to use as replay in RON")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("replay_file")
+                .long("replay_file")
+                .help("File with key events to use as replay in RON")
                 .takes_value(true),
         )
         .arg(
@@ -99,10 +105,6 @@ pub fn main() -> Result<(), FrontError> {
         )
         .get_matches();
 
-    let scale = app
-        .value_of("scale")
-        .map(|s| s.parse::<u32>().unwrap())
-        .unwrap();
     let seconds = app
         .value_of("seconds")
         .map(|s| s.parse::<usize>().unwrap())
@@ -113,9 +115,16 @@ pub fn main() -> Result<(), FrontError> {
         .unwrap();
     let path = app.value_of("path").unwrap();
     let out_path = app.value_of("out_path").map(|s| Path::new(s));
-    let input: Vec<KeyEvent> = match app.value_of("input") {
-        Some(input) => ron::from_str(input)?,
+    let replay: Vec<KeyEvent> = match app.value_of("replay") {
+        Some(replay_ron) => ron::from_str(replay_ron)?,
         None => vec![],
+    };
+    let replay: Vec<KeyEvent> = match app.value_of("replay_file") {
+        Some(replay_file) => {
+            let replay_ron = fs::read_to_string(replay_file)?;
+            ron::from_str(&replay_ron)?
+        }
+        None => replay,
     };
 
     let mut emu = Emulator::new();
@@ -137,63 +146,20 @@ pub fn main() -> Result<(), FrontError> {
 
     let out_path = out_path.map(|p| p.join(name));
     if let Some(ref out_path) = out_path {
-        fs::remove_dir_all(&out_path)?;
+        fs::remove_dir_all(&out_path).unwrap_or(());
         fs::create_dir_all(&out_path)?;
     }
 
-    // const AUDIO_FREQ: i32 = 44100;
-
-    // let mut sample = [127; SAMPLE_SIZE as usize];
-    // let frame_exp_dur = Duration::from_nanos(1_000_000_000u64 / 60);
-    // let mut now_end_frame = Instant::now();
-
-    // const SAMPLE_CYCLES: i32 = 16_000_000 / AUDIO_FREQ;
-    // const SAMPLES_FRAME: i32 = AUDIO_FREQ / 60;
-
-    let mut port_b = 0xff as u8;
-    // let mut pin_c = 0xff as u8;
-    // let mut pin_d = 0xff as u8;
-    let mut port_e = 0xff as u8;
-    let mut port_f = 0xff as u8;
-    // let mut cycles: i32 = 0;
-    // let mut frame: u32 = 0;
-    // let mut d = 0;
-    // let mut int_ret_addr: Option<u16> = Option::None;
-    // let mut fps: f32 = 0.0;
-    // let mut step_cycles_sample: i32 = 0;
-    // let mut start = Instant::now();
-
     let mut total_frames = 0;
-    let mut input_index = 0;
+    let mut replay_index = 0;
+    let mut keys_state = KeysState::default();
     for s in 0..seconds {
         for frame in 0..60 {
             total_frames += 1;
-            if input_index < input.len() && input[input_index].frame == total_frames {
-                let key_event = &input[input_index];
-                for down in &key_event.down {
-                    match down {
-                        Key::Left => port_f &= !PIN_LEFT,
-                        Key::Right => port_f &= !PIN_RIGHT,
-                        Key::Up => port_f &= !PIN_UP,
-                        Key::Down => port_f &= !PIN_DOWN,
-                        Key::A => port_e &= !PIN_A,
-                        Key::B => port_b &= !PIN_B,
-                    }
-                }
-                for up in &key_event.up {
-                    match up {
-                        Key::Left => port_f |= PIN_LEFT,
-                        Key::Right => port_f |= PIN_RIGHT,
-                        Key::Up => port_f |= PIN_UP,
-                        Key::Down => port_f |= PIN_DOWN,
-                        Key::A => port_e |= PIN_A,
-                        Key::B => port_b |= PIN_B,
-                    }
-                }
-                input_index += 1;
-            }
 
-            emu.run(port_b, port_e, port_f);
+            replay_index = replay_keys_state(total_frames, replay_index, &replay, &mut keys_state);
+
+            emu.run(&keys_state);
 
             if let Some(ref out_path) = out_path {
                 if total_frames % screenshot_interval == 0 {
