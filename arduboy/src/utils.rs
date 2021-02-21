@@ -1,4 +1,3 @@
-#[cfg(feature = "std")]
 use super::keys::*;
 #[cfg(feature = "std")]
 use super::mcu::Core;
@@ -122,12 +121,12 @@ pub struct KeyEvent {
 // true indicates key down, false key up
 #[derive(Default)]
 pub struct KeysState {
-    left: bool,
-    right: bool,
-    up: bool,
-    down: bool,
-    a: bool,
-    b: bool,
+    pub left: bool,
+    pub right: bool,
+    pub up: bool,
+    pub down: bool,
+    pub a: bool,
+    pub b: bool,
 }
 
 impl KeysState {
@@ -158,6 +157,7 @@ impl KeysState {
     }
 }
 
+#[cfg(feature = "std")]
 pub fn replay_keys_state(
     frame: usize,
     replay_index: usize,

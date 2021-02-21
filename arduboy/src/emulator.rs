@@ -8,6 +8,11 @@ use core::str;
 
 use serde::{self, Deserialize, Serialize};
 
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Error {
     HexFile(HexFileError),
@@ -139,5 +144,6 @@ impl Emulator {
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod test;

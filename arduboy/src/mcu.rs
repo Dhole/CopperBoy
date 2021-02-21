@@ -224,6 +224,7 @@ fn set_lo(v: &mut u16, lo: u8) {
 }
 
 #[cfg(feature = "stats")]
+#[derive(Clone)]
 pub struct Stats {
     pub loads: Vec<usize>,
     pub stores: Vec<usize>,
