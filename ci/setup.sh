@@ -24,7 +24,12 @@ while [ $# -gt 0 ]; do
             setup_vitasdk
             ;;
         sdl)
-            sudo apt install -y libsdl2-dev libsdl2-ttf-dev
+            sudo apt-get install -y -q libsdl2-dev libsdl2-ttf-dev
+            ;;
+        rust)
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain none -y
+            export PATH=$HOME/.cargo/bin:$PATH
+            rustup toolchain install nightly --allow-downgrade --profile minimal
             ;;
         *)
             echo "Unknown arg ${arg}"

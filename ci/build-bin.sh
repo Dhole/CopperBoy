@@ -1,7 +1,8 @@
 #!/bin/sh
 set -ex
 
-ROOT=$(git rev-parse --show-toplevel)
+ROOT=${ROOT:-$(git rev-parse --show-toplevel)}
+export PATH=$HOME/.cargo/bin:$PATH
 
 if [ $# -ne 2 ]; then
     echo "Usage: $0 BIN TARGET"
@@ -18,6 +19,18 @@ case $bin in
         case $target in
             linux-gnu-x86_64)
                 cargo build ${OPTS} --target x86_64-unknown-linux-gnu --bin sdl
+                ;;
+            *)
+                echo "Unknown target ${target}"
+                exit 1
+                ;;
+        esac
+        ;;
+    report)
+        cd ${ROOT}/report
+        case $target in
+            linux-gnu-x86_64)
+                cargo build ${OPTS} --target x86_64-unknown-linux-gnu --bin report
                 ;;
             *)
                 echo "Unknown target ${target}"

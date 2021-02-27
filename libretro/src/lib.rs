@@ -5,6 +5,7 @@ pub mod libretro_h;
 use arduboy::display::{HEIGTH, WIDTH};
 use arduboy::emulator::{Emulator, AUDIO_SAMPLE_FREQ, FPS, FRAME_SAMPLES};
 use arduboy::keys::{PIN_A, PIN_B, PIN_DOWN, PIN_LEFT, PIN_RIGHT, PIN_UP};
+use arduboy::utils::KeysState;
 use core::ffi::c_void;
 use libretro_h::*;
 
@@ -231,32 +232,30 @@ pub fn retro_run() {
     unsafe {
         cb_input_poll();
     }
-    let mut port_b: u8 = 0xff;
-    let mut port_e: u8 = 0xff;
-    let mut port_f: u8 = 0xff;
+    let mut keys_state = KeysState::default();
     unsafe {
         if cb_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP) != 0 {
-            port_f &= !PIN_UP;
+            keys_state.up = true;
         }
         if cb_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN) != 0 {
-            port_f &= !PIN_DOWN;
+            keys_state.down = true;
         }
         if cb_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT) != 0 {
-            port_f &= !PIN_LEFT;
+            keys_state.left = true;
         }
         if cb_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT) != 0 {
-            port_f &= !PIN_RIGHT;
+            keys_state.right = true;
         }
         if cb_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A) != 0 {
-            port_e &= !PIN_A;
+            keys_state.a = true;
         }
         if cb_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B) != 0 {
-            port_b &= !PIN_B;
+            keys_state.b = true;
         }
     }
 
     // println!(">>> A");
-    emu.run(port_b, port_e, port_f);
+    emu.run(&keys_state);
     // println!(">>> B");
     let fb = unsafe { framebuffer.as_mut() };
     for y in 0..HEIGTH {

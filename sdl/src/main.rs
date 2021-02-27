@@ -439,7 +439,7 @@ pub fn main() -> Result<(), FrontError> {
                 w1 = _w1;
                 op_addr = _op_addr;
             }
-            if trace && !core.sleep {
+            if trace && !core.sleeping() {
                 print!("{:04x} ", op_addr.addr);
                 match op_addr.op.words() {
                     1 => print!("({}     ) ", hex::encode(w0.to_le_bytes())),
@@ -465,7 +465,7 @@ pub fn main() -> Result<(), FrontError> {
             let mut step_cycles = 0;
             const N_STEPS: usize = 1;
             const M_ITERS: usize = 1;
-            if !core.sleep {
+            if !core.sleeping() {
                 for _ in 0..M_ITERS {
                     step_cycles += core.step();
                     // step_cycles += core.step();

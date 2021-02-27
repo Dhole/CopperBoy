@@ -24,3 +24,12 @@ std = ["hex/std", "log", "postcard/use-std"]
 vec_unchecked = []
 stats = []
 test_vectors = []
+
+[dev-dependencies]
+ron = "0.6.4"
+pretty_assertions = "0.6.1"
+criterion = "0.3"
+
+[[bench]]
+name = "benchmark"
+harness = false

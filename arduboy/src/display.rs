@@ -39,6 +39,7 @@ const CMD_CLOCK_DIVIDE_RATIO: u8 = 0xD5;
 const CMD_ON: u8 = 0xAF;
 const CMD_OFF: u8 = 0xAE;
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(Clone, Copy, Serialize, Deserialize)]
 enum AddrMode {
     Vertical,
@@ -46,12 +47,14 @@ enum AddrMode {
     Page,
 }
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(Clone, Copy, Serialize, Deserialize)]
 enum StateColumnAddress {
     Start,
     End,
 }
 
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
 #[derive(Clone, Copy, Serialize, Deserialize)]
 enum CmdState {
     None,
@@ -67,8 +70,10 @@ enum CmdState {
     ClockDivideRatio,
 }
 
-#[derive(Serialize, Deserialize)]
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Display {
+    #[serde(skip)]
     pub frame: Vec<u8>,
     pub fb: Vec<u8>, // Frame Buffer
     // p: usize,         // Cursor Pointer
@@ -123,6 +128,10 @@ impl Display {
             page: 0,
             col_rel: 0,
         }
+    }
+
+    pub fn deserialize_post(&mut self) {
+        self.frame = vec![0; WIDTH * HEIGTH];
     }
 
     pub fn set_dc(&mut self, value: bool) {

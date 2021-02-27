@@ -1,8 +1,17 @@
 use crunchy::unroll;
 
 use super::mcu::{Core, GPIOPort};
-use super::utils::{decode_hex_line, HexFileError};
+use super::opcodes::Op;
+use super::utils::{decode_hex_line, HexFileError, KeysState};
+use core::mem;
 use core::str;
+
+use serde::{self, Deserialize, Serialize};
+
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Error {
@@ -22,16 +31,13 @@ impl From<str::Utf8Error> for Error {
     }
 }
 
-// type CbAudioSampleBatch = fn(&[(i16, i16)]);
-// type CbVideoRefresh = fn(&[u16], u32, u32, usize);
-
+#[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Emulator {
     pub core: Core,
     cpu_freq: isize,
     cycles: isize,
-    pub samples: [(i16, i16); FRAME_SAMPLES as usize],
-    // cb_audio_sample_batch: CbAudioSampleBatch,
-    // cb_video_refresh: CbVideoRefresh,
+    pub samples: Vec<(i16, i16)>,
 }
 
 pub const AUDIO_SAMPLE_FREQ: isize = 44100;
@@ -39,16 +45,12 @@ pub const FPS: isize = 60;
 pub const FRAME_SAMPLES: isize = AUDIO_SAMPLE_FREQ / FPS;
 
 impl Emulator {
-    pub fn new(// cb_audio_sample_batch: CbAudioSampleBatch,
-        // cb_video_refresh: CbVideoRefresh,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
             core: Core::new(),
             cpu_freq: 16_000_000,
             cycles: 0,
-            samples: [(0, 0); FRAME_SAMPLES as usize],
-            // cb_audio_sample_batch,
-            // cb_video_refresh,
+            samples: vec![(0, 0); FRAME_SAMPLES as usize],
         }
     }
 
@@ -72,7 +74,29 @@ impl Emulator {
         Ok(())
     }
 
-    pub fn run(&mut self, port_b: u8, port_e: u8, port_f: u8) {
+    pub fn serialize_len(&self) -> postcard::Result<usize> {
+        const BUF_LEN: usize = 0x10000;
+        let mut buf = vec![0; BUF_LEN];
+        let bin = postcard::to_slice(&self, &mut buf)?;
+        Ok(bin.len())
+    }
+
+    pub fn serialize(&self, bin: &mut [u8]) -> postcard::Result<()> {
+        postcard::to_slice(&self, bin)?;
+        Ok(())
+    }
+
+    pub fn deserialize(&mut self, bin: &[u8]) -> postcard::Result<()> {
+        self.core.deserialize_pre();
+        let mut new: Emulator = postcard::from_bytes(bin)?;
+        mem::swap(&mut new.core.program, &mut self.core.program);
+        mem::swap(&mut new.core.program_ops, &mut self.core.program_ops);
+        *self = new;
+        self.core.deserialize_post();
+        Ok(())
+    }
+
+    pub fn run(&mut self, keys_state: &KeysState) {
         let cycles_per_sample = self.cpu_freq / AUDIO_SAMPLE_FREQ;
         for s in self.samples.iter_mut() {
             *s = (0, 0);
@@ -80,6 +104,7 @@ impl Emulator {
         let mut sample_cycles = cycles_per_sample;
         self.cycles += self.cpu_freq / FPS;
 
+        let (port_b, port_e, port_f) = keys_state.to_gpio();
         self.core.gpio.set_port(GPIOPort::B, port_b);
         self.core.gpio.set_port(GPIOPort::E, port_e);
         self.core.gpio.set_port(GPIOPort::F, port_f);
@@ -89,7 +114,7 @@ impl Emulator {
             // corresponding cycles in the hardware
             const N_INSTS: usize = 8;
             let mut hw_step_cycles = 0;
-            if !self.core.sleep {
+            if !self.core.sleeping() {
                 debug_assert_eq!(N_INSTS, 8);
                 unroll! {
                     for i in 0..8 {
@@ -118,3 +143,7 @@ impl Emulator {
         self.core.display.render();
     }
 }
+
+#[cfg(feature = "std")]
+#[cfg(test)]
+mod test;
