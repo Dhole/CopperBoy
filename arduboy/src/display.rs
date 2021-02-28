@@ -74,7 +74,7 @@ enum CmdState {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Display {
     #[serde(skip)]
-    pub frame: Vec<u8>,
+    pub frame: Vec<u16>,
     pub fb: Vec<u8>, // Frame Buffer
     // p: usize,         // Cursor Pointer
     dc: bool, // Data/Command Flag {false -> command, true -> data}
@@ -420,9 +420,13 @@ impl Display {
     }
 }
 
-fn draw_8px(frame: &mut [u8], pixels: u8, x: usize, row: usize, flip_v: bool) {
+fn draw_8px(frame: &mut [u16], pixels: u8, x: usize, row: usize, flip_v: bool) {
     let x = if flip_v { WIDTH - 1 - x } else { x };
     for dy in 0..8 {
-        frame[(row * 8 + dy) * WIDTH + x] = if pixels & (1 << dy) != 0 { 255 } else { 0 };
+        frame[(row * 8 + dy) * WIDTH + x] = if pixels & (1 << dy) != 0 {
+            0xffff
+        } else {
+            0x0000
+        };
     }
 }

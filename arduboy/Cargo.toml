@@ -17,11 +17,11 @@ crunchy = "0.2.2"
 # serde_json = { version = "1.0", optional = true }
 serde = { version = "1.0.123", default-features = false, features = ["derive", "alloc"] }
 postcard = { version= "0.5.2" }
-static_assertions = { version = "1.1.0", optional = true }
+static_assertions = { version = "1.1.0" }
 
 [features]
 default = ["std"]
-std = ["hex/std", "postcard/use-std", "static_assertions"]
+std = ["hex/std", "postcard/use-std"]
 logging = ["log"]
 vec_unchecked = []
 stats = []

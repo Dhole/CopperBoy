@@ -13,7 +13,7 @@ fi
 
 features="$1"
 cd "${ROOT}/arduboy"
-export RUSTFLAGS="-g"
+export RUSTFLAGS="-g --emit asm"
 cargo bench --no-run --target x86_64-unknown-linux-gnu --bench benchmark --no-default-features --features "$features"
 
 cd "${ROOT}"
@@ -29,4 +29,4 @@ TEST_ID="emulator.run.castle_boy.780/60"
 #          --simulate-cache=yes \
 #          $BENCH --bench --profile-time 10 "$TEST_ID"
 
-flamegraph --freq 1000 $BENCH --bench --profile-time 10 "$TEST_ID"
+# flamegraph --freq 1000 $BENCH --bench --profile-time 10 "$TEST_ID"
