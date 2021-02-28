@@ -115,12 +115,13 @@ impl Emulator {
             const N_INSTS: usize = 8;
             let mut hw_step_cycles = 0;
             if !self.core.sleeping() {
-                debug_assert_eq!(N_INSTS, 8);
-                unroll! {
-                    for i in 0..8 {
-                        hw_step_cycles += self.core.step();
-                    }
-                }
+                hw_step_cycles += self.core.step_n(N_INSTS);
+                // debug_assert_eq!(N_INSTS, 8);
+                // unroll! {
+                //     for i in 0..8 {
+                //         hw_step_cycles += self.core.step();
+                //     }
+                // }
             } else {
                 hw_step_cycles += N_INSTS;
             }

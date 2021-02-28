@@ -595,6 +595,36 @@ impl Core {
         self.exec_op(op)
     }
 
+    pub fn step_n(&mut self, n: usize) -> usize {
+        // if self.sleep {
+        //     return 1;
+        // }
+        // Load current op from previously fetched next op
+        //let op0 = self.op1.clone();
+        //// Fetch next op
+        //let pc1 = self.pc + op0.words() as u16;
+        //let w0 = self.program_load_u16(pc1);
+        //let w1 = self.program_load_u16(pc1 + 1);
+        //// Decode next op
+        //self.op1 = Op::decode(w0, w1);
+        //let cycles = self.exec_op(op0);
+        //if self.branch {
+        //    let w0 = self.program_load_u16(self.pc);
+        //    let w1 = self.program_load_u16(self.pc + 1);
+        //    self.op1 = Op::decode(w0, w1);
+        //    self.branch = false;
+        //}
+        //cycles
+        // let op = self.get_next_op();
+        let mut cycles = 0;
+        for _ in 0..n {
+            let op = vec_get!(self.program_ops, self.pc as usize);
+            // self.exec_op(self.program_ops[self.pc as usize])
+            cycles += self.exec_op(op);
+        }
+        cycles
+    }
+
     // returns true if an interrupt is fired
     pub fn step_hw(&mut self, cycles: usize) -> bool {
         // The interrupts have priority in accordance with their Interrupt Vector position.  The
