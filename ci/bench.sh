@@ -1,6 +1,8 @@
 #!/bin/sh
 set -ex
 
+# Example: $0 "std"
+
 ROOT=${ROOT:-$(git rev-parse --show-toplevel)}
 export PATH=$HOME/.cargo/bin:$PATH
 

@@ -213,11 +213,6 @@ impl Clock {
                 let delta = self.timer_3_cycles / 1024;
                 self.timer_3_cycles = self.timer_3_cycles % 1024;
                 self.timer_3.overflowing_add(delta as u16)
-                // let delta = self.timer_3_cycles / 100_000;
-                // self.timer_3_cycles = self.timer_3_cycles % 10_000;
-                // self.timer_3_cycles -= delta * 10_000;
-                // self.timer_3_cycles = 0;
-                // self.timer_3.overflowing_add(delta as u16)
             }
             _ => unreachable!(),
         };

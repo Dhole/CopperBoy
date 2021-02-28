@@ -13,42 +13,42 @@ extern crate num_derive;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "logging")]
 macro_rules! debug {
     ($($arg:tt)+) => (
         log::debug!($($arg)+)
     )
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "logging"))]
 macro_rules! debug {
     ($($arg:tt)+) => {
         ()
     };
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "logging")]
 macro_rules! warn {
     ($($arg:tt)+) => (
         log::warn!($($arg)+)
     )
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "logging"))]
 macro_rules! warn {
     ($($arg:tt)+) => {
         ()
     };
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "logging")]
 macro_rules! info {
     ($($arg:tt)+) => (
         log::info!($($arg)+)
     )
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "logging"))]
 macro_rules! info {
     ($($arg:tt)+) => {
         ()
