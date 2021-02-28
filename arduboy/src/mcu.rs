@@ -3,6 +3,8 @@ use core::fmt::Write;
 #[cfg(feature = "stats")]
 use num_traits::{FromPrimitive, ToPrimitive};
 
+use bit_field::BitField;
+
 // #[cfg(feature = "std")]
 // use std::vec::Vec;
 
@@ -27,57 +29,157 @@ use super::*;
 #[derive(PartialEq, Serialize, Deserialize, Clone)]
 pub struct StatusRegister {
     /// Global Interrupt Enable
-    i: bool,
+    _i: bool,
     /// Bit Copy Storage
-    t: bool,
+    _t: bool,
     /// Half Carry Flag
-    h: bool,
+    _h: bool,
     /// Sign Bit
-    s: bool,
+    _s: bool,
     /// Two's Complement Overflow Flag
-    v: bool,
+    _v: bool,
     /// Negative Flag
-    n: bool,
+    _n: bool,
     /// Zero Flag
-    z: bool,
+    _z: bool,
     /// Carry Flag
-    c: bool,
+    _c: bool,
+    // v: u8,
 }
 // static_assertions::assert_eq_size!(StatusRegister, u8);
 
-impl Index<u8> for StatusRegister {
-    type Output = bool;
-
-    fn index(&self, i: u8) -> &bool {
+impl StatusRegister {
+    pub fn get(&self, i: u8) -> bool {
+        // self.v.get_bit(i as usize)
         match i {
-            0 => &self.c,
-            1 => &self.z,
-            2 => &self.n,
-            3 => &self.v,
-            4 => &self.s,
-            5 => &self.h,
-            6 => &self.t,
-            7 => &self.i,
+            0 => self._c,
+            1 => self._z,
+            2 => self._n,
+            3 => self._v,
+            4 => self._s,
+            5 => self._h,
+            6 => self._t,
+            7 => self._i,
             _ => unreachable!(),
         }
     }
-}
-
-impl IndexMut<u8> for StatusRegister {
-    fn index_mut(&mut self, i: u8) -> &mut bool {
+    pub fn set(&mut self, i: u8, b: bool) {
+        // self.v.set_bit(i as usize, b);
         match i {
-            0 => &mut self.c,
-            1 => &mut self.z,
-            2 => &mut self.n,
-            3 => &mut self.v,
-            4 => &mut self.s,
-            5 => &mut self.h,
-            6 => &mut self.t,
-            7 => &mut self.i,
+            0 => self._c = b,
+            1 => self._z = b,
+            2 => self._n = b,
+            3 => self._v = b,
+            4 => self._s = b,
+            5 => self._h = b,
+            6 => self._t = b,
+            7 => self._i = b,
             _ => unreachable!(),
         }
     }
+
+    pub fn i(&self) -> bool {
+        // self.v.get_bit(7)
+        self._i
+    }
+    pub fn t(&self) -> bool {
+        // self.v.get_bit(6)
+        self._t
+    }
+    pub fn h(&self) -> bool {
+        // self.v.get_bit(5)
+        self._h
+    }
+    pub fn s(&self) -> bool {
+        // self.v.get_bit(4)
+        self._s
+    }
+    pub fn v(&self) -> bool {
+        // self.v.get_bit(3)
+        self._v
+    }
+    pub fn n(&self) -> bool {
+        // self.v.get_bit(2)
+        self._n
+    }
+    pub fn z(&self) -> bool {
+        // self.v.get_bit(1)
+        self._z
+    }
+    pub fn c(&self) -> bool {
+        // self.v.get_bit(0)
+        self._c
+    }
+
+    pub fn set_i(&mut self, b: bool) {
+        // self.v.set_bit(7, b);
+        self._i = b;
+    }
+    pub fn set_t(&mut self, b: bool) {
+        // self.v.set_bit(6, b);
+        self._t = b;
+    }
+    pub fn set_h(&mut self, b: bool) {
+        // self.v.set_bit(5, b);
+        self._h = b;
+    }
+    pub fn set_s(&mut self, b: bool) {
+        // self.v.set_bit(4, b);
+        self._s = b;
+    }
+    pub fn set_v(&mut self, b: bool) {
+        // self.v.set_bit(3, b);
+        self._v = b;
+    }
+    pub fn set_n(&mut self, b: bool) {
+        // self.v.set_bit(2, b);
+        self._n = b;
+    }
+    pub fn set_z(&mut self, b: bool) {
+        // self.v.set_bit(1, b);
+        self._z = b;
+    }
+    pub fn set_c(&mut self, b: bool) {
+        // self.v.set_bit(0, b);
+        self._c = b;
+    }
 }
+
+// impl Index<u8> for StatusRegister {
+//     type Output = bool;
+//
+//     fn index(&self, i: u8) -> &bool {
+//         // match i {
+//         //     0 => &self.c,
+//         //     1 => &self.z,
+//         //     2 => &self.n,
+//         //     3 => &self.v,
+//         //     4 => &self.s,
+//         //     5 => &self.h,
+//         //     6 => &self.t,
+//         //     7 => &self.i,
+//         //     _ => unreachable!(),
+//         // }
+//         //
+//         &self.v.get_bit(i as usize)
+//     }
+// }
+
+// impl IndexMut<u8> for StatusRegister {
+//     fn index_mut(&mut self, i: u8) -> &mut bool {
+//         match i {
+//             0 => &mut self.c,
+//             1 => &mut self.z,
+//             2 => &mut self.n,
+//             3 => &mut self.v,
+//             4 => &mut self.s,
+//             5 => &mut self.h,
+//             6 => &mut self.t,
+//             7 => &mut self.i,
+//             _ => unreachable!(),
+//         }
+//     }
+// }
 
 // #[cfg(feature = "std")]
 impl fmt::Debug for StatusRegister {
@@ -85,14 +187,14 @@ impl fmt::Debug for StatusRegister {
         write!(
             f,
             "StatusRegister {{ i: {}, t: {}, h: {}, s: {}, v: {}, n: {}, z: {}, c: {} }}",
-            self.i as u8,
-            self.t as u8,
-            self.h as u8,
-            self.s as u8,
-            self.v as u8,
-            self.n as u8,
-            self.z as u8,
-            self.c as u8
+            self.i() as u8,
+            self.t() as u8,
+            self.h() as u8,
+            self.s() as u8,
+            self.v() as u8,
+            self.n() as u8,
+            self.z() as u8,
+            self.c() as u8
         )
     }
 }
@@ -100,39 +202,42 @@ impl fmt::Debug for StatusRegister {
 impl StatusRegister {
     pub fn new() -> Self {
         Self {
-            i: false,
-            t: false,
-            h: false,
-            s: false,
-            v: false,
-            n: false,
-            z: false,
-            c: false,
+            // v: 0,
+            _i: false,
+            _t: false,
+            _h: false,
+            _s: false,
+            _v: false,
+            _n: false,
+            _z: false,
+            _c: false,
         }
     }
 
     fn from_u8(v: u8) -> Self {
         Self {
-            i: v & (1 << 7) != 0,
-            t: v & (1 << 6) != 0,
-            h: v & (1 << 5) != 0,
-            s: v & (1 << 4) != 0,
-            v: v & (1 << 3) != 0,
-            n: v & (1 << 2) != 0,
-            z: v & (1 << 1) != 0,
-            c: v & (1 << 0) != 0,
+            // v
+            _i: v & (1 << 7) != 0,
+            _t: v & (1 << 6) != 0,
+            _h: v & (1 << 5) != 0,
+            _s: v & (1 << 4) != 0,
+            _v: v & (1 << 3) != 0,
+            _n: v & (1 << 2) != 0,
+            _z: v & (1 << 1) != 0,
+            _c: v & (1 << 0) != 0,
         }
     }
 
     fn as_u8(&self) -> u8 {
-        (self.i as u8) << 7
-            | (self.t as u8) << 6
-            | (self.h as u8) << 5
-            | (self.s as u8) << 4
-            | (self.v as u8) << 3
-            | (self.n as u8) << 2
-            | (self.z as u8) << 1
-            | (self.c as u8) << 0
+        // self.v
+        (self._i as u8) << 7
+            | (self._t as u8) << 6
+            | (self._h as u8) << 5
+            | (self._s as u8) << 4
+            | (self._v as u8) << 3
+            | (self._n as u8) << 2
+            | (self._z as u8) << 1
+            | (self._c as u8) << 0
     }
 }
 
@@ -622,7 +727,7 @@ impl Core {
         // Then, if interrupts are enabled, handle the pending ones
 
         // Global Interrupt Flag disabled
-        if !self.status_reg.i {
+        if !self.status_reg.i() {
             return false;
         }
 
@@ -633,7 +738,7 @@ impl Core {
 
         self.sleep_unset();
         // println!("INTERRUPT 1");
-        self.status_reg.i = false;
+        self.status_reg.set_i(false);
 
         let pc = if interrupt_bitmap & RESET_BIT != 0 {
             debug!("Handling interrupt RESET");
@@ -1040,19 +1145,21 @@ impl Core {
     #[inline(always)]
     fn aux_op_add_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
         let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = (rr7 == rd7) && (rr7 != r7);
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.h = ((b & 0x0f) + (a & 0x0f) + c as u8) > 0x0f;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v((rr7 == rd7) && (rr7 != r7));
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg
+            .set_h(((b & 0x0f) + (a & 0x0f) + c as u8) > 0x0f);
+        self.status_reg.set_z(res == 0);
     }
     /// 5. Add with Carry (ADC Rd, Rr) OK
     #[inline(always)]
     fn op_adc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
-        let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
-        self.aux_op_add_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
-        self.status_reg.c = c0 || c1;
+        let (res, c1) = res.overflowing_add(self.status_reg.c() as u8);
+        self.aux_op_add_flags(self.regs[d], self.regs[r], self.status_reg.c(), res);
+        self.status_reg.set_c(c0 || c1);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1062,7 +1169,7 @@ impl Core {
     #[inline(always)]
     fn op_add(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
-        self.status_reg.c = c0;
+        self.status_reg.set_c(c0);
         self.aux_op_add_flags(self.regs[d], self.regs[r], false, res);
         self.regs[d] = res;
 
@@ -1076,11 +1183,12 @@ impl Core {
         let ext = self.regs.ext(d);
         let (res, c) = ext.overflowing_add(k as u16);
         let (r15, rdh7) = (res & 1 << 15, ext & 1 << 15);
-        self.status_reg.n = r15 != 0;
-        self.status_reg.v = !(rdh7 != 0) & (r15 != 0);
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.c = c;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r15 != 0);
+        self.status_reg.set_v(!(rdh7 != 0) & (r15 != 0));
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_c(c);
+        self.status_reg.set_z(res == 0);
         self.regs.set_ext(d, res);
 
         self.pc += 1;
@@ -1092,10 +1200,11 @@ impl Core {
     fn op_and(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] & self.regs[r];
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = false;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v(false);
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1107,10 +1216,11 @@ impl Core {
     fn op_andi(&mut self, d: u8, k: u8) -> usize {
         let res = self.regs[d] & k;
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = false;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v(false);
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1122,11 +1232,13 @@ impl Core {
     fn op_asr(&mut self, d: u8) -> usize {
         let res = self.regs[d] >> 1 | self.regs[d] & (1 << 7);
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.c = self.regs[d] & 1 != 0;
-        self.status_reg.v = self.status_reg.n ^ self.status_reg.c;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_c(self.regs[d] & 1 != 0);
+        self.status_reg
+            .set_v(self.status_reg.n() ^ self.status_reg.c());
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1136,7 +1248,7 @@ impl Core {
     /// 11. Bit Clear in SREG (BCLR s) OK
     #[inline(always)]
     fn op_bclr(&mut self, s: u8) -> usize {
-        self.status_reg[s] = false;
+        self.status_reg.set(s, false);
 
         self.pc += 1;
         1
@@ -1146,7 +1258,7 @@ impl Core {
     #[inline(always)]
     fn op_bld(&mut self, d: u8, b: u8) -> usize {
         self.regs[d] &= !(1 << b);
-        self.regs[d] |= (self.status_reg.t as u8) << b;
+        self.regs[d] |= (self.status_reg.t() as u8) << b;
 
         self.pc += 1;
         1
@@ -1168,12 +1280,12 @@ impl Core {
     /// 13. Branch if Bit in SREG is Cleared (BRBC s, k) OK
     #[inline(always)]
     fn op_brbc(&mut self, s: u8, k: i8) -> usize {
-        self.aux_op_branch_if(k, !self.status_reg[s])
+        self.aux_op_branch_if(k, !self.status_reg.get(s))
     }
     /// 14. Branch if Bit in SREG is Set (BRBS s, k) OK
     #[inline(always)]
     fn op_brbs(&mut self, s: u8, k: i8) -> usize {
-        self.aux_op_branch_if(k, self.status_reg[s])
+        self.aux_op_branch_if(k, self.status_reg.get(s))
     }
     // 15. Branch if Carry Cleared (BRCC k) OK -> BRBC C
     // 16. Branch if Carry Set (BRCS k) OK -> BRBS C
@@ -1206,7 +1318,7 @@ impl Core {
     /// 34. Bit Set in SREG (BSET s) OK
     #[inline(always)]
     fn op_bset(&mut self, s: u8) -> usize {
-        self.status_reg[s] = true;
+        self.status_reg.set(s, true);
 
         self.pc += 1;
         1
@@ -1215,7 +1327,7 @@ impl Core {
     /// 35. Bit Store from Bit in Register to T Flag in SREG (BST Rr, b) OK
     #[inline(always)]
     fn op_bst(&mut self, d: u8, b: u8) -> usize {
-        self.status_reg.t = (self.regs[d] & (1 << b)) != 0;
+        self.status_reg.set_t((self.regs[d] & (1 << b)) != 0);
 
         self.pc += 1;
         1
@@ -1248,10 +1360,10 @@ impl Core {
     // 43. Clear Register (CLR Rd) OK -> EOR Rd, Rd
     // fn op_clr(&mut self, d: u8) -> usize {
     //     self.regs[d] = 0;
-    //     self.status_reg.s = false;
-    //     self.status_reg.v = false;
-    //     self.status_reg.n = false;
-    //     self.status_reg.z = true;
+    //     self.status_reg.set_s( false;
+    //     self.status_reg.set_v( false;
+    //     self.status_reg.set_n( false;
+    //     self.status_reg.set_z( true;
 
     //     self.pc += 1;
     //     1
@@ -1267,11 +1379,12 @@ impl Core {
     fn op_com(&mut self, d: u8) -> usize {
         let (res, _) = 0xffu8.overflowing_sub(self.regs[d]);
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = false;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
-        self.status_reg.c = true;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v(false);
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
+        self.status_reg.set_c(true);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1282,10 +1395,11 @@ impl Core {
     #[inline(always)]
     fn aux_op_cp_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
         let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = (rr7 != rd7) && (rr7 == r7);
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.h = ((b & 0x0f) + c as u8) > (a & 0x0f);
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v((rr7 != rd7) && (rr7 == r7));
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_h(((b & 0x0f) + c as u8) > (a & 0x0f));
     }
 
     /// 49. Compare (CP Rd, Rr) OK
@@ -1294,8 +1408,8 @@ impl Core {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
 
         self.aux_op_cp_flags(self.regs[d], self.regs[r], false, res);
-        self.status_reg.z = res == 0;
-        self.status_reg.c = c0;
+        self.status_reg.set_z(res == 0);
+        self.status_reg.set_c(c0);
 
         self.pc += 1;
         1
@@ -1305,12 +1419,12 @@ impl Core {
     #[inline(always)]
     fn op_cpc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
-        let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
-        self.aux_op_cp_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        let (res, c1) = res.overflowing_sub(self.status_reg.c() as u8);
+        self.aux_op_cp_flags(self.regs[d], self.regs[r], self.status_reg.c(), res);
         if res != 0 {
-            self.status_reg.z = false;
+            self.status_reg.set_z(false);
         }
-        self.status_reg.c = c0 || c1;
+        self.status_reg.set_c(c0 || c1);
 
         self.pc += 1;
         1
@@ -1322,8 +1436,8 @@ impl Core {
         let (res, c0) = self.regs[d].overflowing_sub(k);
 
         self.aux_op_cp_flags(self.regs[d], k, false, res);
-        self.status_reg.z = res == 0;
-        self.status_reg.c = c0;
+        self.status_reg.set_z(res == 0);
+        self.status_reg.set_c(c0);
 
         self.pc += 1;
         1
@@ -1347,10 +1461,11 @@ impl Core {
     fn op_dec(&mut self, d: u8) -> usize {
         let (res, _) = self.regs[d].overflowing_sub(1);
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = res == 0b01111111;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v(res == 0b01111111);
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1385,10 +1500,11 @@ impl Core {
     fn op_eor(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] ^ self.regs[r];
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = false;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v(false);
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1401,8 +1517,8 @@ impl Core {
         let res = self.regs[d] as u16 * self.regs[r] as u16;
         let r16 = res & 1 << 15;
         let res = res << 1;
-        self.status_reg.c = r16 != 0;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_c(r16 != 0);
+        self.status_reg.set_z(res == 0);
         let bytes = res.to_le_bytes();
         self.regs[0] = bytes[0];
         self.regs[1] = bytes[1];
@@ -1417,8 +1533,8 @@ impl Core {
         let res = self.regs[d] as i8 as i16 * self.regs[r] as i8 as i16;
         let r16 = res & 1 << 15;
         let res = res << 1;
-        self.status_reg.c = r16 != 0;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_c(r16 != 0);
+        self.status_reg.set_z(res == 0);
         let bytes = res.to_le_bytes();
         self.regs[0] = bytes[0];
         self.regs[1] = bytes[1];
@@ -1433,8 +1549,8 @@ impl Core {
         let res = self.regs[d] as i8 as i16 * self.regs[r] as i16;
         let r16 = res & 1 << 15;
         let res = res << 1;
-        self.status_reg.c = r16 != 0;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_c(r16 != 0);
+        self.status_reg.set_z(res == 0);
         let bytes = res.to_le_bytes();
         self.regs[0] = bytes[0];
         self.regs[1] = bytes[1];
@@ -1474,10 +1590,11 @@ impl Core {
     fn op_inc(&mut self, d: u8) -> usize {
         let (res, _) = self.regs[d].overflowing_add(1);
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = res == 0b10000000;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v(res == 0b10000000);
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1564,11 +1681,13 @@ impl Core {
     #[inline(always)]
     fn op_lsr(&mut self, d: u8) -> usize {
         let res = self.regs[d] >> 1;
-        self.status_reg.n = false;
-        self.status_reg.c = self.regs[d] & 1 != 0;
-        self.status_reg.v = self.status_reg.n ^ self.status_reg.c;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(false);
+        self.status_reg.set_c(self.regs[d] & 1 != 0);
+        self.status_reg
+            .set_v(self.status_reg.n() ^ self.status_reg.c());
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1601,8 +1720,8 @@ impl Core {
         self.regs[0] = bytes[0];
         self.regs[1] = bytes[1];
         let r15 = res & 1 << 15;
-        self.status_reg.c = r15 != 0;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_c(r15 != 0);
+        self.status_reg.set_z(res == 0);
 
         self.pc += 1;
         2
@@ -1616,8 +1735,8 @@ impl Core {
         self.regs[0] = bytes[0];
         self.regs[1] = bytes[1];
         let r15 = res & 1 << 15;
-        self.status_reg.c = r15 != 0;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_c(r15 != 0);
+        self.status_reg.set_z(res == 0);
 
         self.pc += 1;
         2
@@ -1631,8 +1750,8 @@ impl Core {
         self.regs[0] = bytes[0];
         self.regs[1] = bytes[1];
         let r15 = res & 1 << 15;
-        self.status_reg.c = r15 != 0;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_c(r15 != 0);
+        self.status_reg.set_z(res == 0);
 
         self.pc += 1;
         2
@@ -1641,25 +1760,26 @@ impl Core {
     // Auxiliary function to update some flags in subtraction
     // fn aux_op_sub_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
     //     let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
-    //     self.status_reg.n = r7 != 0;
-    //     self.status_reg.v = res == 0x80;
-    //     // self.status_reg.v = (rr7 == rd7) && (rr7 != r7);
-    //     self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-    //     self.status_reg.h = (b & 0x0f) + c as u8 > (a & 0x0f);
-    //     self.status_reg.z = res == 0;
+    //     self.status_reg.set_n( r7 != 0;
+    //     self.status_reg.set_v( res == 0x80;
+    //     // self.status_reg.set_v( (rr7 == rd7) && (rr7 != r7);
+    //     self.status_reg.set_s( self.status_reg.n ^ self.status_reg.v;
+    //     self.status_reg.set_h( (b & 0x0f) + c as u8 > (a & 0x0f);
+    //     self.status_reg.set_z( res == 0;
     // }
 
     /// 84. Two's Complement (NEG Rd) OK
     #[inline(always)]
     fn op_neg(&mut self, d: u8) -> usize {
         let (res, _) = 0x00u8.overflowing_sub(self.regs[d]);
-        self.status_reg.c = res != 0;
+        self.status_reg.set_c(res != 0);
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = res == 0x80;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.h = (self.regs[d] & 0x0f) != 0;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v(res == 0x80);
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_h((self.regs[d] & 0x0f) != 0);
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1678,10 +1798,11 @@ impl Core {
     fn op_or(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] | self.regs[r];
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = false;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v(false);
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1693,10 +1814,11 @@ impl Core {
     fn op_ori(&mut self, d: u8, k: u8) -> usize {
         let res = self.regs[d] | k;
         let r7 = res & 1 << 7;
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = false;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v(false);
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1756,7 +1878,7 @@ impl Core {
     #[inline(always)]
     fn op_reti(&mut self) -> usize {
         let pc = self.pop_u16();
-        self.status_reg.i = true;
+        self.status_reg.set_i(true);
         self.pc = pc;
         self.branch = true;
         4
@@ -1777,12 +1899,12 @@ impl Core {
     //     let res = self.regs[d] << 1;
     //     let res = res | self.status_reg.c as u8;
     //     let (r7, rd7, rd3) = (res & 1 << 7, self.regs[d] & 1 << 7, self.regs[d] & 1 << 3);
-    //     self.status_reg.h = rd3 != 0;
-    //     self.status_reg.n = r7 != 0;
-    //     self.status_reg.c = rd7 != 0;
-    //     self.status_reg.v = self.status_reg.n ^ self.status_reg.c;
-    //     self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-    //     self.status_reg.z = res == 0;
+    //     self.status_reg.set_h( rd3 != 0;
+    //     self.status_reg.set_n( r7 != 0;
+    //     self.status_reg.set_c( rd7 != 0;
+    //     self.status_reg.set_v( self.status_reg.n ^ self.status_reg.c;
+    //     self.status_reg.set_s( self.status_reg.n ^ self.status_reg.v;
+    //     self.status_reg.set_z( res == 0;
     //     self.regs[d] = res;
 
     //     self.pc += 1;
@@ -1793,13 +1915,15 @@ impl Core {
     #[inline(always)]
     fn op_ror(&mut self, d: u8) -> usize {
         let res = self.regs[d] >> 1;
-        let res = res | ((self.status_reg.c as u8) << 7);
+        let res = res | ((self.status_reg.c() as u8) << 7);
         let (r7, rd0) = (res & 1 << 7, self.regs[d] & 1);
-        self.status_reg.n = r7 != 0;
-        self.status_reg.c = rd0 != 0;
-        self.status_reg.v = self.status_reg.n ^ self.status_reg.c;
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_c(rd0 != 0);
+        self.status_reg
+            .set_v(self.status_reg.n() ^ self.status_reg.c());
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -1810,21 +1934,23 @@ impl Core {
     #[inline(always)]
     fn aux_op_sub_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
         let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
-        self.status_reg.n = r7 != 0;
-        self.status_reg.v = (rr7 != rd7) && (rr7 == r7);
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.h = ((a & 0x0f) as i8) < ((b & 0x0f) as i8) + c as i8;
+        self.status_reg.set_n(r7 != 0);
+        self.status_reg.set_v((rr7 != rd7) && (rr7 == r7));
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg
+            .set_h(((a & 0x0f) as i8) < ((b & 0x0f) as i8) + c as i8);
     }
 
     /// 97. Subtract with Carry (SBC Rd, Rr) OK
     #[inline(always)]
     fn op_sbc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
-        let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
-        self.aux_op_sub_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
-        self.status_reg.c = c0 || c1;
+        let (res, c1) = res.overflowing_sub(self.status_reg.c() as u8);
+        self.aux_op_sub_flags(self.regs[d], self.regs[r], self.status_reg.c(), res);
+        self.status_reg.set_c(c0 || c1);
         if res != 0 {
-            self.status_reg.z = false;
+            self.status_reg.set_z(false);
         }
         self.regs[d] = res;
 
@@ -1836,11 +1962,11 @@ impl Core {
     #[inline(always)]
     fn op_sbci(&mut self, d: u8, k: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(k);
-        let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
-        self.aux_op_sub_flags(self.regs[d], k, self.status_reg.c, res);
-        self.status_reg.c = c0 || c1;
+        let (res, c1) = res.overflowing_sub(self.status_reg.c() as u8);
+        self.aux_op_sub_flags(self.regs[d], k, self.status_reg.c(), res);
+        self.status_reg.set_c(c0 || c1);
         if res != 0 {
-            self.status_reg.z = false;
+            self.status_reg.set_z(false);
         }
         self.regs[d] = res;
 
@@ -1891,11 +2017,12 @@ impl Core {
         let ext = self.regs.ext(d);
         let (res, c) = ext.overflowing_sub(k as u16);
         let (r15, rdh7) = (res & 1 << 15, ext & 1 << 15);
-        self.status_reg.n = r15 != 0;
-        self.status_reg.v = (rdh7 != 0) & !(r15 != 0);
-        self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
-        self.status_reg.c = c;
-        self.status_reg.z = res == 0;
+        self.status_reg.set_n(r15 != 0);
+        self.status_reg.set_v((rdh7 != 0) & !(r15 != 0));
+        self.status_reg
+            .set_s(self.status_reg.n() ^ self.status_reg.v());
+        self.status_reg.set_c(c);
+        self.status_reg.set_z(res == 0);
         self.regs.set_ext(d, res);
 
         self.pc += 1;
@@ -2011,9 +2138,9 @@ impl Core {
     #[inline(always)]
     fn op_sub(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
-        self.status_reg.c = c0;
+        self.status_reg.set_c(c0);
         self.aux_op_sub_flags(self.regs[d], self.regs[r], false, res);
-        self.status_reg.z = res == 0;
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
@@ -2024,9 +2151,9 @@ impl Core {
     #[inline(always)]
     fn op_subi(&mut self, d: u8, k: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(k);
-        self.status_reg.c = c0;
+        self.status_reg.set_c(c0);
         self.aux_op_sub_flags(self.regs[d], k, false, res);
-        self.status_reg.z = res == 0;
+        self.status_reg.set_z(res == 0);
         self.regs[d] = res;
 
         self.pc += 1;
