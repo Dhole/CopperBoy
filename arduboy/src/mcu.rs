@@ -379,6 +379,8 @@ pub struct Core {
     #[cfg(feature = "stats")]
     #[serde(skip)]
     pub stats: Stats,
+    pub table_adc: Vec<(u8, u8)>,
+    pub table_add: Vec<(u8, u8)>,
 }
 
 #[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
@@ -451,7 +453,53 @@ impl Core {
             gpio: GPIO::new(),
             #[cfg(feature = "stats")]
             stats: Stats::new(),
+            table_adc: Vec::new(),
+            table_add: Vec::new(),
         }
+    }
+
+    pub fn fill_tables(&mut self) {
+        let mut table_adc = vec![(0, 0); 0x10000 * 2];
+        for a in 0..=0xff {
+            for b in 0..=0xff {
+                let index = a as usize + ((b as usize) << 8);
+                self.status_reg.c = false;
+                self.regs[0] = a;
+                self.regs[1] = b;
+                self._op_adc(0, 1);
+                table_adc[index] = (self.regs[0], self.status_reg.as_u8());
+
+                self.status_reg.c = true;
+                self.regs[0] = a;
+                self.regs[1] = b;
+                self._op_adc(0, 1);
+                table_adc[0x10000 + index] = (self.regs[0], self.status_reg.as_u8());
+
+                self.pc = 0;
+            }
+        }
+        self.table_adc = table_adc;
+
+        let mut table_add = vec![(0, 0); 0x10000 * 2];
+        for a in 0..=0xff {
+            for b in 0..=0xff {
+                let index = a as usize + ((b as usize) << 8);
+                self.status_reg.c = false;
+                self.regs[0] = a;
+                self.regs[1] = b;
+                self._op_add(0, 1);
+                table_add[index] = (self.regs[0], self.status_reg.as_u8());
+
+                self.status_reg.c = true;
+                self.regs[0] = a;
+                self.regs[1] = b;
+                self._op_add(0, 1);
+                table_add[0x10000 + index] = (self.regs[0], self.status_reg.as_u8());
+
+                self.pc = 0;
+            }
+        }
+        self.table_add = table_add;
     }
 
     pub fn serialize_len(&self) -> postcard::Result<usize> {
@@ -1047,8 +1095,7 @@ impl Core {
         self.status_reg.z = res == 0;
     }
     /// 5. Add with Carry (ADC Rd, Rr) OK
-    #[inline(always)]
-    fn op_adc(&mut self, d: u8, r: u8) -> usize {
+    fn _op_adc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
         self.aux_op_add_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
@@ -1058,13 +1105,50 @@ impl Core {
         self.pc += 1;
         1
     }
-    /// 6. Add without Carry (ADD Rd, Rr) OK
     #[inline(always)]
-    fn op_add(&mut self, d: u8, r: u8) -> usize {
+    fn op_adc(&mut self, d: u8, r: u8) -> usize {
+        let index = self.regs[d] as usize + ((self.regs[r] as usize) << 8);
+        let (res, status) = if self.status_reg.c {
+            self.table_adc[0x10000 + index]
+        } else {
+            self.table_adc[index]
+        };
+        self.regs[d] = res;
+        self.status_reg.c = status & (1 << 0) != 0;
+        self.status_reg.n = status & (1 << 2) != 0;
+        self.status_reg.v = status & (1 << 3) != 0;
+        self.status_reg.s = status & (1 << 4) != 0;
+        self.status_reg.h = status & (1 << 5) != 0;
+        self.status_reg.z = res == 0;
+
+        self.pc += 1;
+        1
+    }
+    /// 6. Add without Carry (ADD Rd, Rr) OK
+    fn _op_add(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         self.status_reg.c = c0;
         self.aux_op_add_flags(self.regs[d], self.regs[r], false, res);
         self.regs[d] = res;
+
+        self.pc += 1;
+        1
+    }
+    #[inline(always)]
+    fn op_add(&mut self, d: u8, r: u8) -> usize {
+        let index = self.regs[d] as usize + ((self.regs[r] as usize) << 8);
+        let (res, status) = if self.status_reg.c {
+            self.table_add[0x10000 + index]
+        } else {
+            self.table_add[index]
+        };
+        self.regs[d] = res;
+        self.status_reg.c = status & (1 << 0) != 0;
+        self.status_reg.n = status & (1 << 2) != 0;
+        self.status_reg.v = status & (1 << 3) != 0;
+        self.status_reg.s = status & (1 << 4) != 0;
+        self.status_reg.h = status & (1 << 5) != 0;
+        self.status_reg.z = res == 0;
 
         self.pc += 1;
         1

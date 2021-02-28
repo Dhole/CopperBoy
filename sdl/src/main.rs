@@ -166,11 +166,12 @@ pub fn main() -> Result<(), FrontError> {
     let font_path: &Path = Path::new("./assets/DejaVuSansMono.ttf");
 
     let mut core = Core::new();
+    core.fill_tables();
     load_hex_file(&mut core, path)?;
 
     core.reset();
-    let serialize_len = core.serialize_len()?;
-    println!("serialize_len = {}", serialize_len);
+    // let serialize_len = core.serialize_len()?;
+    // println!("serialize_len = {}", serialize_len);
 
     let save_path = app
         .value_of("sav_path")
@@ -623,10 +624,10 @@ pub fn main() -> Result<(), FrontError> {
         fps = (1.0 - update) * fps + update * (1_000_000_000.0 / frame_dur.subsec_nanos() as f32);
         now_end_frame = now;
         if save {
-            let mut file = File::create(&save_path).unwrap();
-            let mut bin = vec![0; serialize_len + 10];
-            core.serialize(&mut bin)?;
-            file.write_all(&bin)?;
+            // let mut file = File::create(&save_path).unwrap();
+            // let mut bin = vec![0; serialize_len + 10];
+            // core.serialize(&mut bin)?;
+            // file.write_all(&bin)?;
             save = false;
         }
         if load {

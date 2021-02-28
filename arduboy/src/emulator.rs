@@ -46,8 +46,10 @@ pub const FRAME_SAMPLES: isize = AUDIO_SAMPLE_FREQ / FPS;
 
 impl Emulator {
     pub fn new() -> Self {
+        let mut core = Core::new();
+        core.fill_tables();
         Self {
-            core: Core::new(),
+            core: core,
             cpu_freq: 16_000_000,
             cycles: 0,
             samples: vec![(0, 0); FRAME_SAMPLES as usize],
