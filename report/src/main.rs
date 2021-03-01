@@ -153,6 +153,7 @@ pub fn main() -> Result<(), FrontError> {
     let mut total_frames = 0;
     let mut replay_index = 0;
     let mut keys_state = KeysState::default();
+    let mut framebuffer = vec![0u8; WIDTH * HEIGTH];
     for s in 0..seconds {
         for frame in 0..60 {
             total_frames += 1;
@@ -172,7 +173,10 @@ pub fn main() -> Result<(), FrontError> {
                     encoder.set_depth(png::BitDepth::Eight);
                     let mut writer = encoder.write_header().unwrap();
 
-                    writer.write_image_data(&emu.core.display.frame).unwrap(); // Save
+                    for i in 0..framebuffer.len() {
+                        framebuffer[i] = emu.core.display.frame[i] as u8;
+                    }
+                    writer.write_image_data(&framebuffer[..]).unwrap(); // Save
                 }
             }
 
