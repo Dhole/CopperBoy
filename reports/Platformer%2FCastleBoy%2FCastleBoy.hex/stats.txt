@@ -1,0 +1,199 @@
+# Loads
+0x004d: 3815457 ; ("SPSR", "SPI Status Register")
+0x004e: 3815457 ; ("SPDR", "SPI Data Register")
+0x005f: 1559860 ; ("SREG", "Status Regsiter")
+0x005d:  183708 ; ("SPL", "Stack Pointer Low")
+0x005e:  183708 ; ("SPH", "Stack Pointer High")
+0x0053:  103806 ; ("SMCR", "Sleep Mode Control Register")
+0x0023:   18968 ; ("PINB", "Port B Input Pins Address")
+0x002c:   18968 ; ("PINE", "Port E Input Pins Address")
+0x002f:   18968 ; ("PINF", "Port F Input Pins Address")
+0x0035:    2780 ; ("TIFR1", "Timer/Counter 1 Interrupt Flag Register")
+0x0046:    2780 ; ("TCNT0", "Timer/Counter Regsiter")
+0x0028:    2198 ; ("PORTC", "Port C Data Register")
+0x0071:     191 ; ("TIMSK3", "Timer/Counter3 Interrupt Mask Register")
+0x002b:      13 ; ("PORTD", "Port D Data Register")
+0x0024:       6 ; ("DDRB", "Port B Data Direction Register")
+0x0027:       4 ; ("DDRC", "Port C Data Direction Register")
+0x002a:       4 ; ("DDRD", "Port D Data Direction Register")
+0x0030:       4 ; ("DDRF", "Port F Data Direction Register")
+0x0031:       4 ; ("PORTF", "Port F Data Register")
+0x0064:       4 ; ("PRR0", "Power Reduction Register 0")
+0x007a:       4 ; ("ADCSRA", "ADC Control and Status Regsiter A")
+0x00c2:       4 ; ("TCCR4C", "Timer/Counter4 Control Register C")
+0x0049:       3 ; ("PLLCSR", "PLL Control and Status Register")
+0x00c1:       3 ; ("TCCR4B", "Timer/Counter4 Control Register B")
+0x0025:       2 ; ("PORTB", "Port B Data Register")
+0x003f:       2 ; ("EECR", "EEPROM Control Register")
+0x0044:       2 ; ("TCCR0A", "Timer/Counter Control Register A")
+0x0045:       2 ; ("TCCR0B", "Timer/Counter Control Register B")
+0x004c:       2 ; ("SPCR", "SPI Control Register")
+0x0081:       2 ; ("TCCR1B", "Timer/Counter1 Control Register B")
+0x0091:       2 ; ("TCCR3B", "Timer/Counter3 Control Register B")
+0x002d:       1 ; ("DDRE", "Port E Data Direction Register")
+
+# Stores
+0x004e: 3815457 ; ("SPDR", "SPI Data Register")
+0x005f: 1559861 ; ("SREG", "Status Regsiter")
+0x0053:  103806 ; ("SMCR", "Sleep Mode Control Register")
+0x005d:   13535 ; ("SPL", "Stack Pointer Low")
+0x005e:   13535 ; ("SPH", "Stack Pointer High")
+0x0028:    2198 ; ("PORTC", "Port C Data Register")
+0x0071:     191 ; ("TIMSK3", "Timer/Counter3 Interrupt Mask Register")
+0x0091:     135 ; ("TCCR3B", "Timer/Counter3 Control Register B")
+0x0090:      76 ; ("TCCR3A", "Timer/Counter3 Control Register A")
+0x0098:      75 ; ("OCR3AL", "Timer/Counter3 Output Compare Register A Low")
+0x0099:      75 ; ("OCR3AH", "Timer/Counter3 Output Compare Register A High")
+0x002b:      13 ; ("PORTD", "Port D Data Register")
+0x0024:       5 ; ("DDRB", "Port B Data Direction Register")
+0x0027:       4 ; ("DDRC", "Port C Data Direction Register")
+0x002a:       4 ; ("DDRD", "Port D Data Direction Register")
+0x0030:       4 ; ("DDRF", "Port F Data Direction Register")
+0x0031:       4 ; ("PORTF", "Port F Data Register")
+0x0064:       4 ; ("PRR0", "Power Reduction Register 0")
+0x007a:       4 ; ("ADCSRA", "ADC Control and Status Regsiter A")
+0x00c2:       4 ; ("TCCR4C", "Timer/Counter4 Control Register C")
+0x0081:       3 ; ("TCCR1B", "Timer/Counter1 Control Register B")
+0x00c1:       3 ; ("TCCR4B", "Timer/Counter4 Control Register B")
+0x0025:       2 ; ("PORTB", "Port B Data Register")
+0x0044:       2 ; ("TCCR0A", "Timer/Counter Control Register A")
+0x0045:       2 ; ("TCCR0B", "Timer/Counter Control Register B")
+0x0049:       2 ; ("PLLCSR", "PLL Control and Status Register")
+0x004c:       2 ; ("SPCR", "SPI Control Register")
+0x00d8:       2 ; ("USBCON", "USB Control Regsiter")
+0x002d:       1 ; ("DDRE", "Port E Data Direction Register")
+0x002e:       1 ; ("PORTE", "Port E Data Register")
+0x003f:       1 ; ("EECR", "EEPROM Control Register")
+0x0041:       1 ; ("EEARL", "EEPROM Address Register Low")
+
+# Ops
+Brbc  : 26204871
+Lds   : 21088509
+Add   : 17617641
+Adc   : 17500792
+Cpc   : 16366436
+Movw  : 13128955
+Cp    : 12815452
+Rjmp  : 11608564
+St    : 11297107
+Dec   : 10549513
+Ld    : 10515179
+Brbs  :  9756454
+In    :  9723620
+Mov   :  9642050
+Ldi   :  8951894
+And   :  8559203
+Cpi   :  6812799
+Subi  :  6480149
+Sbci  :  6066436
+Eor   :  5709746
+Lsr   :  5631844
+Out   :  5508134
+Sub   :  5481585
+Ror   :  5466955
+Sbrs  :  5177626
+Pop   :  5153964
+Ret   :  4851222
+Call  :  4850542
+Mul   :  4569355
+Push  :  4464739
+Nop   :  3815457
+Asr   :  3235772
+Lpm   :  2792266
+Or    :  2776812
+Andi  :  2526765
+Cpse  :  2491764
+Sbc   :  2392202
+Sbrc  :  1966712
+Com   :  1715808
+Inc   :  1638804
+Bclr  :  1499379
+Zzz   :  1303516
+Adiw  :   797137
+Sts   :   627478
+Rcall :   345232
+Sbiw  :   329386
+Mulsu :   250918
+Jmp   :   129732
+Reti  :    60481
+Ijmp  :    50878
+Ori   :    34840
+Sleep :    34602
+Bst   :    19849
+Neg   :     4196
+Sbis  :     2780
+Cbi   :      253
+Icall :       75
+Swap  :       44
+Sbi   :       20
+Bset  :        1
+Sbic  :        1
+Bld   :        0
+Break :        0
+Eicall:        0
+
+# Ops x 2
+(Add, Adc)      : 14750426
+(Lds, Lds)      : 12281029
+(Dec, Brbc)     : 10529012
+(Cpc, Brbc)     : 10184588
+(Cp, Cpc)       :  9882804
+(Adc, Dec)      :  6104113
+(Subi, Sbci)    :  6061422
+(Brbc, Add)     :  5803436
+(St, St)        :  4650755
+(Pop, Pop)      :  4514641
+(And, Brbs)     :  3922451
+(Brbc, Ld)      :  3878723
+(Ret, Cp)       :  3821735
+(Ld, Call)      :  3818757
+(Out, Nop)      :  3815082
+(In, Sbrs)      :  3815065
+(In, Ret)       :  3815062
+(Nop, In)       :  3815041
+(Call, Out)     :  3815031
+(Sbrs, In)      :  3814987
+(Push, Push)    :  3755533
+(Ld, And)       :  3605739
+(Cpi, Cpc)      :  3357834
+(Cpc, Brbs)     :  3157969
+(Cpi, Brbc)     :  3151741
+(Brbc, Rjmp)    :  3112582
+(Cpc, Cpc)      :  3009503
+(Lsr, Lsr)      :  2880673
+(Asr, Ror)      :  2844514
+(Or, St)        :  2545664
+(Mul, Add)      :  2465364
+(Ldi, Ldi)      :  2392857
+(Rjmp, Dec)     :  2362297
+(Adc, Ld)       :  2336434
+(Brbc, Mov)     :  2228696
+(Cp, Brbs)      :  2062160
+(Adc, Lpm)      :  2040643
+(Mul, Movw)     :  2029273
+(Sub, Sbc)      :  1994801
+(Lds, Add)      :  1991444
+(Lds, Cp)       :  1987360
+(Movw, Rjmp)    :  1894728
+(Ror, Dec)      :  1880060
+(Movw, Mul)     :  1868816
+(Add, Eor)      :  1868637
+(Brbc, Movw)    :  1826352
+(Brbs, Movw)    :  1813606
+(Mov, Sub)      :  1795114
+(Ldi, Movw)     :  1785917
+(Rjmp, Cp)      :  1760448
+(Brbc, Asr)     :  1717641
+(Adc, Adc)      :  1699025
+(Sub, Cp)       :  1665870
+(Lds, And)      :  1641848
+(Rjmp, Movw)    :  1636277
+(Brbc, Cpi)     :  1630588
+(Brbs, Cp)      :  1625454
+(And, Or)       :  1620277
+(Movw, Sub)     :  1593818
+(Brbs, Lds)     :  1574208
+(St, Sbrc)      :  1531389
+(Eor, St)       :  1530243
+(Sbci, Mov)     :  1529809
+(Sbc, Add)      :  1526504

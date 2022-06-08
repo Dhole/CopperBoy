@@ -1,7 +1,7 @@
-use crunchy::unroll;
+// use crunchy::unroll;
 
 use super::mcu::{Core, GPIOPort};
-use super::opcodes::Op;
+// use super::opcodes::Op;
 use super::utils::{decode_hex_line, HexFileError, KeysState};
 use core::mem;
 use core::str;
@@ -58,13 +58,13 @@ impl Emulator {
         let data = str::from_utf8(data)?;
         let mut out = [0u8; 32];
         for line in data.lines() {
-            if line.len() == 0 {
+            if line.is_empty() {
                 continue;
             }
             match decode_hex_line(line, &mut out[..])? {
                 Some((addr, len)) => {
-                    for i in 0..len {
-                        self.core.flash_write(addr + i as u16, out[i]);
+                    for (i, byte) in out.iter().enumerate().take(len) {
+                        self.core.flash_write(addr + i as u16, *byte);
                     }
                 }
                 None => {}

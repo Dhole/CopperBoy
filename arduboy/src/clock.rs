@@ -133,22 +133,22 @@ impl Clock {
             }
             ClockSelect::Clk8 => {
                 let delta = self.timer_0_cycles / 8;
-                self.timer_0_cycles = self.timer_0_cycles % 8;
+                self.timer_0_cycles %= 8;
                 self.timer_0.overflowing_add(delta as u8)
             }
             ClockSelect::Clk64 => {
                 let delta = self.timer_0_cycles / 64;
-                self.timer_0_cycles = self.timer_0_cycles % 64;
+                self.timer_0_cycles %= 64;
                 self.timer_0.overflowing_add(delta as u8)
             }
             ClockSelect::Clk256 => {
                 let delta = self.timer_0_cycles / 256;
-                self.timer_0_cycles = self.timer_0_cycles % 256;
+                self.timer_0_cycles %= 256;
                 self.timer_0.overflowing_add(delta as u8)
             }
             ClockSelect::Clk1024 => {
                 let delta = self.timer_0_cycles / 1024;
-                self.timer_0_cycles = self.timer_0_cycles % 1024;
+                self.timer_0_cycles %= 1024;
                 self.timer_0.overflowing_add(delta as u8)
             }
             _ => unreachable!(),
@@ -196,22 +196,22 @@ impl Clock {
             }
             ClockSelect::Clk8 => {
                 let delta = self.timer_3_cycles / 8;
-                self.timer_3_cycles = self.timer_3_cycles % 8;
+                self.timer_3_cycles %= 8;
                 self.timer_3.overflowing_add(delta as u16)
             }
             ClockSelect::Clk64 => {
                 let delta = self.timer_3_cycles / 64;
-                self.timer_3_cycles = self.timer_3_cycles % 64;
+                self.timer_3_cycles %= 64;
                 self.timer_3.overflowing_add(delta as u16)
             }
             ClockSelect::Clk256 => {
                 let delta = self.timer_3_cycles / 256;
-                self.timer_3_cycles = self.timer_3_cycles % 256;
+                self.timer_3_cycles %= 256;
                 self.timer_3.overflowing_add(delta as u16)
             }
             ClockSelect::Clk1024 => {
                 let delta = self.timer_3_cycles / 1024;
-                self.timer_3_cycles = self.timer_3_cycles % 1024;
+                self.timer_3_cycles %= 1024;
                 self.timer_3.overflowing_add(delta as u16)
             }
             _ => unreachable!(),
@@ -226,19 +226,19 @@ impl Clock {
             }
             WaveGenMode::PWMPhaseCorrect8b => {
                 if self.timer_3 >= 0xff {
-                    self.timer_3 = self.timer_3 % 0xff;
+                    self.timer_3 %= 0xff;
                     self.timer_3_ovf_int = true;
                 }
             }
             WaveGenMode::PWMPhaseCorrect9b => {
                 if self.timer_3 >= 0x1ff {
-                    self.timer_3 = self.timer_3 % 0x1ff;
+                    self.timer_3 %= 0x1ff;
                     self.timer_3_ovf_int = true;
                 }
             }
             WaveGenMode::PWMPhaseCorrect10b => {
                 if self.timer_3 >= 0x3ff {
-                    self.timer_3 = self.timer_3 % 0x3ff;
+                    self.timer_3 %= 0x3ff;
                     self.timer_3_ovf_int = true;
                 }
             }
@@ -247,7 +247,7 @@ impl Clock {
                     if self.timer_3_ocra == 0 {
                         self.timer_3 = 0;
                     } else {
-                        self.timer_3 = self.timer_3 % self.timer_3_ocra;
+                        self.timer_3 %= self.timer_3_ocra;
                     }
                     self.timer_3_ovf_int = true;
                     self.timer_3_cmp_a_int = true;
@@ -258,7 +258,7 @@ impl Clock {
                     if self.timer_3_icr == 0 {
                         self.timer_3 = 0;
                     } else {
-                        self.timer_3 = self.timer_3 % self.timer_3_icr;
+                        self.timer_3 %= self.timer_3_icr;
                     }
                     self.timer_3_ovf_int = true;
                 }
@@ -307,7 +307,7 @@ impl Clock {
     pub fn set_reg_pllcsr(&mut self, v: u8) {
         self.pll_input_prescaler =
             PllInputPrescaler::from_u8(v & PllInputPrescaler::Mhz16 as u8).unwrap();
-        self.pll_enable = v & 0b0000_00010 != 0;
+        self.pll_enable = v & 0b0000_0010 != 0;
         if self.pll_enable {
             self.pll_lock_detector = true;
         }

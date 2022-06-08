@@ -1,5 +1,5 @@
-[build]
-target = "armv7-vita-eabihf"
+# [build]
+# target = "armv7-vita-eabihf"
 
 [target.armv7-vita-eabihf]
 linker = "arm-vita-eabi-ld"

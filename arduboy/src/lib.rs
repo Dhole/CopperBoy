@@ -1,5 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(dead_code)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::identity_op)]
+#![allow(clippy::upper_case_acronyms)]
 // #![no_std]
 
 // #[cfg(feature = "std")]

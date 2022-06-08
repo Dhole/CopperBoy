@@ -32,7 +32,7 @@ impl From<io::Error> for HexFileError {
 
 // Returns the address and the number of bytes written into `out`.
 pub fn decode_hex_line(line: &str, out: &mut [u8]) -> Result<Option<(u16, usize)>, HexFileError> {
-    if !line.starts_with(":") {
+    if !line.starts_with(':') {
         return Err(HexFileError::InvalidPrefix);
     }
     let line = line.as_bytes();
@@ -72,13 +72,13 @@ pub fn load_hex_file(core: &mut Core, path: &str) -> Result<(), HexFileError> {
     let mut out = [0u8; 32];
     for line in io::BufReader::new(file).lines() {
         let line = line?;
-        if line.len() == 0 {
+        if line.is_empty() {
             continue;
         }
         match decode_hex_line(line.as_str(), &mut out[..])? {
             Some((addr, len)) => {
-                for i in 0..len {
-                    core.flash_write(addr + i as u16, out[i]);
+                for (i, byte) in out.iter().enumerate().take(len) {
+                    core.flash_write(addr + i as u16, *byte);
                 }
             }
             None => {}
@@ -132,9 +132,9 @@ pub struct KeysState {
 impl KeysState {
     // returns (port_b, port_e, port_f)
     pub fn to_gpio(&self) -> (u8, u8, u8) {
-        let mut port_b = 0xff as u8;
-        let mut port_e = 0xff as u8;
-        let mut port_f = 0xff as u8;
+        let mut port_b = 0xff_u8;
+        let mut port_e = 0xff_u8;
+        let mut port_f = 0xff_u8;
         if self.left {
             port_f &= !PIN_LEFT;
         }

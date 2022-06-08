@@ -1,9 +1,10 @@
+/*
 #[allow(unused_assignments)]
 use std::env;
 use std::fs;
 use std::io::{self, BufRead};
 
-use hex;
+// use hex;
 
 use arduboy::opcodes::{Op, OpAddr};
 use arduboy::utils::decode_hex_line;
@@ -67,3 +68,6 @@ fn main() -> Result<(), io::Error> {
     }
     Ok(())
 }
+*/
+
+fn main() {}

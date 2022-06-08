@@ -180,30 +180,30 @@ fn test_decode() {
     assert_eq!(Op::Jmp { k: 0xffff }, Op::decode(0b1001_0100_1111_1101, 0xff_ff));
 
     // Ld { d: u8, idx: LdStIndex, ext: LdStExt },
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::X, ext: LdStExt::None    }, Op::decode(0b1001_0000_0000_1100, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::X, ext: LdStExt::None    }, Op::decode(0b1001_0001_1111_1100, 0));
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::X, ext: LdStExt::PostInc }, Op::decode(0b1001_0000_0000_1101, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::X, ext: LdStExt::PostInc }, Op::decode(0b1001_0001_1111_1101, 0));
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::X, ext: LdStExt::PreDec  }, Op::decode(0b1001_0000_0000_1110, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::X, ext: LdStExt::PreDec  }, Op::decode(0b1001_0001_1111_1110, 0));
+    assert_eq!(Op::LdX { d: 00, ext: LdStExt::None    }, Op::decode(0b1001_0000_0000_1100, 0));
+    assert_eq!(Op::LdX { d: 31, ext: LdStExt::None    }, Op::decode(0b1001_0001_1111_1100, 0));
+    assert_eq!(Op::LdX { d: 00, ext: LdStExt::PostInc }, Op::decode(0b1001_0000_0000_1101, 0));
+    assert_eq!(Op::LdX { d: 31, ext: LdStExt::PostInc }, Op::decode(0b1001_0001_1111_1101, 0));
+    assert_eq!(Op::LdX { d: 00, ext: LdStExt::PreDec  }, Op::decode(0b1001_0000_0000_1110, 0));
+    assert_eq!(Op::LdX { d: 31, ext: LdStExt::PreDec  }, Op::decode(0b1001_0001_1111_1110, 0));
 
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::Y, ext: LdStExt::PostInc          }, Op::decode(0b1001_0000_0000_1001, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::Y, ext: LdStExt::PostInc          }, Op::decode(0b1001_0001_1111_1001, 0));
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::Y, ext: LdStExt::PreDec           }, Op::decode(0b1001_0000_0000_1010, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::Y, ext: LdStExt::PreDec           }, Op::decode(0b1001_0001_1111_1010, 0));
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::Y, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0000_0000_1000, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::Y, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0001_1111_1000, 0));
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::Y, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1100_0000_1111, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::Y, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1101_1111_1111, 0));
+    assert_eq!(Op::LdY { d: 00, ext: LdStExt::PostInc          }, Op::decode(0b1001_0000_0000_1001, 0));
+    assert_eq!(Op::LdY { d: 31, ext: LdStExt::PostInc          }, Op::decode(0b1001_0001_1111_1001, 0));
+    assert_eq!(Op::LdY { d: 00, ext: LdStExt::PreDec           }, Op::decode(0b1001_0000_0000_1010, 0));
+    assert_eq!(Op::LdY { d: 31, ext: LdStExt::PreDec           }, Op::decode(0b1001_0001_1111_1010, 0));
+    assert_eq!(Op::LdY { d: 00, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0000_0000_1000, 0));
+    assert_eq!(Op::LdY { d: 31, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0001_1111_1000, 0));
+    assert_eq!(Op::LdY { d: 00, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1100_0000_1111, 0));
+    assert_eq!(Op::LdY { d: 31, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1101_1111_1111, 0));
 
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::Z, ext: LdStExt::PostInc          }, Op::decode(0b1001_0000_0000_0001, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::Z, ext: LdStExt::PostInc          }, Op::decode(0b1001_0001_1111_0001, 0));
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::Z, ext: LdStExt::PreDec           }, Op::decode(0b1001_0000_0000_0010, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::Z, ext: LdStExt::PreDec           }, Op::decode(0b1001_0001_1111_0010, 0));
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::Z, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0000_0000_0000, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::Z, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0001_1111_0000, 0));
-    assert_eq!(Op::Ld { d: 00, idx: LdStIndex::Z, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1100_0000_0111, 0));
-    assert_eq!(Op::Ld { d: 31, idx: LdStIndex::Z, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1101_1111_0111, 0));
+    assert_eq!(Op::LdZ { d: 00, ext: LdStExt::PostInc          }, Op::decode(0b1001_0000_0000_0001, 0));
+    assert_eq!(Op::LdZ { d: 31, ext: LdStExt::PostInc          }, Op::decode(0b1001_0001_1111_0001, 0));
+    assert_eq!(Op::LdZ { d: 00, ext: LdStExt::PreDec           }, Op::decode(0b1001_0000_0000_0010, 0));
+    assert_eq!(Op::LdZ { d: 31, ext: LdStExt::PreDec           }, Op::decode(0b1001_0001_1111_0010, 0));
+    assert_eq!(Op::LdZ { d: 00, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0000_0000_0000, 0));
+    assert_eq!(Op::LdZ { d: 31, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0001_1111_0000, 0));
+    assert_eq!(Op::LdZ { d: 00, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1100_0000_0111, 0));
+    assert_eq!(Op::LdZ { d: 31, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1101_1111_0111, 0));
 
     // Ldi { d: u8, k: u8 },
     assert_eq!(Op::Ldi { d: 16, k: 000 }, Op::decode(0b1110_0000_0000_0000, 0));
@@ -373,30 +373,30 @@ fn test_decode() {
     assert_eq!(Op::Spm2, Op::decode(0b1001_0101_1111_1000, 0));
 
     // St { r: u8, idx: LdStIndex, ext: LdStExt },
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::X, ext: LdStExt::None    }, Op::decode(0b1001_0010_0000_1100, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::X, ext: LdStExt::None    }, Op::decode(0b1001_0011_1111_1100, 0));
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::X, ext: LdStExt::PostInc }, Op::decode(0b1001_0010_0000_1101, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::X, ext: LdStExt::PostInc }, Op::decode(0b1001_0011_1111_1101, 0));
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::X, ext: LdStExt::PreDec  }, Op::decode(0b1001_0010_0000_1110, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::X, ext: LdStExt::PreDec  }, Op::decode(0b1001_0011_1111_1110, 0));
+    assert_eq!(Op::StX { r: 00, ext: LdStExt::None    }, Op::decode(0b1001_0010_0000_1100, 0));
+    assert_eq!(Op::StX { r: 31, ext: LdStExt::None    }, Op::decode(0b1001_0011_1111_1100, 0));
+    assert_eq!(Op::StX { r: 00, ext: LdStExt::PostInc }, Op::decode(0b1001_0010_0000_1101, 0));
+    assert_eq!(Op::StX { r: 31, ext: LdStExt::PostInc }, Op::decode(0b1001_0011_1111_1101, 0));
+    assert_eq!(Op::StX { r: 00, ext: LdStExt::PreDec  }, Op::decode(0b1001_0010_0000_1110, 0));
+    assert_eq!(Op::StX { r: 31, ext: LdStExt::PreDec  }, Op::decode(0b1001_0011_1111_1110, 0));
 
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::Y, ext: LdStExt::PostInc          }, Op::decode(0b1001_0010_0000_1001, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::Y, ext: LdStExt::PostInc          }, Op::decode(0b1001_0011_1111_1001, 0));
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::Y, ext: LdStExt::PreDec           }, Op::decode(0b1001_0010_0000_1010, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::Y, ext: LdStExt::PreDec           }, Op::decode(0b1001_0011_1111_1010, 0));
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::Y, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0010_0000_1000, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::Y, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0011_1111_1000, 0));
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::Y, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1110_0000_1111, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::Y, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1111_1111_1111, 0));
+    assert_eq!(Op::StY { r: 00, ext: LdStExt::PostInc          }, Op::decode(0b1001_0010_0000_1001, 0));
+    assert_eq!(Op::StY { r: 31, ext: LdStExt::PostInc          }, Op::decode(0b1001_0011_1111_1001, 0));
+    assert_eq!(Op::StY { r: 00, ext: LdStExt::PreDec           }, Op::decode(0b1001_0010_0000_1010, 0));
+    assert_eq!(Op::StY { r: 31, ext: LdStExt::PreDec           }, Op::decode(0b1001_0011_1111_1010, 0));
+    assert_eq!(Op::StY { r: 00, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0010_0000_1000, 0));
+    assert_eq!(Op::StY { r: 31, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0011_1111_1000, 0));
+    assert_eq!(Op::StY { r: 00, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1110_0000_1111, 0));
+    assert_eq!(Op::StY { r: 31, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1111_1111_1111, 0));
 
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::Z, ext: LdStExt::PostInc          }, Op::decode(0b1001_0010_0000_0001, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::Z, ext: LdStExt::PostInc          }, Op::decode(0b1001_0011_1111_0001, 0));
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::Z, ext: LdStExt::PreDec           }, Op::decode(0b1001_0010_0000_0010, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::Z, ext: LdStExt::PreDec           }, Op::decode(0b1001_0011_1111_0010, 0));
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::Z, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0010_0000_0000, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::Z, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0011_1111_0000, 0));
-    assert_eq!(Op::St { r: 00, idx: LdStIndex::Z, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1110_0000_0111, 0));
-    assert_eq!(Op::St { r: 31, idx: LdStIndex::Z, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1111_1111_0111, 0));
+    assert_eq!(Op::StZ { r: 00, ext: LdStExt::PostInc          }, Op::decode(0b1001_0010_0000_0001, 0));
+    assert_eq!(Op::StZ { r: 31, ext: LdStExt::PostInc          }, Op::decode(0b1001_0011_1111_0001, 0));
+    assert_eq!(Op::StZ { r: 00, ext: LdStExt::PreDec           }, Op::decode(0b1001_0010_0000_0010, 0));
+    assert_eq!(Op::StZ { r: 31, ext: LdStExt::PreDec           }, Op::decode(0b1001_0011_1111_0010, 0));
+    assert_eq!(Op::StZ { r: 00, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0010_0000_0000, 0));
+    assert_eq!(Op::StZ { r: 31, ext: LdStExt::Displacement(00) }, Op::decode(0b1000_0011_1111_0000, 0));
+    assert_eq!(Op::StZ { r: 00, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1110_0000_0111, 0));
+    assert_eq!(Op::StZ { r: 31, ext: LdStExt::Displacement(63) }, Op::decode(0b1010_1111_1111_0111, 0));
 
     // Sts { k: u16, r: u8 },
     assert_eq!(Op::Sts { r: 00, k: 0x0000 }, Op::decode(0b1001_0010_0000_0000, 0x00_00));

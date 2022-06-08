@@ -1,5 +1,5 @@
-#[cfg(feature = "stats")]
-use core::fmt::Write;
+// #[cfg(feature = "stats")]
+// use core::fmt::Write;
 #[cfg(feature = "stats")]
 use num_traits::{FromPrimitive, ToPrimitive};
 
@@ -20,9 +20,11 @@ use super::clock;
 use super::display;
 use super::eeprom;
 use super::int_vec::*;
-use super::io_regs::io_reg_str;
 use super::opcodes::*;
 use super::*;
+
+#[cfg(feature = "stats")]
+use super::io_regs::io_reg_str;
 
 #[derive(PartialEq, Serialize, Deserialize, Clone)]
 pub struct StatusRegister {
@@ -246,15 +248,20 @@ pub struct Stats {
     pub loads: Vec<usize>,
     pub stores: Vec<usize>,
     pub ops: Vec<usize>,
+    pub op_prev: Op,
+    pub ops2: Vec<usize>,
 }
 
 #[cfg(feature = "stats")]
 impl Stats {
     fn new() -> Self {
+        let ops_len = OpType::Undefined.to_usize().unwrap();
         Self {
             loads: vec![0; 0xb00],
             stores: vec![0; 0xb00],
-            ops: vec![0; OpType::Undefined.to_usize().unwrap()],
+            ops: vec![0; ops_len],
+            op_prev: Op::Nop,
+            ops2: vec![0; ops_len * ops_len],
         }
     }
 
@@ -318,6 +325,34 @@ impl Stats {
             writeln!(
                 out,
                 "{:<6}: {:width$}",
+                format!("{:?}", op),
+                count,
+                width = width
+            )?;
+        }
+
+        let ops_len = OpType::Undefined.to_usize().unwrap();
+        let mut ops2: Vec<((OpType, OpType), usize)> = self
+            .ops2
+            .iter()
+            .enumerate()
+            .map(|(op_num_2, count)| {
+                (
+                    (
+                        OpType::from_usize(op_num_2 % ops_len).unwrap(),
+                        OpType::from_usize(op_num_2 / ops_len).unwrap(),
+                    ),
+                    *count,
+                )
+            })
+            .collect();
+        ops2.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
+        writeln!(out, "\n# Ops x 2")?;
+        let width = format!("{}", ops2[0].1).len();
+        for (op, count) in ops2.iter().take(n_ops) {
+            writeln!(
+                out,
+                "{:<16}: {:width$}",
                 format!("{:?}", op),
                 count,
                 width = width
@@ -471,7 +506,7 @@ impl Core {
     }
 
     pub fn deserialize_post(&mut self) {
-        if let Some(_) = self.sleep {
+        if self.sleep.is_some() {
             self.program_ops[self.pc as usize] = Op::Zzz;
         }
         self.display.deserialize_post();
@@ -548,11 +583,7 @@ impl Core {
     }
 
     pub fn sleeping(&self) -> bool {
-        if let Some(_) = self.sleep {
-            true
-        } else {
-            false
-        }
+        self.sleep.is_some()
     }
 
     fn sleep_set(&mut self) {
@@ -1077,7 +1108,7 @@ impl Core {
         let (res, c) = ext.overflowing_add(k as u16);
         let (r15, rdh7) = (res & 1 << 15, ext & 1 << 15);
         self.status_reg.n = r15 != 0;
-        self.status_reg.v = !(rdh7 != 0) & (r15 != 0);
+        self.status_reg.v = (rdh7 == 0) & (r15 != 0);
         self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
         self.status_reg.c = c;
         self.status_reg.z = res == 0;
@@ -1892,7 +1923,7 @@ impl Core {
         let (res, c) = ext.overflowing_sub(k as u16);
         let (r15, rdh7) = (res & 1 << 15, ext & 1 << 15);
         self.status_reg.n = r15 != 0;
-        self.status_reg.v = (rdh7 != 0) & !(r15 != 0);
+        self.status_reg.v = (rdh7 != 0) & (r15 == 0);
         self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
         self.status_reg.c = c;
         self.status_reg.z = res == 0;
@@ -2054,10 +2085,16 @@ impl Core {
     }
     // 128. Exchange (XCH) (NOT APPLICABLE)
 
+    #[allow(unused_variables)]
     fn exec_op(&mut self, op: Op) -> usize {
         #[cfg(feature = "stats")]
         {
-            self.stats.ops[OpType::new_from_op(op).to_usize().unwrap()] += 1;
+            let op_type = OpType::new_from_op(op).to_usize().unwrap();
+            let op_type_prev = OpType::new_from_op(self.stats.op_prev).to_usize().unwrap();
+            let ops_len = OpType::Undefined.to_usize().unwrap();
+            self.stats.ops[op_type] += 1;
+            self.stats.ops2[op_type_prev + op_type * ops_len] += 1;
+            self.stats.op_prev = op;
         }
         match op {
             Op::Adc { d, r } => self.op_adc(d, r),

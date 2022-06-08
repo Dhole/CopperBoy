@@ -1,3 +1,4 @@
+/*
 #[allow(unused_assignments)]
 use std::env;
 use std::fs;
@@ -85,3 +86,6 @@ fn main() -> Result<(), io::Error> {
         core.step_hw(cycles);
     }
 }
+*/
+
+fn main() {}

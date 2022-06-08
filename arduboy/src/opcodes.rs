@@ -391,12 +391,12 @@ pub enum LdStIndex {
     Z,
 }
 
-impl Into<u8> for LdStIndex {
-    fn into(self) -> u8 {
-        match self {
-            Self::X => 26,
-            Self::Y => 28,
-            Self::Z => 30,
+impl From<LdStIndex> for u8 {
+    fn from(index: LdStIndex) -> u8 {
+        match index {
+            LdStIndex::X => 26,
+            LdStIndex::Y => 28,
+            LdStIndex::Z => 30,
         }
     }
 }
@@ -1124,7 +1124,7 @@ impl OpAddr {
             _ => return None,
         };
         Some(OpAddrAlt {
-            op: self.op.clone(),
+            op: self.op,
             addr: self.addr,
         })
     }
