@@ -134,14 +134,17 @@ impl Display {
         self.frame = vec![0; WIDTH * HEIGTH];
     }
 
+    #[inline(always)]
     pub fn set_dc(&mut self, value: bool) {
         self.dc = value;
     }
 
+    #[inline(always)]
     pub fn dc(&self) -> bool {
         self.dc
     }
 
+    #[inline(always)]
     fn inc_col(&mut self) -> bool {
         self.col_rel += 1;
         if self.col_rel == self.column_range {
@@ -152,6 +155,7 @@ impl Display {
         }
     }
 
+    #[inline(always)]
     fn inc_page(&mut self) -> bool {
         self.page += 1;
         if self.page == HEIGTH / 8 {
@@ -162,6 +166,7 @@ impl Display {
         }
     }
 
+    #[inline(always)]
     fn paint_8pixels(&mut self, pixels: u8) {
         self.fb[self.page * WIDTH + self.col_rel + self.column_start] = pixels;
         match self.addr_mode {
@@ -181,6 +186,7 @@ impl Display {
         }
     }
 
+    #[inline(always)]
     fn command(&mut self, cmd: u8) {
         match self.cmd_state {
             CmdState::None => match cmd {
@@ -385,6 +391,7 @@ impl Display {
         }
     }
 
+    #[inline(always)]
     pub fn spi_write(&mut self, w: u8) {
         if self.dc {
             // println!("DBG spi write data {}", w);
@@ -395,6 +402,7 @@ impl Display {
         }
     }
 
+    #[inline(always)]
     pub fn render(&mut self) {
         if !self.on {
             for i in 0..WIDTH * HEIGTH {
@@ -420,6 +428,7 @@ impl Display {
     }
 }
 
+#[inline(always)]
 fn draw_8px(frame: &mut [u16], pixels: u8, x: usize, row: usize, flip_v: bool) {
     let x = if flip_v { WIDTH - 1 - x } else { x };
     for dy in 0..8 {

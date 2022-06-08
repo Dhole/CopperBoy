@@ -1040,6 +1040,7 @@ impl Core {
     }
 
     /// Store a word into the User Data Space
+    #[inline(always)]
     fn data_store_u16(&mut self, addr: u16, v: u16) {
         let bytes = v.to_le_bytes();
         self.data_store(addr, bytes[0]);
@@ -1047,6 +1048,7 @@ impl Core {
     }
 
     /// Push a word into the stack
+    #[inline(always)]
     fn push_u16(&mut self, v: u16) {
         let bytes = v.to_le_bytes();
         // self.sram[(self.sp - SRAM_ADDR - 1) as usize] = bytes[0];
@@ -1057,6 +1059,7 @@ impl Core {
     }
 
     /// Pop a word from the stack
+    #[inline(always)]
     fn pop_u16(&mut self) -> u16 {
         self.sp += 2;
         u16::from_le_bytes([

@@ -117,6 +117,7 @@ impl Clock {
         }
     }
 
+    #[inline(always)]
     pub fn step_timer_0(&mut self, cycles: usize) {
         match self.timer_0_clock_select {
             ClockSelect::No => return,
@@ -180,6 +181,7 @@ impl Clock {
         }
     }
 
+    #[inline(always)]
     pub fn step_timer_3(&mut self, cycles: usize) {
         match self.timer_3_clock_select {
             ClockSelect::No => return,
@@ -270,11 +272,13 @@ impl Clock {
         }
     }
 
+    #[inline(always)]
     pub fn step(&mut self, cycles: usize) {
         self.step_timer_0(cycles);
         self.step_timer_3(cycles);
     }
 
+    #[inline(always)]
     pub fn int(&self) -> u64 {
         let mut bitmap = 0;
         if self.timer_0_ovf_int_enable && self.timer_0_ovf_int {
@@ -289,6 +293,7 @@ impl Clock {
         bitmap
     }
 
+    #[inline(always)]
     pub fn clear_int(&mut self, int: Interrupt) {
         match int {
             Interrupt::Timer0CompA => self.timer_0_cmp_a_int = false,
@@ -300,10 +305,12 @@ impl Clock {
         }
     }
 
+    #[inline(always)]
     pub fn reg_pllcsr(&self) -> u8 {
         self.pll_input_prescaler as u8 | (self.pll_enable as u8) << 1 | self.pll_lock_detector as u8
     }
 
+    #[inline(always)]
     pub fn set_reg_pllcsr(&mut self, v: u8) {
         self.pll_input_prescaler =
             PllInputPrescaler::from_u8(v & PllInputPrescaler::Mhz16 as u8).unwrap();
@@ -313,35 +320,43 @@ impl Clock {
         }
     }
 
+    #[inline(always)]
     pub fn reg_tccr0a(&self) -> u8 {
         self.timer_0_mode as u8
     }
 
+    #[inline(always)]
     pub fn set_reg_tccr0a(&mut self, v: u8) {
         self.timer_0_mode = Mode::from_u8(v & 0b11).unwrap();
     }
 
+    #[inline(always)]
     pub fn reg_tccr0b(&self) -> u8 {
         self.timer_0_clock_select as u8
     }
 
+    #[inline(always)]
     pub fn set_reg_tccr0b(&mut self, v: u8) {
         self.timer_0_clock_select = ClockSelect::from_u8(v & 0b111).unwrap();
     }
 
+    #[inline(always)]
     pub fn reg_tccr3a(&self) -> u8 {
         self.timer_3_wgm as u8
     }
 
+    #[inline(always)]
     pub fn set_reg_tccr3a(&mut self, v: u8) {
         self.timer_3_wgm =
             WaveGenMode::from_u8((self.timer_3_wgm as u8 & 0b0000_1100) | v & 0b11).unwrap()
     }
 
+    #[inline(always)]
     pub fn reg_tccr3b(&self) -> u8 {
         self.timer_3_clock_select as u8
     }
 
+    #[inline(always)]
     pub fn set_reg_tccr3b(&mut self, v: u8) {
         self.timer_3_clock_select = ClockSelect::from_u8(v & 0b111).unwrap();
         self.timer_3_wgm =
@@ -349,18 +364,21 @@ impl Clock {
                 .unwrap();
     }
 
+    #[inline(always)]
     pub fn reg_timsk0(&self) -> u8 {
         (self.timer_0_cmp_b_int_enable as u8) << 2
             | (self.timer_0_cmp_a_int_enable as u8) << 1
             | (self.timer_0_ovf_int_enable as u8) << 0
     }
 
+    #[inline(always)]
     pub fn set_reg_timsk0(&mut self, v: u8) {
         self.timer_0_cmp_b_int_enable = (v & 1 << 2) != 0;
         self.timer_0_cmp_a_int_enable = (v & 1 << 1) != 0;
         self.timer_0_ovf_int_enable = (v & 1 << 0) != 0;
     }
 
+    #[inline(always)]
     pub fn reg_timsk3(&self) -> u8 {
         (self.timer_3_cmp_c_int_enable as u8) << 3
             | (self.timer_3_cmp_b_int_enable as u8) << 2
@@ -368,6 +386,7 @@ impl Clock {
             | (self.timer_3_ovf_int_enable as u8) << 0
     }
 
+    #[inline(always)]
     pub fn set_reg_timsk3(&mut self, v: u8) {
         self.timer_3_cmp_c_int_enable = (v & 1 << 3) != 0;
         self.timer_3_cmp_b_int_enable = (v & 1 << 2) != 0;
@@ -375,39 +394,47 @@ impl Clock {
         self.timer_3_ovf_int_enable = (v & 1 << 0) != 0;
     }
 
+    #[inline(always)]
     pub fn reg_tcnt0(&self) -> u8 {
         self.timer_0
     }
 
+    #[inline(always)]
     pub fn set_reg_tcnt0(&mut self, v: u8) {
         self.timer_0 = v;
     }
 
+    #[inline(always)]
     pub fn set_reg_tcnt3h(&mut self, v: u8) {
         self.timer_3 &= 0x00ff;
         self.timer_3 |= (v as u16) << 8;
     }
 
+    #[inline(always)]
     pub fn set_reg_tcnt3l(&mut self, v: u8) {
         self.timer_3 &= 0xff00;
         self.timer_3 |= v as u16;
     }
 
+    #[inline(always)]
     pub fn set_reg_icr3h(&mut self, v: u8) {
         self.timer_3_icr &= 0x00ff;
         self.timer_3_icr |= (v as u16) << 8;
     }
 
+    #[inline(always)]
     pub fn set_reg_icr3l(&mut self, v: u8) {
         self.timer_3_icr &= 0xff00;
         self.timer_3_icr |= v as u16;
     }
 
+    #[inline(always)]
     pub fn set_reg_ocr3ah(&mut self, v: u8) {
         self.timer_3_ocra &= 0x00ff;
         self.timer_3_ocra |= (v as u16) << 8;
     }
 
+    #[inline(always)]
     pub fn set_reg_ocr3al(&mut self, v: u8) {
         self.timer_3_ocra &= 0xff00;
         self.timer_3_ocra |= v as u16;
