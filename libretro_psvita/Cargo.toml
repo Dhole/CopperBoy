@@ -8,8 +8,8 @@ edition = "2021"
 
 [dependencies]
 libretro = { path = "../libretro", default-features  = false}
-# vitallocator = { path = "/home/dev/git/vitallocator" }
-vitallocator = { git = "https://github.com/Dhole/vitallocator", rev = "cfd7f8d88a10254ebe9673fb2aa76501f425b68f" }
+vitallocator = { path = "/home/dev/git/vitallocator" }
+# vitallocator = { git = "https://github.com/Dhole/vitallocator", rev = "cfd7f8d88a10254ebe9673fb2aa76501f425b68f" }
 # libretro = { path = "../libretro"}
 
 [lib]

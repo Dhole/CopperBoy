@@ -96,6 +96,7 @@ impl Emulator {
         Ok(())
     }
 
+    /// Run the emulator for the duration of a frame (approximately).
     pub fn run(&mut self, keys_state: &KeysState) {
         let cycles_per_sample = self.cpu_freq / AUDIO_SAMPLE_FREQ;
         for s in self.samples.iter_mut() {
