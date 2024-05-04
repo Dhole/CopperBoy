@@ -31,6 +31,8 @@ use sdl2::render::TextureQuery;
 // use serde_json;
 // use rand::{self, RngCore};
 
+const FONT_DATA: &[u8] = include_bytes!("../../assets/Inconsolata.ttf");
+
 use clap::{App, Arg};
 
 #[derive(Debug)]
@@ -170,8 +172,6 @@ pub fn main() -> Result<(), FrontError> {
         None => vec![],
     };
 
-    let font_path: &Path = Path::new("./assets/DejaVuSansMono.ttf");
-
     let mut core = Core::new();
     load_hex_file(&mut core, path)?;
 
@@ -221,7 +221,8 @@ pub fn main() -> Result<(), FrontError> {
 
     let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
 
-    let mut font = ttf_context.load_font(font_path, 128)?;
+    let font_rwops = sdl2::rwops::RWops::from_bytes(FONT_DATA)?;
+    let mut font = ttf_context.load_font_from_rwops(font_rwops, 128)?;
     font.set_style(sdl2::ttf::FontStyle::NORMAL);
 
     canvas.set_draw_color(Color::RGB(0, 0, 0));
