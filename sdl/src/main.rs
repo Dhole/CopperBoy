@@ -1,7 +1,6 @@
 #![allow(unused_assignments)]
 
 use std::fs::File;
-use std::io;
 use std::io::{Read, Write};
 // use std::env;
 // use std::fs;
@@ -16,7 +15,7 @@ use arduboy::display::{HEIGTH, WIDTH};
 use arduboy::keys::*;
 use arduboy::mcu::{Core, GPIOPort};
 use arduboy::opcodes::{Op, OpAddr};
-use arduboy::utils::{load_hex_file, HexFileError, Key, KeyEvent};
+use arduboy::utils::{load_hex_file, Key, KeyEvent};
 
 // use sdl2::audio::{AudioCallback, AudioSpecDesired};
 use sdl2::audio::{AudioCallback, AudioSpecDesired};
@@ -36,49 +35,19 @@ const FONT_DATA: &[u8] = include_bytes!("../../assets/Inconsolata.ttf");
 use clap::{App, Arg};
 
 #[derive(Debug)]
-pub enum FrontError {
-    SDL2(String),
-    HexFile(HexFileError),
-    Ron(ron::error::Error, Option<ron::error::Position>),
-    Postcard(postcard::Error),
-    Io(io::Error),
-}
+pub struct SDL2Error(pub String);
 
-impl From<String> for FrontError {
-    fn from(err: String) -> Self {
-        Self::SDL2(err)
+impl std::fmt::Display for SDL2Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
-impl From<HexFileError> for FrontError {
-    fn from(err: HexFileError) -> Self {
-        Self::HexFile(err)
-    }
+fn sdl2_err(s: String) -> SDL2Error {
+    SDL2Error(s)
 }
 
-impl From<ron::error::SpannedError> for FrontError {
-    fn from(err: ron::error::SpannedError) -> Self {
-        Self::Ron(err.code, Some(err.position))
-    }
-}
-
-impl From<ron::error::Error> for FrontError {
-    fn from(err: ron::error::Error) -> Self {
-        Self::Ron(err, None)
-    }
-}
-
-impl From<postcard::Error> for FrontError {
-    fn from(err: postcard::Error) -> Self {
-        Self::Postcard(err)
-    }
-}
-
-impl From<io::Error> for FrontError {
-    fn from(err: io::Error) -> Self {
-        Self::Io(err)
-    }
-}
+impl std::error::Error for SDL2Error {}
 
 const SAMPLE_SIZE: u16 = 735;
 struct AudioSample {
@@ -101,7 +70,7 @@ impl AudioCallback for AudioSample {
     }
 }
 
-pub fn main() -> Result<(), FrontError> {
+pub fn main() -> anyhow::Result<()> {
     env_logger::init();
     let app = App::new("Copperboy")
         .version("0.0.1")
@@ -184,10 +153,10 @@ pub fn main() -> Result<(), FrontError> {
         .map(|p| Path::new(p).to_path_buf())
         .unwrap_or_else(|| Path::new(path).with_extension("sav"));
 
-    let sdl_context = sdl2::init()?;
-    let video_subsystem = sdl_context.video()?;
+    let sdl_context = sdl2::init().map_err(sdl2_err)?;
+    let video_subsystem = sdl_context.video().map_err(sdl2_err)?;
     let audio_subsystem = sdl_context.audio().unwrap();
-    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
+    let ttf_context = sdl2::ttf::init()?;
 
     // const AUDIO_FREQ: i32 = 44100;
     const AUDIO_FREQ: i32 = 44100;
@@ -216,32 +185,32 @@ pub fn main() -> Result<(), FrontError> {
         .window("Copperboy", WIDTH as u32 * scale, HEIGTH as u32 * scale)
         .position_centered()
         .opengl()
-        .build()
-        .map_err(|e| e.to_string())?;
+        .build()?;
 
-    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+    let mut canvas = window.into_canvas().build()?;
 
-    let font_rwops = sdl2::rwops::RWops::from_bytes(FONT_DATA)?;
-    let mut font = ttf_context.load_font_from_rwops(font_rwops, 128)?;
+    let font_rwops = sdl2::rwops::RWops::from_bytes(FONT_DATA).map_err(sdl2_err)?;
+    let mut font = ttf_context
+        .load_font_from_rwops(font_rwops, 128)
+        .map_err(sdl2_err)?;
     font.set_style(sdl2::ttf::FontStyle::NORMAL);
 
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
     canvas.present();
-    let mut event_pump = sdl_context.event_pump()?;
+    let mut event_pump = sdl_context.event_pump().map_err(sdl2_err)?;
 
     let texture_creator = canvas.texture_creator();
-    let mut tex_display = texture_creator
-        .create_texture_streaming(PixelFormatEnum::RGB24, WIDTH as u32, HEIGTH as u32)
-        .map_err(|e| e.to_string())?;
+    let mut tex_display = texture_creator.create_texture_streaming(
+        PixelFormatEnum::RGB24,
+        WIDTH as u32,
+        HEIGTH as u32,
+    )?;
 
     let mut surf_fps = font
         .render(format!("{:02.0}", 0).as_str())
-        .blended(Color::RGBA(100, 200, 100, 200))
-        .map_err(|e| e.to_string())?;
-    let mut tex_fps = texture_creator
-        .create_texture_from_surface(&surf_fps)
-        .map_err(|e| e.to_string())?;
+        .blended(Color::RGBA(100, 200, 100, 200))?;
+    let mut tex_fps = texture_creator.create_texture_from_surface(&surf_fps)?;
 
     let frame_exp_dur = Duration::from_nanos(1_000_000_000u64 / 60);
     let mut now_end_frame = Instant::now();
@@ -567,49 +536,50 @@ pub fn main() -> Result<(), FrontError> {
 
         core.display.render();
 
-        tex_display.with_lock(None, |buffer: &mut [u8], pitch: usize| {
-            for y in 0..HEIGTH {
-                for x in 0..WIDTH {
-                    let offset = y * pitch + x * 3;
-                    if core.display.frame[y * WIDTH + x] != 0 {
-                        buffer[offset] = 255;
-                        buffer[offset + 1] = 255;
-                        buffer[offset + 2] = 255;
-                    } else {
-                        buffer[offset] = 0;
-                        buffer[offset + 1] = 0;
-                        buffer[offset + 2] = 0;
+        tex_display
+            .with_lock(None, |buffer: &mut [u8], pitch: usize| {
+                for y in 0..HEIGTH {
+                    for x in 0..WIDTH {
+                        let offset = y * pitch + x * 3;
+                        if core.display.frame[y * WIDTH + x] != 0 {
+                            buffer[offset] = 255;
+                            buffer[offset + 1] = 255;
+                            buffer[offset + 2] = 255;
+                        } else {
+                            buffer[offset] = 0;
+                            buffer[offset + 1] = 0;
+                            buffer[offset + 2] = 0;
+                        }
                     }
                 }
-            }
-        })?;
+            })
+            .map_err(sdl2_err)?;
 
         canvas.clear();
-        canvas.copy(&tex_display, None, None)?;
+        canvas.copy(&tex_display, None, None).map_err(sdl2_err)?;
 
         // Update frame rate texture every k frames
         if frame % 10 == 0 {
             surf_fps = font
                 .render(format!("{:02.0}", fps).as_str())
-                .blended(Color::RGBA(100, 200, 100, 200))
-                .map_err(|e| e.to_string())?;
-            tex_fps = texture_creator
-                .create_texture_from_surface(&surf_fps)
-                .map_err(|e| e.to_string())?;
+                .blended(Color::RGBA(100, 200, 100, 200))?;
+            tex_fps = texture_creator.create_texture_from_surface(&surf_fps)?
         }
         // Render frame rate
         let TextureQuery { width, height, .. } = tex_fps.query();
         const PADDING: i32 = 1;
-        canvas.copy(
-            &tex_fps,
-            None,
-            Some(Rect::new(
-                PADDING * scale as i32,
-                PADDING * scale as i32,
-                width / 16 * scale,
-                height / 16 * scale,
-            )),
-        )?;
+        canvas
+            .copy(
+                &tex_fps,
+                None,
+                Some(Rect::new(
+                    PADDING * scale as i32,
+                    PADDING * scale as i32,
+                    width / 16 * scale,
+                    height / 16 * scale,
+                )),
+            )
+            .map_err(sdl2_err)?;
 
         canvas.present();
         frame += 1;

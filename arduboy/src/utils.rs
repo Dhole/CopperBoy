@@ -17,6 +17,24 @@ pub enum HexFileError {
     Io(io::Error),
 }
 
+#[cfg(feature = "std")]
+impl std::fmt::Display for HexFileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for HexFileError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io(err) => Some(err),
+            Self::HexDecode(err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
 impl From<hex::FromHexError> for HexFileError {
     fn from(err: hex::FromHexError) -> Self {
         Self::HexDecode(err)
