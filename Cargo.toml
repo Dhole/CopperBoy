@@ -9,9 +9,11 @@ members = [
     "libretro_psvita",
 ]
 
+resolver = "2"
+
 [profile.release]
-debug = true
-panic = 'abort'
+# debug = true
+# panic = 'abort'
 # lto = true
 # lto = "fat"
 # codegen-units = 1
