@@ -42,7 +42,7 @@ pub fn decode_hex_line(line: &str, out: &mut [u8]) -> Result<Option<(u16, usize)
     }
     let mut buf = [0u8; 32];
     let buf = &mut buf[..line.len() / 2];
-    hex::decode_to_slice(&line, &mut buf[..line.len() / 2])?;
+    hex::decode_to_slice(line, &mut buf[..line.len() / 2])?;
     let len = buf[0] as usize;
     let addr = u16::from_be_bytes([buf[1], buf[2]]);
     let rtype = buf[3];
@@ -75,13 +75,10 @@ pub fn load_hex_file(core: &mut Core, path: &str) -> Result<(), HexFileError> {
         if line.is_empty() {
             continue;
         }
-        match decode_hex_line(line.as_str(), &mut out[..])? {
-            Some((addr, len)) => {
-                for (i, byte) in out.iter().enumerate().take(len) {
-                    core.flash_write(addr + i as u16, *byte);
-                }
+        if let Some((addr, len)) = decode_hex_line(line.as_str(), &mut out[..])? {
+            for (i, byte) in out.iter().enumerate().take(len) {
+                core.flash_write(addr + i as u16, *byte);
             }
-            None => {}
         }
     }
     Ok(())
@@ -161,7 +158,7 @@ impl KeysState {
 pub fn replay_keys_state(
     frame: usize,
     replay_index: usize,
-    replay: &Vec<KeyEvent>,
+    replay: &[KeyEvent],
     keys_state: &mut KeysState,
 ) -> usize {
     let mut replay_index = replay_index;

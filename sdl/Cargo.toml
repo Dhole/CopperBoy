@@ -8,14 +8,14 @@ edition = "2021"
 
 [dependencies]
 arduboy = { path = "../arduboy", features = ["std", "vec_unchecked", "stats"]}
-hex = "0.3.2"
-env_logger = "0.7.0"
-clap = "2.33.0"
+hex = { workspace = true, default-features = true }
+env_logger = "0.11.0"
+clap = "2.33.0" # TODO: Update
 # serde_json = { version = "1.0" }
-ron = "0.6.4"
-postcard = { version= "0.7" }
+ron = { workspace = true }
+postcard = { workspace = true }
 
 [dependencies.sdl2]
-version = "0.35.0"
+version = "0.36"
 default-features = false
 features = ["ttf"]

@@ -11,6 +11,11 @@ members = [
 
 resolver = "2"
 
+[workspace.dependencies]
+ron = "0.8"
+postcard = { version = "1.0" }
+hex = { version = "0.4", default-features = false }
+
 [profile.release]
 # debug = true
 # panic = 'abort'

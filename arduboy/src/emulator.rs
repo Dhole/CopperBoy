@@ -61,13 +61,10 @@ impl Emulator {
             if line.is_empty() {
                 continue;
             }
-            match decode_hex_line(line, &mut out[..])? {
-                Some((addr, len)) => {
-                    for (i, byte) in out.iter().enumerate().take(len) {
-                        self.core.flash_write(addr + i as u16, *byte);
-                    }
+            if let Some((addr, len)) = decode_hex_line(line, &mut out[..])? {
+                for (i, byte) in out.iter().enumerate().take(len) {
+                    self.core.flash_write(addr + i as u16, *byte);
                 }
-                None => {}
             }
         }
         self.core.reset();

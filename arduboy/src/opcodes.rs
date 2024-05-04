@@ -889,7 +889,7 @@ pub struct OpAddr {
 }
 
 #[cfg(feature = "std")]
-impl<'a> fmt::Display for OpAddr {
+impl fmt::Display for OpAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pc = self.addr >> 1;
         match self.op {
@@ -903,12 +903,12 @@ impl<'a> fmt::Display for OpAddr {
             Op::Bld { d, b } => write!(f, "BLD R{}, {}", d, b),
             Op::Brbc { s, k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
-                let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
+                let (pc1, _) = pc1.overflowing_add(k as i16);
                 write!(f, "BRBC {}, 0x{:04x}; k={}", s, (pc1 as u16) << 1, k)
             }
             Op::Brbs { s, k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
-                let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
+                let (pc1, _) = pc1.overflowing_add(k as i16);
                 write!(f, "BRBS {}, 0x{:04x}; k={}", s, (pc1 as u16) << 1, k)
             }
             Op::Break => write!(f, "BREAK"),
@@ -1015,14 +1015,14 @@ impl<'a> fmt::Display for OpAddr {
             Op::Push { r } => write!(f, "PUSH R{}", r),
             Op::Rcall { k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
-                let (pc1, _) = (pc1 as i16).overflowing_add(k);
+                let (pc1, _) = pc1.overflowing_add(k);
                 write!(f, "RCALL 0x{:04x}; k={}", (pc1 as u16) << 1, k)
             }
             Op::Ret => write!(f, "RET"),
             Op::Reti => write!(f, "RETI"),
             Op::Rjmp { k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
-                let (pc1, _) = (pc1 as i16).overflowing_add(k);
+                let (pc1, _) = pc1.overflowing_add(k);
                 write!(f, "RJMP 0x{:04x}; k={}", (pc1 as u16) << 1, k)
             }
             Op::Ror { d } => write!(f, "ROR R{}", d),
@@ -1131,7 +1131,7 @@ impl OpAddr {
 }
 
 #[cfg(feature = "std")]
-impl<'a> fmt::Display for OpAddrAlt {
+impl fmt::Display for OpAddrAlt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pc = self.addr >> 1;
         match self.op {
@@ -1159,7 +1159,7 @@ impl<'a> fmt::Display for OpAddrAlt {
             },
             Op::Brbs { s, k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
-                let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
+                let (pc1, _) = pc1.overflowing_add(k as i16);
                 match s {
                     0 => write!(f, "BRLO/BRCS")?,
                     1 => write!(f, "BREQ")?,
@@ -1175,7 +1175,7 @@ impl<'a> fmt::Display for OpAddrAlt {
             }
             Op::Brbc { s, k } => {
                 let (pc1, _) = (pc as i16).overflowing_add(1);
-                let (pc1, _) = (pc1 as i16).overflowing_add(k as i16);
+                let (pc1, _) = pc1.overflowing_add(k as i16);
                 match s {
                     0 => write!(f, "BRSH/BRCC")?,
                     1 => write!(f, "BRNE")?,

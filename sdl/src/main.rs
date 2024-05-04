@@ -37,7 +37,7 @@ use clap::{App, Arg};
 pub enum FrontError {
     SDL2(String),
     HexFile(HexFileError),
-    Serde(ron::Error),
+    Ron(ron::error::Error, Option<ron::error::Position>),
     Postcard(postcard::Error),
     Io(io::Error),
 }
@@ -54,9 +54,15 @@ impl From<HexFileError> for FrontError {
     }
 }
 
-impl From<ron::Error> for FrontError {
-    fn from(err: ron::Error) -> Self {
-        Self::Serde(err)
+impl From<ron::error::SpannedError> for FrontError {
+    fn from(err: ron::error::SpannedError) -> Self {
+        Self::Ron(err.code, Some(err.position))
+    }
+}
+
+impl From<ron::error::Error> for FrontError {
+    fn from(err: ron::error::Error) -> Self {
+        Self::Ron(err, None)
     }
 }
 

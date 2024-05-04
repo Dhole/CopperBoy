@@ -1771,7 +1771,7 @@ impl Core {
     fn op_rcall(&mut self, k: i16) -> usize {
         self.push_u16(self.pc + 1);
         let (pc, _) = (self.pc as i16).overflowing_add(k);
-        let (pc, _) = (pc as i16).overflowing_add(1);
+        let (pc, _) = pc.overflowing_add(1);
         self.pc = pc as u16;
         self.branch = true;
         3
@@ -1800,7 +1800,7 @@ impl Core {
     #[inline(always)]
     fn op_rjmp(&mut self, k: i16) -> usize {
         let (pc, _) = (self.pc as i16).overflowing_add(k);
-        let (pc, _) = (pc as i16).overflowing_add(1);
+        let (pc, _) = pc.overflowing_add(1);
         self.pc = pc as u16;
         self.branch = true;
         2
