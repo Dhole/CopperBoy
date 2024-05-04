@@ -1,5 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(dead_code)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::identity_op)]
+#![allow(clippy::upper_case_acronyms)]
 // #![no_std]
 
 // #[cfg(feature = "std")]
@@ -13,42 +16,42 @@ extern crate num_derive;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "logging")]
 macro_rules! debug {
     ($($arg:tt)+) => (
         log::debug!($($arg)+)
     )
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "logging"))]
 macro_rules! debug {
     ($($arg:tt)+) => {
         ()
     };
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "logging")]
 macro_rules! warn {
     ($($arg:tt)+) => (
         log::warn!($($arg)+)
     )
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "logging"))]
 macro_rules! warn {
     ($($arg:tt)+) => {
         ()
     };
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "logging")]
 macro_rules! info {
     ($($arg:tt)+) => (
         log::info!($($arg)+)
     )
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "logging"))]
 macro_rules! info {
     ($($arg:tt)+) => {
         ()

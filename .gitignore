@@ -1,6 +1,9 @@
-/target
+**/target
 roms/*
 flamegraph.svg
 perf.data
 perf.data.old
 .ccls-cache/*
+callgrind.*
+dump.*
+**/*.so

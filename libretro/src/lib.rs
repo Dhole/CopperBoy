@@ -25,9 +25,8 @@ const BYTES_PIXEL: usize = 2;
 
 #[allow(non_upper_case_globals)]
 static mut emulator: Option<Emulator> = None;
-#[allow(non_upper_case_globals)]
-static mut framebuffer: [u8; (WIDTH * HEIGTH * BYTES_PIXEL) as usize] =
-    [0; (WIDTH * HEIGTH * BYTES_PIXEL) as usize];
+// #[allow(non_upper_case_globals)]
+// static mut framebuffer: [u16; (WIDTH * HEIGTH) as usize] = [0; (WIDTH * HEIGTH) as usize];
 
 #[allow(non_upper_case_globals)]
 static mut callback_video_refresh: retro_video_refresh_t = None;
@@ -82,14 +81,21 @@ pub fn retro_set_input_state(cb: retro_input_state_t) {
 pub fn retro_set_controller_port_device(_port: c_uint, _device: c_uint) {}
 
 pub fn retro_serialize_size() -> size_t {
-    0
+    let emu = unsafe { emulator.as_mut().unwrap() };
+    emu.serialize_len().unwrap() as size_t
 }
 
-pub fn retro_serialize(_data: *mut c_void, _size: size_t) -> bool {
-    false
+pub fn retro_serialize(data: *mut c_void, size: size_t) -> bool {
+    let emu = unsafe { emulator.as_mut().unwrap() };
+    let bin = unsafe { core::slice::from_raw_parts_mut(data as *mut u8, size as usize) };
+    emu.serialize(bin).unwrap();
+    true
 }
-pub fn retro_unserialize(_data: *const c_void, _size: size_t) -> bool {
-    false
+pub fn retro_unserialize(data: *const c_void, size: size_t) -> bool {
+    let emu = unsafe { emulator.as_mut().unwrap() };
+    let bin = unsafe { core::slice::from_raw_parts(data as *const u8, size as usize) };
+    emu.deserialize(bin).unwrap();
+    true
 }
 pub fn retro_cheat_reset() {}
 pub fn retro_cheat_set(_index: c_uint, _enabled: bool, _code: *const c_char) {}
@@ -257,23 +263,21 @@ pub fn retro_run() {
     // println!(">>> A");
     emu.run(&keys_state);
     // println!(">>> B");
-    let fb = unsafe { framebuffer.as_mut() };
-    for y in 0..HEIGTH {
-        for x in 0..WIDTH {
-            let offset = (y * WIDTH + x) * BYTES_PIXEL;
-            if emu.core.display.frame[y * WIDTH + x] == 1 {
-                fb[offset] = 255;
-                fb[offset + 1] = 255;
-            } else {
-                fb[offset] = 0;
-                fb[offset + 1] = 0;
-            }
-        }
-    }
+    // let fb = unsafe { framebuffer.as_mut() };
+    // for y in 0..HEIGTH {
+    //     for x in 0..WIDTH {
+    //         let offset = (y * WIDTH + x);
+    //         if emu.core.display.frame[y * WIDTH + x] != 0 {
+    //             fb[offset] = 0xffff;
+    //         } else {
+    //             fb[offset] = 0x0000;
+    //         }
+    //     }
+    // }
     // println!(">>> C");
     unsafe {
         cb_video_refresh(
-            fb.as_ptr() as *const c_void,
+            emu.core.display.frame.as_ptr() as *const c_void,
             WIDTH as u32,
             HEIGTH as u32,
             (WIDTH * BYTES_PIXEL) as size_t,

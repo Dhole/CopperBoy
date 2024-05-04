@@ -2,25 +2,26 @@
 name = "arduboy"
 version = "0.1.0"
 authors = ["Dhole <dhole@riseup.net>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# hex = { version = "0.4", default-features = false }
-hex = { git = "https://github.com/KokaKiwi/rust-hex", default-features = false, rev = "a354af249b95c476057baec455314d2fb9f52ffa" }
-log = { version = "0.4.8", optional = true, default-features = false }
+hex = { version = "0.4.3", default-features = false }
+log = { version = "0.4.17", optional = true, default-features = false }
 # env_logger = "0.7.0"
 num-traits = { version = "0.2", default-features = false }
 num-derive = "0.3"
 crunchy = "0.2.2"
 # serde_json = { version = "1.0", optional = true }
-serde = { version = "1.0.123", default-features = false, features = ["derive", "alloc"] }
-postcard = { version= "0.5.2" }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+postcard = { version= "0.7" }
+static_assertions = { version = "1.1" }
 
 [features]
 default = ["std"]
-std = ["hex/std", "log", "postcard/use-std"]
+std = ["hex/std", "postcard/use-std"]
+logging = ["log"]
 vec_unchecked = []
 stats = []
 test_vectors = []

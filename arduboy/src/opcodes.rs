@@ -391,12 +391,12 @@ pub enum LdStIndex {
     Z,
 }
 
-impl Into<u8> for LdStIndex {
-    fn into(self) -> u8 {
-        match self {
-            Self::X => 26,
-            Self::Y => 28,
-            Self::Z => 30,
+impl From<LdStIndex> for u8 {
+    fn from(index: LdStIndex) -> u8 {
+        match index {
+            LdStIndex::X => 26,
+            LdStIndex::Y => 28,
+            LdStIndex::Z => 30,
         }
     }
 }
@@ -436,7 +436,7 @@ pub enum Op {
     Break,
     Bset { s: u8 },
     Bst { d: u8, b: u8 },
-    Call { k: u32 },
+    Call { k: u16 },
     Cbi { a: u8, b: u8 },
     Com { d: u8 },
     Cp { d: u8, r: u8 },
@@ -456,8 +456,11 @@ pub enum Op {
     Ijmp,
     In { d: u8, a: u8 },
     Inc { d: u8 },
-    Jmp { k: u32 },
-    Ld { d: u8, idx: LdStIndex, ext: LdStExt }, // NOTE: Review undefined Rd combinations
+    Jmp { k: u16 },
+    // Ld { d: u8, idx: LdStIndex, ext: LdStExt }, // NOTE: Review undefined Rd combinations
+    LdX { d: u8, ext: LdStExt }, // NOTE: Review undefined Rd combinations
+    LdY { d: u8, ext: LdStExt }, // NOTE: Review undefined Rd combinations
+    LdZ { d: u8, ext: LdStExt }, // NOTE: Review undefined Rd combinations
     Ldi { d: u8, k: u8 },
     Lds { d: u8, k: u16 },
     Lpmr0,
@@ -492,7 +495,10 @@ pub enum Op {
     Sleep,
     Spm,
     Spm2,
-    St { r: u8, idx: LdStIndex, ext: LdStExt },
+    // St { r: u8, idx: LdStIndex, ext: LdStExt },
+    StX { r: u8, ext: LdStExt },
+    StY { r: u8, ext: LdStExt },
+    StZ { r: u8, ext: LdStExt },
     Sts { k: u16, r: u8 },
     Sub { d: u8, r: u8 },
     Subi { d: u8, k: u8 },
@@ -501,6 +507,8 @@ pub enum Op {
     Zzz, // Custom instruction that is run in sleep mode
     Undefined { w: u16 },
 }
+// Guarantee that Op stays small enough to be performant
+static_assertions::assert_eq_size!(Op, u32);
 
 impl Op {
     pub fn words(&self) -> u8 {
@@ -561,11 +569,13 @@ impl Op {
                 b: (w0 & 0b0000_0000_0000_0111) as u8,
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
-            _ if (w0 & OPCODE_OP_CALL_MASK) == OPCODE_OP_CALL_BITS => Self::Call {
-                k: ((w0 & 0b0000_0001_1111_0000) as u32 >> 4 | (w0 & 0b0000_0000_0000_0001) as u32)
+            _ if (w0 & OPCODE_OP_CALL_MASK) == OPCODE_OP_CALL_BITS => {
+                let k = ((w0 & 0b0000_0001_1111_0000) as u32 >> 4
+                    | (w0 & 0b0000_0000_0000_0001) as u32)
                     >> 16
-                    | (w1 as u32),
-            },
+                    | (w1 as u32);
+                Self::Call { k: k as u16 }
+            }
             _ if (w0 & OPCODE_OP_CBI_MASK) == OPCODE_OP_CBI_BITS => Self::Cbi {
                 b: (w0 & 0b0000_0000_0000_0111) as u8,
                 a: ((w0 & 0b0000_0000_1111_1000) >> 3) as u8,
@@ -628,58 +638,60 @@ impl Op {
             _ if (w0 & OPCODE_OP_INC_MASK) == OPCODE_OP_INC_BITS => Self::Inc {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
             },
-            _ if (w0 & OPCODE_OP_JMP_MASK) == OPCODE_OP_JMP_BITS => Self::Jmp {
-                k: ((w0 & 0b0000_0001_1111_0000) as u32 >> 4 | (w0 & 0b0000_0000_0000_0001) as u32)
+            _ if (w0 & OPCODE_OP_JMP_MASK) == OPCODE_OP_JMP_BITS => {
+                let k = ((w0 & 0b0000_0001_1111_0000) as u32 >> 4
+                    | (w0 & 0b0000_0000_0000_0001) as u32)
                     >> 16
-                    | (w1 as u32),
-            },
-            _ if (w0 & OPCODE_OP_LDX_MASK) == OPCODE_OP_LDX_BITS => Op::Ld {
+                    | (w1 as u32);
+                Self::Jmp { k: k as u16 }
+            }
+            _ if (w0 & OPCODE_OP_LDX_MASK) == OPCODE_OP_LDX_BITS => Op::LdX {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::X,
+                // idx: LdStIndex::X,
                 ext: LdStExt::None,
             },
-            _ if (w0 & OPCODE_OP_LDXINC_MASK) == OPCODE_OP_LDXINC_BITS => Op::Ld {
+            _ if (w0 & OPCODE_OP_LDXINC_MASK) == OPCODE_OP_LDXINC_BITS => Op::LdX {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::X,
+                // idx: LdStIndex::X,
                 ext: LdStExt::PostInc,
             },
-            _ if (w0 & OPCODE_OP_LDXDEC_MASK) == OPCODE_OP_LDXDEC_BITS => Op::Ld {
+            _ if (w0 & OPCODE_OP_LDXDEC_MASK) == OPCODE_OP_LDXDEC_BITS => Op::LdX {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::X,
+                // idx: LdStIndex::X,
                 ext: LdStExt::PreDec,
             },
-            _ if (w0 & OPCODE_OP_LDYINC_MASK) == OPCODE_OP_LDYINC_BITS => Op::Ld {
+            _ if (w0 & OPCODE_OP_LDYINC_MASK) == OPCODE_OP_LDYINC_BITS => Op::LdY {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Y,
+                // idx: LdStIndex::Y,
                 ext: LdStExt::PostInc,
             },
-            _ if (w0 & OPCODE_OP_LDYDEC_MASK) == OPCODE_OP_LDYDEC_BITS => Op::Ld {
+            _ if (w0 & OPCODE_OP_LDYDEC_MASK) == OPCODE_OP_LDYDEC_BITS => Op::LdY {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Y,
+                // idx: LdStIndex::Y,
                 ext: LdStExt::PreDec,
             },
-            _ if (w0 & OPCODE_OP_LDYADQ_MASK) == OPCODE_OP_LDYADQ_BITS => Op::Ld {
+            _ if (w0 & OPCODE_OP_LDYADQ_MASK) == OPCODE_OP_LDYADQ_BITS => Op::LdY {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Y,
+                // idx: LdStIndex::Y,
                 ext: LdStExt::Displacement(
                     ((w0 & 0b0010_0000_0000_0000) >> 8
                         | (w0 & 0b0000_1100_0000_0000) >> 7
                         | w0 & 0b0000_0000_0000_0111) as u8,
                 ),
             },
-            _ if (w0 & OPCODE_OP_LDZINC_MASK) == OPCODE_OP_LDZINC_BITS => Op::Ld {
+            _ if (w0 & OPCODE_OP_LDZINC_MASK) == OPCODE_OP_LDZINC_BITS => Op::LdZ {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Z,
+                // idx: LdStIndex::Z,
                 ext: LdStExt::PostInc,
             },
-            _ if (w0 & OPCODE_OP_LDZDEC_MASK) == OPCODE_OP_LDZDEC_BITS => Op::Ld {
+            _ if (w0 & OPCODE_OP_LDZDEC_MASK) == OPCODE_OP_LDZDEC_BITS => Op::LdZ {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Z,
+                // idx: LdStIndex::Z,
                 ext: LdStExt::PreDec,
             },
-            _ if (w0 & OPCODE_OP_LDZADQ_MASK) == OPCODE_OP_LDZADQ_BITS => Op::Ld {
+            _ if (w0 & OPCODE_OP_LDZADQ_MASK) == OPCODE_OP_LDZADQ_BITS => Op::LdZ {
                 d: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Z,
+                // idx: LdStIndex::Z,
                 ext: LdStExt::Displacement(
                     ((w0 & 0b0010_0000_0000_0000) >> 8
                         | (w0 & 0b0000_1100_0000_0000) >> 7
@@ -797,53 +809,53 @@ impl Op {
             _ if (w0 & OPCODE_OP_SLEEP_MASK) == OPCODE_OP_SLEEP_BITS => Self::Sleep,
             _ if (w0 & OPCODE_OP_SPM_MASK) == OPCODE_OP_SPM_BITS => Op::Spm,
             _ if (w0 & OPCODE_OP_SPM2_MASK) == OPCODE_OP_SPM2_BITS => Op::Spm2,
-            _ if (w0 & OPCODE_OP_STX_MASK) == OPCODE_OP_STX_BITS => Op::St {
+            _ if (w0 & OPCODE_OP_STX_MASK) == OPCODE_OP_STX_BITS => Op::StX {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::X,
+                // idx: LdStIndex::X,
                 ext: LdStExt::None,
             },
-            _ if (w0 & OPCODE_OP_STXINC_MASK) == OPCODE_OP_STXINC_BITS => Op::St {
+            _ if (w0 & OPCODE_OP_STXINC_MASK) == OPCODE_OP_STXINC_BITS => Op::StX {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::X,
+                // idx: LdStIndex::X,
                 ext: LdStExt::PostInc,
             },
-            _ if (w0 & OPCODE_OP_STXDEC_MASK) == OPCODE_OP_STXDEC_BITS => Op::St {
+            _ if (w0 & OPCODE_OP_STXDEC_MASK) == OPCODE_OP_STXDEC_BITS => Op::StX {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::X,
+                // idx: LdStIndex::X,
                 ext: LdStExt::PreDec,
             },
-            _ if (w0 & OPCODE_OP_STYINC_MASK) == OPCODE_OP_STYINC_BITS => Op::St {
+            _ if (w0 & OPCODE_OP_STYINC_MASK) == OPCODE_OP_STYINC_BITS => Op::StY {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Y,
+                // idx: LdStIndex::Y,
                 ext: LdStExt::PostInc,
             },
-            _ if (w0 & OPCODE_OP_STYDEC_MASK) == OPCODE_OP_STYDEC_BITS => Op::St {
+            _ if (w0 & OPCODE_OP_STYDEC_MASK) == OPCODE_OP_STYDEC_BITS => Op::StY {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Y,
+                // idx: LdStIndex::Y,
                 ext: LdStExt::PreDec,
             },
-            _ if (w0 & OPCODE_OP_STYADQ_MASK) == OPCODE_OP_STYADQ_BITS => Op::St {
+            _ if (w0 & OPCODE_OP_STYADQ_MASK) == OPCODE_OP_STYADQ_BITS => Op::StY {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Y,
+                // idx: LdStIndex::Y,
                 ext: LdStExt::Displacement(
                     ((w0 & 0b0010_0000_0000_0000) >> 8
                         | (w0 & 0b0000_1100_0000_0000) >> 7
                         | w0 & 0b0000_0000_0000_0111) as u8,
                 ),
             },
-            _ if (w0 & OPCODE_OP_STZINC_MASK) == OPCODE_OP_STZINC_BITS => Op::St {
+            _ if (w0 & OPCODE_OP_STZINC_MASK) == OPCODE_OP_STZINC_BITS => Op::StZ {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Z,
+                // idx: LdStIndex::Z,
                 ext: LdStExt::PostInc,
             },
-            _ if (w0 & OPCODE_OP_STZDEC_MASK) == OPCODE_OP_STZDEC_BITS => Op::St {
+            _ if (w0 & OPCODE_OP_STZDEC_MASK) == OPCODE_OP_STZDEC_BITS => Op::StZ {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Z,
+                // idx: LdStIndex::Z,
                 ext: LdStExt::PreDec,
             },
-            _ if (w0 & OPCODE_OP_STZADQ_MASK) == OPCODE_OP_STZADQ_BITS => Op::St {
+            _ if (w0 & OPCODE_OP_STZADQ_MASK) == OPCODE_OP_STZADQ_BITS => Op::StZ {
                 r: ((w0 & 0b0000_0001_1111_0000) >> 4) as u8,
-                idx: LdStIndex::Z,
+                // idx: LdStIndex::Z,
                 ext: LdStExt::Displacement(
                     ((w0 & 0b0010_0000_0000_0000) >> 8
                         | (w0 & 0b0000_1100_0000_0000) >> 7
@@ -902,7 +914,9 @@ impl<'a> fmt::Display for OpAddr {
             Op::Break => write!(f, "BREAK"),
             Op::Bset { s } => write!(f, "BSET {}", s),
             Op::Bst { d, b } => write!(f, "BST R{}, {}", d, b),
-            Op::Call { k } => write!(f, "CALL 0x{:04x}", k << 1),
+            Op::Call { k } => {
+                write!(f, "CALL 0x{:04x}", (k as u32) << 1)
+            }
             Op::Cbi { a, b } => {
                 write!(f, "CBI {}, {}", a, b)?;
                 if let Some((io_reg, io_dsc)) = io_reg_str(IOSPACE_ADDR + a as u16) {
@@ -940,12 +954,16 @@ impl<'a> fmt::Display for OpAddr {
                 Ok(())
             }
             Op::Inc { d } => write!(f, "INC R{}", d),
-            Op::Jmp { k } => write!(f, "JMP 0x{:04x}", k << 1),
-            Op::Ld {
-                d,
-                ref idx,
-                ref ext,
-            } => {
+            Op::Jmp { k } => {
+                write!(f, "JMP 0x{:04x}", (k as u32) << 1)
+            }
+            Op::LdX { d, ref ext } | Op::LdY { d, ref ext } | Op::LdZ { d, ref ext } => {
+                let idx = match self.op {
+                    Op::LdX { .. } => LdStIndex::X,
+                    Op::LdY { .. } => LdStIndex::Y,
+                    Op::LdZ { .. } => LdStIndex::Z,
+                    _ => unreachable!(),
+                };
                 write!(f, "LD R{}, ", d)?;
                 match ext {
                     LdStExt::None => write!(f, "{}", idx),
@@ -1038,11 +1056,13 @@ impl<'a> fmt::Display for OpAddr {
             Op::Sleep => write!(f, "SLEEP"),
             Op::Spm => write!(f, "SPM"),
             Op::Spm2 => write!(f, "SPM Z+"),
-            Op::St {
-                r,
-                ref idx,
-                ref ext,
-            } => {
+            Op::StX { r, ref ext } | Op::StY { r, ref ext } | Op::StZ { r, ref ext } => {
+                let idx = match self.op {
+                    Op::StX { .. } => LdStIndex::X,
+                    Op::StY { .. } => LdStIndex::Y,
+                    Op::StZ { .. } => LdStIndex::Z,
+                    _ => unreachable!(),
+                };
                 write!(f, "ST ")?;
                 match ext {
                     LdStExt::None => write!(f, "{}", idx),
@@ -1104,7 +1124,7 @@ impl OpAddr {
             _ => return None,
         };
         Some(OpAddrAlt {
-            op: self.op.clone(),
+            op: self.op,
             addr: self.addr,
         })
     }
@@ -1319,7 +1339,10 @@ impl OpType {
             Op::In { .. } => OpType::In,
             Op::Inc { .. } => OpType::Inc,
             Op::Jmp { .. } => OpType::Jmp,
-            Op::Ld { .. } => OpType::Ld,
+            // Op::Ld { .. } => OpType::Ld,
+            Op::LdX { .. } => OpType::Ld,
+            Op::LdY { .. } => OpType::Ld,
+            Op::LdZ { .. } => OpType::Ld,
             Op::Ldi { .. } => OpType::Ldi,
             Op::Lds { .. } => OpType::Lds,
             Op::Lpmr0 { .. } => OpType::Lpmr0,
@@ -1353,7 +1376,10 @@ impl OpType {
             Op::Sleep { .. } => OpType::Sleep,
             Op::Spm { .. } => OpType::Spm,
             Op::Spm2 { .. } => OpType::Spm2,
-            Op::St { .. } => OpType::St,
+            // Op::St { .. } => OpType::St,
+            Op::StX { .. } => OpType::St,
+            Op::StY { .. } => OpType::St,
+            Op::StZ { .. } => OpType::St,
             Op::Sts { .. } => OpType::Sts,
             Op::Sub { .. } => OpType::Sub,
             Op::Subi { .. } => OpType::Subi,

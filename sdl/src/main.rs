@@ -1,7 +1,8 @@
+#![allow(unused_assignments)]
+
 use std::fs::File;
 use std::io;
 use std::io::{Read, Write};
-#[allow(unused_assignments)]
 // use std::env;
 // use std::fs;
 // use std::io::{self, BufRead};
@@ -9,7 +10,7 @@ use std::path::Path;
 use std::time::Duration;
 use std::time::Instant;
 
-use hex;
+// use hex;
 
 use arduboy::display::{HEIGTH, WIDTH};
 use arduboy::keys::*;
@@ -26,7 +27,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use sdl2::render::TextureQuery;
 
-use ron;
+// use ron;
 // use serde_json;
 // use rand::{self, RngCore};
 
@@ -175,7 +176,7 @@ pub fn main() -> Result<(), FrontError> {
     let save_path = app
         .value_of("sav_path")
         .map(|p| Path::new(p).to_path_buf())
-        .unwrap_or(Path::new(path).with_extension("sav"));
+        .unwrap_or_else(|| Path::new(path).with_extension("sav"));
 
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -191,16 +192,19 @@ pub fn main() -> Result<(), FrontError> {
     };
 
     let mut sample = [127; SAMPLE_SIZE as usize];
-    let mut audio = audio_subsystem
-        .open_playback(None, &desired_spec, |spec| {
-            // initialize the audio callback
-            AudioSample {
-                bytes: sample.clone(),
-                position: 0,
-            }
-        })
-        .unwrap();
-    audio.resume();
+    let mut audio = audio_subsystem.open_playback(None, &desired_spec, |_spec| {
+        // initialize the audio callback
+        AudioSample {
+            bytes: sample,
+            position: 0,
+        }
+    });
+    if let Err(ref err) = audio {
+        println!("Unable to access audio: {:?}", err)
+    }
+    if let Ok(ref audio) = audio {
+        audio.resume()
+    };
 
     let window = video_subsystem
         .window("Copperboy", WIDTH as u32 * scale, HEIGTH as u32 * scale)
@@ -241,19 +245,19 @@ pub fn main() -> Result<(), FrontError> {
     let mut save = false;
     let mut load = false;
 
-    let mut port_b = 0xff as u8;
+    let mut port_b = 0xff_u8;
     // let mut pin_c = 0xff as u8;
     // let mut pin_d = 0xff as u8;
-    let mut port_e = 0xff as u8;
-    let mut port_f = 0xff as u8;
-    let mut cycles: i32 = 0;
-    let mut frame: u32 = 0;
+    let mut port_e = 0xff_u8;
+    let mut port_f = 0xff_u8;
+    let mut cycles = 0_i32;
+    let mut frame = 0_u32;
     let mut d = 0;
     let mut int_ret_addr: Option<u16> = Option::None;
-    let mut fps: f32 = 0.0;
+    let mut fps = 0.0_f32;
     let mut turbo = false;
     let mut paused = false;
-    let mut step_cycles_sample: i32 = 0;
+    let mut step_cycles_sample = 0_i32;
     let mut start = Instant::now();
     let mut key_events: Vec<KeyEvent> = Vec::new();
     let mut total_frames = 0;
@@ -377,10 +381,8 @@ pub fn main() -> Result<(), FrontError> {
                 _ => {}
             }
         }
-        if record {
-            if key_event.up.len() != 0 || key_event.down.len() != 0 {
-                key_events.push(key_event);
-            }
+        if record && (!key_event.up.is_empty() || !key_event.down.is_empty()) {
+            key_events.push(key_event);
         }
 
         if input_index < input.len() && input[input_index].frame == total_frames {
@@ -477,37 +479,35 @@ pub fn main() -> Result<(), FrontError> {
             }
             cycles -= step_cycles as i32;
             let addr1 = core.pc << 1;
-            if calltrace {
-                if let Option::None = int_ret_addr {
-                    if let Op::Rcall { k: 0 } = op_addr.op {
-                    } else {
-                        match op_addr.op {
-                            Op::Call { .. } | Op::Icall { .. } | Op::Rcall { .. } => {
-                                println!(
-                                    "{pad:<2} {0:<pad$}{1:04x} -> {2:04x} call",
-                                    "",
-                                    addr0,
-                                    core.pc << 1,
-                                    pad = d,
-                                );
-                                d += 1;
-                            }
-                            Op::Ret { .. } | Op::Reti { .. } => {
-                                if d != 0 {
-                                    d -= 1;
-                                } else {
-                                    println!("D UNDERFLOW");
-                                }
-                                println!(
-                                    "{pad:<2} {0:<pad$}{2:04x} <- {1:04x} ret",
-                                    "",
-                                    addr0,
-                                    core.pc << 1,
-                                    pad = d,
-                                );
-                            }
-                            _ => {}
+            if calltrace && int_ret_addr.is_none() {
+                if let Op::Rcall { k: 0 } = op_addr.op {
+                } else {
+                    match op_addr.op {
+                        Op::Call { .. } | Op::Icall { .. } | Op::Rcall { .. } => {
+                            println!(
+                                "{pad:<2} {0:<pad$}{1:04x} -> {2:04x} call",
+                                "",
+                                addr0,
+                                core.pc << 1,
+                                pad = d,
+                            );
+                            d += 1;
                         }
+                        Op::Ret { .. } | Op::Reti { .. } => {
+                            if d != 0 {
+                                d -= 1;
+                            } else {
+                                println!("D UNDERFLOW");
+                            }
+                            println!(
+                                "{pad:<2} {0:<pad$}{2:04x} <- {1:04x} ret",
+                                "",
+                                addr0,
+                                core.pc << 1,
+                                pad = d,
+                            );
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -551,9 +551,11 @@ pub fn main() -> Result<(), FrontError> {
         }
 
         {
-            let mut audio_sample = audio.lock();
-            audio_sample.position = 0;
-            audio_sample.bytes = sample.clone();
+            if let Ok(ref mut audio) = audio {
+                let mut audio_sample = audio.lock();
+                audio_sample.position = 0;
+                audio_sample.bytes = sample;
+            }
         }
 
         core.display.render();
@@ -590,13 +592,13 @@ pub fn main() -> Result<(), FrontError> {
         }
         // Render frame rate
         let TextureQuery { width, height, .. } = tex_fps.query();
-        const padding: i32 = 1;
+        const PADDING: i32 = 1;
         canvas.copy(
             &tex_fps,
             None,
             Some(Rect::new(
-                padding * scale as i32,
-                padding * scale as i32,
+                PADDING * scale as i32,
+                PADDING * scale as i32,
                 width / 16 * scale,
                 height / 16 * scale,
             )),
@@ -619,8 +621,8 @@ pub fn main() -> Result<(), FrontError> {
         //     expected,
         //     frame_dur,
         // );
-        const update: f32 = 0.2;
-        fps = (1.0 - update) * fps + update * (1_000_000_000.0 / frame_dur.subsec_nanos() as f32);
+        const UPDATE: f32 = 0.2;
+        fps = (1.0 - UPDATE) * fps + UPDATE * (1_000_000_000.0 / frame_dur.subsec_nanos() as f32);
         now_end_frame = now;
         if save {
             let mut file = File::create(&save_path).unwrap();

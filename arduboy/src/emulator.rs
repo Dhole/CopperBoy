@@ -1,7 +1,7 @@
-use crunchy::unroll;
+// use crunchy::unroll;
 
 use super::mcu::{Core, GPIOPort};
-use super::opcodes::Op;
+// use super::opcodes::Op;
 use super::utils::{decode_hex_line, HexFileError, KeysState};
 use core::mem;
 use core::str;
@@ -58,13 +58,13 @@ impl Emulator {
         let data = str::from_utf8(data)?;
         let mut out = [0u8; 32];
         for line in data.lines() {
-            if line.len() == 0 {
+            if line.is_empty() {
                 continue;
             }
             match decode_hex_line(line, &mut out[..])? {
                 Some((addr, len)) => {
-                    for i in 0..len {
-                        self.core.flash_write(addr + i as u16, out[i]);
+                    for (i, byte) in out.iter().enumerate().take(len) {
+                        self.core.flash_write(addr + i as u16, *byte);
                     }
                 }
                 None => {}
@@ -96,6 +96,7 @@ impl Emulator {
         Ok(())
     }
 
+    /// Run the emulator for the duration of a frame (approximately).
     pub fn run(&mut self, keys_state: &KeysState) {
         let cycles_per_sample = self.cpu_freq / AUDIO_SAMPLE_FREQ;
         for s in self.samples.iter_mut() {
@@ -110,19 +111,14 @@ impl Emulator {
         self.core.gpio.set_port(GPIOPort::F, port_f);
 
         while self.cycles > 0 {
-            // In each iteration, emulate M * N instructions of the CPU, and the emulate the
+            // In each iteration, emulate N instructions of the CPU, and the emulate the
             // corresponding cycles in the hardware
-            const N_INSTS: usize = 8;
+            const N_INSTS: usize = 64;
             let mut hw_step_cycles = 0;
             if !self.core.sleeping() {
-                debug_assert_eq!(N_INSTS, 8);
-                unroll! {
-                    for i in 0..8 {
-                        hw_step_cycles += self.core.step();
-                    }
-                }
+                hw_step_cycles += self.core.step_n(N_INSTS);
             } else {
-                hw_step_cycles += N_INSTS;
+                hw_step_cycles += N_INSTS * 2;
             }
             self.core.step_hw(hw_step_cycles);
 

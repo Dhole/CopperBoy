@@ -1,0 +1,28 @@
+# Software Information
+display_name = "Arduboy - CopperBoy"
+authors = "Dhole"
+supported_extensions = "hex"
+corename = "copperboy"
+license = "GPLv3"
+display_version = "1.99"
+categories = "Emulator"
+
+# Hardware Information
+manufacturer = "Arduboy"
+systemname = "Arduboy"
+systemid = "arduboy"
+
+# Libretro Features
+database = "Arduboy"
+supports_no_game = "false"
+savestate = "true"
+savestate_features = "deterministic"
+libretro_saves = "true"
+is_experimental = "true"
+needs_fullpath = "false"
+disk_control = "false"
+hw_render = "false"
+load_subsystem = "false"
+
+
+description = "CopperBoy is a portable fully working Arduboy emulator written in Rust."

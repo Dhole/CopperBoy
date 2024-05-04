@@ -1,5 +1,5 @@
-#[cfg(feature = "stats")]
-use core::fmt::Write;
+// #[cfg(feature = "stats")]
+// use core::fmt::Write;
 #[cfg(feature = "stats")]
 use num_traits::{FromPrimitive, ToPrimitive};
 
@@ -20,9 +20,11 @@ use super::clock;
 use super::display;
 use super::eeprom;
 use super::int_vec::*;
-use super::io_regs::io_reg_str;
 use super::opcodes::*;
 use super::*;
+
+#[cfg(feature = "stats")]
+use super::io_regs::io_reg_str;
 
 #[derive(PartialEq, Serialize, Deserialize, Clone)]
 pub struct StatusRegister {
@@ -43,6 +45,7 @@ pub struct StatusRegister {
     /// Carry Flag
     c: bool,
 }
+// static_assertions::assert_eq_size!(StatusRegister, u8);
 
 impl Index<u8> for StatusRegister {
     type Output = bool;
@@ -149,14 +152,30 @@ impl GeneralRegisters {
 impl Index<u8> for GeneralRegisters {
     type Output = u8;
 
+    #[inline(always)]
+    #[cfg(not(feature = "vec_unchecked"))]
     fn index(&self, i: u8) -> &u8 {
         &self.reg[i as usize]
+    }
+
+    #[inline(always)]
+    #[cfg(feature = "vec_unchecked")]
+    fn index(&self, i: u8) -> &u8 {
+        unsafe { self.reg.get_unchecked(i as usize) }
     }
 }
 
 impl IndexMut<u8> for GeneralRegisters {
+    #[inline(always)]
+    #[cfg(not(feature = "vec_unchecked"))]
     fn index_mut(&mut self, i: u8) -> &mut u8 {
         &mut self.reg[i as usize]
+    }
+
+    #[inline(always)]
+    #[cfg(feature = "vec_unchecked")]
+    fn index_mut(&mut self, i: u8) -> &mut u8 {
+        unsafe { self.reg.get_unchecked_mut(i as usize) }
     }
 }
 
@@ -229,15 +248,20 @@ pub struct Stats {
     pub loads: Vec<usize>,
     pub stores: Vec<usize>,
     pub ops: Vec<usize>,
+    pub op_prev: Op,
+    pub ops2: Vec<usize>,
 }
 
 #[cfg(feature = "stats")]
 impl Stats {
     fn new() -> Self {
+        let ops_len = OpType::Undefined.to_usize().unwrap();
         Self {
             loads: vec![0; 0xb00],
             stores: vec![0; 0xb00],
-            ops: vec![0; OpType::Undefined.to_usize().unwrap()],
+            ops: vec![0; ops_len],
+            op_prev: Op::Nop,
+            ops2: vec![0; ops_len * ops_len],
         }
     }
 
@@ -301,6 +325,34 @@ impl Stats {
             writeln!(
                 out,
                 "{:<6}: {:width$}",
+                format!("{:?}", op),
+                count,
+                width = width
+            )?;
+        }
+
+        let ops_len = OpType::Undefined.to_usize().unwrap();
+        let mut ops2: Vec<((OpType, OpType), usize)> = self
+            .ops2
+            .iter()
+            .enumerate()
+            .map(|(op_num_2, count)| {
+                (
+                    (
+                        OpType::from_usize(op_num_2 % ops_len).unwrap(),
+                        OpType::from_usize(op_num_2 / ops_len).unwrap(),
+                    ),
+                    *count,
+                )
+            })
+            .collect();
+        ops2.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
+        writeln!(out, "\n# Ops x 2")?;
+        let width = format!("{}", ops2[0].1).len();
+        for (op, count) in ops2.iter().take(n_ops) {
+            writeln!(
+                out,
+                "{:<16}: {:width$}",
                 format!("{:?}", op),
                 count,
                 width = width
@@ -454,7 +506,7 @@ impl Core {
     }
 
     pub fn deserialize_post(&mut self) {
-        if let Some(_) = self.sleep {
+        if self.sleep.is_some() {
             self.program_ops[self.pc as usize] = Op::Zzz;
         }
         self.display.deserialize_post();
@@ -531,11 +583,7 @@ impl Core {
     }
 
     pub fn sleeping(&self) -> bool {
-        if let Some(_) = self.sleep {
-            true
-        } else {
-            false
-        }
+        self.sleep.is_some()
     }
 
     fn sleep_set(&mut self) {
@@ -577,6 +625,15 @@ impl Core {
         let op = vec_get!(self.program_ops, self.pc as usize);
         // self.exec_op(self.program_ops[self.pc as usize])
         self.exec_op(op)
+    }
+
+    pub fn step_n(&mut self, n: usize) -> usize {
+        let mut cycles = 0;
+        for _ in 0..n {
+            let op = vec_get!(self.program_ops, self.pc as usize);
+            cycles += self.exec_op(op);
+        }
+        cycles
     }
 
     // returns true if an interrupt is fired
@@ -983,6 +1040,7 @@ impl Core {
     }
 
     /// Store a word into the User Data Space
+    #[inline(always)]
     fn data_store_u16(&mut self, addr: u16, v: u16) {
         let bytes = v.to_le_bytes();
         self.data_store(addr, bytes[0]);
@@ -990,6 +1048,7 @@ impl Core {
     }
 
     /// Push a word into the stack
+    #[inline(always)]
     fn push_u16(&mut self, v: u16) {
         let bytes = v.to_le_bytes();
         // self.sram[(self.sp - SRAM_ADDR - 1) as usize] = bytes[0];
@@ -1000,6 +1059,7 @@ impl Core {
     }
 
     /// Pop a word from the stack
+    #[inline(always)]
     fn pop_u16(&mut self) -> u16 {
         self.sp += 2;
         u16::from_le_bytes([
@@ -1011,6 +1071,7 @@ impl Core {
     }
 
     // Auxiliary function to update some flags in adc and add
+    #[inline(always)]
     fn aux_op_add_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
         let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
         self.status_reg.n = r7 != 0;
@@ -1020,6 +1081,7 @@ impl Core {
         self.status_reg.z = res == 0;
     }
     /// 5. Add with Carry (ADC Rd, Rr) OK
+    #[inline(always)]
     fn op_adc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
@@ -1031,6 +1093,7 @@ impl Core {
         1
     }
     /// 6. Add without Carry (ADD Rd, Rr) OK
+    #[inline(always)]
     fn op_add(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         self.status_reg.c = c0;
@@ -1042,12 +1105,13 @@ impl Core {
     }
 
     /// 7. Add Immediate Word (ADIW Rdl, K) OK
+    #[inline(always)]
     fn op_adiw(&mut self, d: u8, k: u8) -> usize {
         let ext = self.regs.ext(d);
         let (res, c) = ext.overflowing_add(k as u16);
         let (r15, rdh7) = (res & 1 << 15, ext & 1 << 15);
         self.status_reg.n = r15 != 0;
-        self.status_reg.v = !(rdh7 != 0) & (r15 != 0);
+        self.status_reg.v = (rdh7 == 0) & (r15 != 0);
         self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
         self.status_reg.c = c;
         self.status_reg.z = res == 0;
@@ -1058,6 +1122,7 @@ impl Core {
     }
 
     /// 8. Logical AND (AND Rd, Rr) OK
+    #[inline(always)]
     fn op_and(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] & self.regs[r];
         let r7 = res & 1 << 7;
@@ -1072,6 +1137,7 @@ impl Core {
     }
 
     /// 9. Logical AND with Immediate (ANDI Rd, K) OK
+    #[inline(always)]
     fn op_andi(&mut self, d: u8, k: u8) -> usize {
         let res = self.regs[d] & k;
         let r7 = res & 1 << 7;
@@ -1086,6 +1152,7 @@ impl Core {
     }
 
     /// 10. Arithmetic Shift Right (ASR Rd) OK
+    #[inline(always)]
     fn op_asr(&mut self, d: u8) -> usize {
         let res = self.regs[d] >> 1 | self.regs[d] & (1 << 7);
         let r7 = res & 1 << 7;
@@ -1101,6 +1168,7 @@ impl Core {
     }
 
     /// 11. Bit Clear in SREG (BCLR s) OK
+    #[inline(always)]
     fn op_bclr(&mut self, s: u8) -> usize {
         self.status_reg[s] = false;
 
@@ -1109,6 +1177,7 @@ impl Core {
     }
 
     /// 12. Bit Load from the T Flag in SREG to a Bit in Register (BLD Rd, b) OK
+    #[inline(always)]
     fn op_bld(&mut self, d: u8, b: u8) -> usize {
         self.regs[d] &= !(1 << b);
         self.regs[d] |= (self.status_reg.t as u8) << b;
@@ -1118,6 +1187,7 @@ impl Core {
     }
 
     // Auxiliary function to branch if a boolean is true
+    #[inline(always)]
     fn aux_op_branch_if(&mut self, k: i8, test: bool) -> usize {
         if test {
             let (pc, _) = (self.pc as i16).overflowing_add(k as i16 + 1);
@@ -1130,10 +1200,12 @@ impl Core {
         }
     }
     /// 13. Branch if Bit in SREG is Cleared (BRBC s, k) OK
+    #[inline(always)]
     fn op_brbc(&mut self, s: u8, k: i8) -> usize {
         self.aux_op_branch_if(k, !self.status_reg[s])
     }
     /// 14. Branch if Bit in SREG is Set (BRBS s, k) OK
+    #[inline(always)]
     fn op_brbs(&mut self, s: u8, k: i8) -> usize {
         self.aux_op_branch_if(k, self.status_reg[s])
     }
@@ -1141,6 +1213,7 @@ impl Core {
     // 16. Branch if Carry Set (BRCS k) OK -> BRBS C
 
     /// 17. Break (BREAK) OK
+    #[inline(always)]
     fn op_break(&mut self) -> usize {
         warn!("BREAK unimplemented.");
         unimplemented!();
@@ -1165,6 +1238,7 @@ impl Core {
     // 33. Branch if Overflow Set (BRVS k) OK -> BRBS V
 
     /// 34. Bit Set in SREG (BSET s) OK
+    #[inline(always)]
     fn op_bset(&mut self, s: u8) -> usize {
         self.status_reg[s] = true;
 
@@ -1173,6 +1247,7 @@ impl Core {
     }
 
     /// 35. Bit Store from Bit in Register to T Flag in SREG (BST Rr, b) OK
+    #[inline(always)]
     fn op_bst(&mut self, d: u8, b: u8) -> usize {
         self.status_reg.t = (self.regs[d] & (1 << b)) != 0;
 
@@ -1181,6 +1256,7 @@ impl Core {
     }
 
     /// 36. Long Call to a Subroutine (CALL k) OK
+    #[inline(always)]
     fn op_call(&mut self, k: u32) -> usize {
         self.push_u16(self.pc + 2);
         self.pc = k as u16;
@@ -1189,6 +1265,7 @@ impl Core {
     }
 
     /// 37. Clear Bit in I/O Register (CBI A, b) OK
+    #[inline(always)]
     fn op_cbi(&mut self, a: u8, b: u8) -> usize {
         let v = self.data_load(IOSPACE_ADDR + a as u16);
         self.data_store(IOSPACE_ADDR + a as u16, v & !(1 << b));
@@ -1220,6 +1297,7 @@ impl Core {
     // 47. Clear Zero Flag (CLZ) OK -> BCLR Z
 
     /// 48. One's Complement (COM Rd) OK
+    #[inline(always)]
     fn op_com(&mut self, d: u8) -> usize {
         let (res, _) = 0xffu8.overflowing_sub(self.regs[d]);
         let r7 = res & 1 << 7;
@@ -1235,6 +1313,7 @@ impl Core {
     }
 
     // Auxiliary function to update some flags in cp and cpc
+    #[inline(always)]
     fn aux_op_cp_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
         let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
         self.status_reg.n = r7 != 0;
@@ -1244,6 +1323,7 @@ impl Core {
     }
 
     /// 49. Compare (CP Rd, Rr) OK
+    #[inline(always)]
     fn op_cp(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
 
@@ -1256,6 +1336,7 @@ impl Core {
     }
 
     /// 50. Compare with Carry (CPC Rd, Rr) OK
+    #[inline(always)]
     fn op_cpc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
         let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
@@ -1270,6 +1351,7 @@ impl Core {
     }
 
     /// 51. Compare with Immediate (CPIRd, K) OK
+    #[inline(always)]
     fn op_cpi(&mut self, d: u8, k: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(k);
 
@@ -1282,6 +1364,7 @@ impl Core {
     }
 
     /// 52. Compare Skip if Equal (CPSE Rd, Rr) OK
+    #[inline(always)]
     fn op_cpse(&mut self, d: u8, r: u8, next_op_len: u8) -> usize {
         if self.regs[d] == self.regs[r] {
             self.pc += 1 + next_op_len as u16;
@@ -1294,6 +1377,7 @@ impl Core {
     }
 
     /// 53. Decrement (DEC Rd) OK
+    #[inline(always)]
     fn op_dec(&mut self, d: u8) -> usize {
         let (res, _) = self.regs[d].overflowing_sub(1);
         let r7 = res & 1 << 7;
@@ -1310,24 +1394,28 @@ impl Core {
     // 54. Data Encryption Standard (DES) (NOT APPLICABLE)
 
     /// 55. Extended Indirect Call to Subroutine (EICALL) OK
+    #[inline(always)]
     fn op_eicall(&mut self) -> usize {
         warn!("EICALL unimplemented.  Maybe not supported by ATmega32u4.");
         unimplemented!();
     }
 
     /// 56. Extended Indirect Jump (EIJMP) OK
+    #[inline(always)]
     fn op_eijmp(&mut self) -> usize {
         warn!("EIJMP unimplemented.  Maybe not supported by ATmega32u4.");
         unimplemented!();
     }
 
     /// 57. Extended Load Program Memory (ELPM Z{+}) OK
+    #[inline(always)]
     fn op_elpm(&mut self) -> usize {
         warn!("ELPM unimplemented.  Maybe not supported by ATmega32u4.");
         unimplemented!();
     }
 
     /// 58. Exclusive OR (EOR, Rd, Rr) OK
+    #[inline(always)]
     fn op_eor(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] ^ self.regs[r];
         let r7 = res & 1 << 7;
@@ -1342,6 +1430,7 @@ impl Core {
     }
 
     /// 59. Fractional Multiply Unsiged (FMUL Rd, Rr) OK
+    #[inline(always)]
     fn op_fmul(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] as u16 * self.regs[r] as u16;
         let r16 = res & 1 << 15;
@@ -1357,6 +1446,7 @@ impl Core {
     }
 
     /// 60. Fractional Multiply Signed (FMULS Rd, Rr) OK
+    #[inline(always)]
     fn op_fmuls(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] as i8 as i16 * self.regs[r] as i8 as i16;
         let r16 = res & 1 << 15;
@@ -1372,6 +1462,7 @@ impl Core {
     }
 
     /// 61. Fractional Multiply Signed with Unsigned (FMULSU Rd, Rr) OK
+    #[inline(always)]
     fn op_fmulsu(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] as i8 as i16 * self.regs[r] as i16;
         let r16 = res & 1 << 15;
@@ -1387,6 +1478,7 @@ impl Core {
     }
 
     /// 62. Indirect Call to Subroutine (ICALL) OK
+    #[inline(always)]
     fn op_icall(&mut self) -> usize {
         self.push_u16(self.pc + 1);
         self.pc = self.regs.z();
@@ -1395,6 +1487,7 @@ impl Core {
     }
 
     /// 63. Indirect Jump (IJMP) OK
+    #[inline(always)]
     fn op_ijmp(&mut self) -> usize {
         self.pc = self.regs.z();
         self.branch = true;
@@ -1402,6 +1495,7 @@ impl Core {
     }
 
     /// 64. Load an I/O Location to Register (IN Rd, a) OK
+    #[inline(always)]
     fn op_in(&mut self, d: u8, a: u8) -> usize {
         self.regs[d] = self.data_load(IOSPACE_ADDR + a as u16);
 
@@ -1410,6 +1504,7 @@ impl Core {
     }
 
     /// 65. Increment (INC Rd) OK
+    #[inline(always)]
     fn op_inc(&mut self, d: u8) -> usize {
         let (res, _) = self.regs[d].overflowing_add(1);
         let r7 = res & 1 << 7;
@@ -1424,6 +1519,7 @@ impl Core {
     }
 
     /// 66. Jump (JMP k) OK
+    #[inline(always)]
     fn op_jmp(&mut self, k: u32) -> usize {
         self.pc = k as u16;
         self.branch = true;
@@ -1435,6 +1531,7 @@ impl Core {
     // 69. Load and Toggle (LAT) (NOT APPLICABLE)
 
     ///  70, 71, 72. Load Indirect from Data Space to Register using Index {X, Y, Z} (LD, {-}{X,Y,Z}{+}{q}) OK
+    #[inline(always)]
     fn op_ld(&mut self, d: u8, idx: LdStIndex, ext: LdStExt) -> usize {
         self.pc += 1;
         let mut addr = self.regs.ext(idx.into());
@@ -1465,6 +1562,7 @@ impl Core {
     }
 
     /// 73. Load Immediate (LDI Rd, K) OK
+    #[inline(always)]
     fn op_ldi(&mut self, d: u8, k: u8) -> usize {
         self.regs[d] = k;
 
@@ -1473,6 +1571,7 @@ impl Core {
     }
 
     /// 74. Load Direct from Data Space (LDS Rd, k) OK
+    #[inline(always)]
     fn op_lds(&mut self, d: u8, k: u16) -> usize {
         self.regs[d] = self.data_load(k);
         self.pc += 2;
@@ -1481,6 +1580,7 @@ impl Core {
 
     // 75. Load Direct from Data Space (LDS Rd, k ; 16bit) (NOT APPLICABLE)
     /// 76. Load Program Memory (LPM Rd, Z) OK
+    #[inline(always)]
     fn op_lpm(&mut self, d: u8, inc: bool) -> usize {
         let z = self.regs.z();
         self.regs[d] = self.program[z as usize];
@@ -1495,6 +1595,7 @@ impl Core {
     // 77. Logical Shift Left (LSL Rd) OK -> ADD Rd, Rd
 
     /// 78. Logical Shift Right (LSR Rd) OK
+    #[inline(always)]
     fn op_lsr(&mut self, d: u8) -> usize {
         let res = self.regs[d] >> 1;
         self.status_reg.n = false;
@@ -1509,6 +1610,7 @@ impl Core {
     }
 
     /// 79. Copy Register (MOV Rd, Rr) OK
+    #[inline(always)]
     fn op_mov(&mut self, d: u8, r: u8) -> usize {
         self.regs[d] = self.regs[r];
 
@@ -1517,6 +1619,7 @@ impl Core {
     }
 
     /// 80. Copy Register Word (MOVW Rd, Rr) OK
+    #[inline(always)]
     fn op_movw(&mut self, d: u8, r: u8) -> usize {
         self.regs[d] = self.regs[r];
         self.regs[d + 1] = self.regs[r + 1];
@@ -1525,6 +1628,7 @@ impl Core {
         1
     }
     /// 81. Multiply Unsiged (MUL Rd, Rr) OK
+    #[inline(always)]
     fn op_mul(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] as u16 * self.regs[r] as u16;
         let bytes = res.to_le_bytes();
@@ -1539,6 +1643,7 @@ impl Core {
     }
 
     /// 82. Multiply Signed (MULS Rd, Rr) OK
+    #[inline(always)]
     fn op_muls(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] as i8 as i16 * self.regs[r] as i8 as i16;
         let bytes = res.to_le_bytes();
@@ -1553,6 +1658,7 @@ impl Core {
     }
 
     /// 83. Multiply Signed with Unsigned (MULSU Rd, Rr) OK
+    #[inline(always)]
     fn op_mulsu(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] as i8 as i16 * self.regs[r] as i16;
         let bytes = res.to_le_bytes();
@@ -1578,6 +1684,7 @@ impl Core {
     // }
 
     /// 84. Two's Complement (NEG Rd) OK
+    #[inline(always)]
     fn op_neg(&mut self, d: u8) -> usize {
         let (res, _) = 0x00u8.overflowing_sub(self.regs[d]);
         self.status_reg.c = res != 0;
@@ -1594,12 +1701,14 @@ impl Core {
     }
 
     /// 85. No Operation (NOP) OK
+    #[inline(always)]
     fn op_nop(&mut self) -> usize {
         self.pc += 1;
         1
     }
 
     /// 86. Logical OR (OR Rd, Rr) OK
+    #[inline(always)]
     fn op_or(&mut self, d: u8, r: u8) -> usize {
         let res = self.regs[d] | self.regs[r];
         let r7 = res & 1 << 7;
@@ -1614,6 +1723,7 @@ impl Core {
     }
 
     /// 87. Logical OR with Immediate (ORI Rd, K) OK
+    #[inline(always)]
     fn op_ori(&mut self, d: u8, k: u8) -> usize {
         let res = self.regs[d] | k;
         let r7 = res & 1 << 7;
@@ -1628,6 +1738,7 @@ impl Core {
     }
 
     /// 88. Store Register to I/O Location (OUT A, Rr) OK
+    #[inline(always)]
     fn op_out(&mut self, a: u8, r: u8) -> usize {
         self.data_store(IOSPACE_ADDR + a as u16, self.regs[r]);
 
@@ -1636,6 +1747,7 @@ impl Core {
     }
 
     /// 89. Pop Register from Stack (POP Rd) OK
+    #[inline(always)]
     fn op_pop(&mut self, d: u8) -> usize {
         self.sp += 1;
         self.regs[d] = self.sram[(self.sp - SRAM_ADDR) as usize];
@@ -1645,6 +1757,7 @@ impl Core {
     }
 
     /// 90. Push Register on Stack (PUSH Rr) OK
+    #[inline(always)]
     fn op_push(&mut self, r: u8) -> usize {
         self.sram[(self.sp - SRAM_ADDR) as usize] = self.regs[r];
         self.sp -= 1;
@@ -1654,6 +1767,7 @@ impl Core {
     }
 
     /// 91. Relative Call to Subroutione (RCALL k) OK
+    #[inline(always)]
     fn op_rcall(&mut self, k: i16) -> usize {
         self.push_u16(self.pc + 1);
         let (pc, _) = (self.pc as i16).overflowing_add(k);
@@ -1664,6 +1778,7 @@ impl Core {
     }
 
     /// 92. Return from Subroutine (RET) OK
+    #[inline(always)]
     fn op_ret(&mut self) -> usize {
         let pc = self.pop_u16();
         self.pc = pc;
@@ -1672,6 +1787,7 @@ impl Core {
     }
 
     /// 93. Return from Interrupt (RETI) OK
+    #[inline(always)]
     fn op_reti(&mut self) -> usize {
         let pc = self.pop_u16();
         self.status_reg.i = true;
@@ -1681,6 +1797,7 @@ impl Core {
     }
 
     /// 94. Relative Jump (RJMP k) OK
+    #[inline(always)]
     fn op_rjmp(&mut self, k: i16) -> usize {
         let (pc, _) = (self.pc as i16).overflowing_add(k);
         let (pc, _) = (pc as i16).overflowing_add(1);
@@ -1707,6 +1824,7 @@ impl Core {
     // }
 
     /// 96. Rotrate Right through Carry (ROR Rd) OK
+    #[inline(always)]
     fn op_ror(&mut self, d: u8) -> usize {
         let res = self.regs[d] >> 1;
         let res = res | ((self.status_reg.c as u8) << 7);
@@ -1723,6 +1841,7 @@ impl Core {
     }
 
     // Auxiliary function to update some flags in subtraction
+    #[inline(always)]
     fn aux_op_sub_flags(&mut self, a: u8, b: u8, c: bool, res: u8) {
         let (r7, rr7, rd7) = (res & 1 << 7, b & 1 << 7, a & 1 << 7);
         self.status_reg.n = r7 != 0;
@@ -1732,6 +1851,7 @@ impl Core {
     }
 
     /// 97. Subtract with Carry (SBC Rd, Rr) OK
+    #[inline(always)]
     fn op_sbc(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
         let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
@@ -1747,6 +1867,7 @@ impl Core {
     }
 
     /// 98. Subtract Immediate with Carry (SBCI Rd, K) OK
+    #[inline(always)]
     fn op_sbci(&mut self, d: u8, k: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(k);
         let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
@@ -1762,6 +1883,7 @@ impl Core {
     }
 
     /// 99. Set Bit in I/O Register (SBI P, b) OK
+    #[inline(always)]
     fn op_sbi(&mut self, a: u8, b: u8) -> usize {
         let v = self.data_load(IOSPACE_ADDR + a as u16);
         self.data_store(IOSPACE_ADDR + a as u16, v | (1 << b));
@@ -1770,6 +1892,7 @@ impl Core {
     }
 
     /// 100. Skip if Bit in I/O Register is Cleared (SBIC P, b) OK
+    #[inline(always)]
     fn op_sbic(&mut self, a: u8, b: u8, next_op_len: u8) -> usize {
         let v = self.data_load(IOSPACE_ADDR + a as u16);
         if (v & (1 << b)) == 0 {
@@ -1783,6 +1906,7 @@ impl Core {
     }
 
     /// 101. Skip if Bit in I/O Register is Set (SBIS P, b) OK
+    #[inline(always)]
     fn op_sbis(&mut self, a: u8, b: u8, next_op_len: u8) -> usize {
         let v = self.data_load(IOSPACE_ADDR + a as u16);
         if (v & (1 << b)) != 0 {
@@ -1796,12 +1920,13 @@ impl Core {
     }
 
     /// 102. Subtract Immedaite from Word (SBIW Rdl, K) OK
+    #[inline(always)]
     fn op_sbiw(&mut self, d: u8, k: u8) -> usize {
         let ext = self.regs.ext(d);
         let (res, c) = ext.overflowing_sub(k as u16);
         let (r15, rdh7) = (res & 1 << 15, ext & 1 << 15);
         self.status_reg.n = r15 != 0;
-        self.status_reg.v = (rdh7 != 0) & !(r15 != 0);
+        self.status_reg.v = (rdh7 != 0) & (r15 == 0);
         self.status_reg.s = self.status_reg.n ^ self.status_reg.v;
         self.status_reg.c = c;
         self.status_reg.z = res == 0;
@@ -1814,6 +1939,7 @@ impl Core {
     // 103. Set Bits in Register (SBR Rd, K) OK -> ORI Rd, K
 
     /// 104. Skip if Bit in Register is Cleared (SBRC Rr, b) OK
+    #[inline(always)]
     fn op_sbrc(&mut self, r: u8, b: u8, next_op_len: u8) -> usize {
         if self.regs[r] & (1 << b) == 0 {
             self.pc += 1 + next_op_len as u16;
@@ -1826,6 +1952,7 @@ impl Core {
     }
 
     /// 105. Skip if Bit in Register is Set (SBRS Rr, b) OK
+    #[inline(always)]
     fn op_sbrs(&mut self, r: u8, b: u8, next_op_len: u8) -> usize {
         if self.regs[r] & (1 << b) != 0 {
             self.pc += 1 + next_op_len as u16;
@@ -1854,6 +1981,7 @@ impl Core {
     // 114. Set Zero Flag (SEZ) OK -> BSET Z
 
     /// 115. SLEEP (SLEEP) OK
+    #[inline(always)]
     fn op_sleep(&mut self) -> usize {
         debug!("Entering sleep");
         self.pc += 1;
@@ -1861,16 +1989,19 @@ impl Core {
         1
     }
     /// 116. Store Program Memory (SPM) OK
+    #[inline(always)]
     fn op_spm(&mut self) -> usize {
         warn!("SPM unimplemented.");
         unimplemented!();
     }
     /// 117. Store Program Memory (SPM #2)
+    #[inline(always)]
     fn op_spm2(&mut self) -> usize {
         warn!("SPM #2 unimplemented.");
         unimplemented!();
     }
     /// 118, 119, 120. Store Indirect from Register to Data Space using Index {X, Y, Z} (ST {-}{X,Y,Z}{+}{q}, Rr) OK
+    #[inline(always)]
     fn op_st(&mut self, r: u8, idx: LdStIndex, ext: LdStExt) -> usize {
         self.pc += 1;
         let mut addr = self.regs.ext(idx.into());
@@ -1901,6 +2032,7 @@ impl Core {
     }
 
     /// 121. Store Direct to Data Space (STS k, Rr) OK
+    #[inline(always)]
     fn op_sts(&mut self, k: u16, r: u8) -> usize {
         self.data_store(k % (SRAM_ADDR + SRAM_SIZE), self.regs[r]);
         self.pc += 2;
@@ -1910,6 +2042,7 @@ impl Core {
     // 122. Store Direct to Data Space (STS k, Rr ; 16bit) (NOT APPLICABLE)
 
     /// 123. Subtract without Carry (SUB Rd, Rr) OK
+    #[inline(always)]
     fn op_sub(&mut self, d: u8, r: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
         self.status_reg.c = c0;
@@ -1922,6 +2055,7 @@ impl Core {
     }
 
     /// 124. Subtract Immediate (SUBI Rd, K) OK
+    #[inline(always)]
     fn op_subi(&mut self, d: u8, k: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_sub(k);
         self.status_reg.c = c0;
@@ -1934,6 +2068,7 @@ impl Core {
     }
 
     /// 125. Swap Nibbles (SWAP Rd) OK
+    #[inline(always)]
     fn op_swap(&mut self, d: u8) -> usize {
         let (hi, lo) = ((self.regs[d] & 0xf0) >> 4, self.regs[d] & 0x0f);
         self.regs[d] = (lo << 4) | hi;
@@ -1944,6 +2079,7 @@ impl Core {
 
     // 126. Test for Zero or Minus (TST Rd) OK -> AND Rd, Rd
     /// 127. Watchdog Reset (WDR) OK
+    #[inline(always)]
     fn op_wdr(&mut self) -> usize {
         warn!("WDR unimplemented.");
         unimplemented!();
@@ -1952,10 +2088,16 @@ impl Core {
     }
     // 128. Exchange (XCH) (NOT APPLICABLE)
 
+    #[allow(unused_variables)]
     fn exec_op(&mut self, op: Op) -> usize {
         #[cfg(feature = "stats")]
         {
-            self.stats.ops[OpType::new_from_op(op).to_usize().unwrap()] += 1;
+            let op_type = OpType::new_from_op(op).to_usize().unwrap();
+            let op_type_prev = OpType::new_from_op(self.stats.op_prev).to_usize().unwrap();
+            let ops_len = OpType::Undefined.to_usize().unwrap();
+            self.stats.ops[op_type] += 1;
+            self.stats.ops2[op_type_prev + op_type * ops_len] += 1;
+            self.stats.op_prev = op;
         }
         match op {
             Op::Adc { d, r } => self.op_adc(d, r),
@@ -1971,7 +2113,7 @@ impl Core {
             Op::Break => self.op_break(),
             Op::Bset { s } => self.op_bset(s),
             Op::Bst { d, b } => self.op_bst(d, b),
-            Op::Call { k } => self.op_call(k),
+            Op::Call { k } => self.op_call(k as u32),
             Op::Cbi { a, b } => self.op_cbi(a, b),
             Op::Com { d } => self.op_com(d),
             Op::Cp { d, r } => self.op_cp(d, r),
@@ -1991,8 +2133,11 @@ impl Core {
             Op::Ijmp => self.op_ijmp(),
             Op::In { d, a } => self.op_in(d, a),
             Op::Inc { d } => self.op_inc(d),
-            Op::Jmp { k } => self.op_jmp(k),
-            Op::Ld { d, idx, ext } => self.op_ld(d, idx, ext),
+            Op::Jmp { k } => self.op_jmp(k as u32),
+            // Op::Ld { d, idx, ext } => self.op_ld(d, idx, ext),
+            Op::LdX { d, ext } => self.op_ld(d, LdStIndex::X, ext),
+            Op::LdY { d, ext } => self.op_ld(d, LdStIndex::Y, ext),
+            Op::LdZ { d, ext } => self.op_ld(d, LdStIndex::Z, ext),
             Op::Ldi { d, k } => self.op_ldi(d, k),
             Op::Lds { d, k } => self.op_lds(d, k),
             Op::Lpmr0 => self.op_lpm(0, false),
@@ -2027,13 +2172,16 @@ impl Core {
             Op::Sleep => self.op_sleep(),
             Op::Spm => self.op_spm(),
             Op::Spm2 => self.op_spm2(),
-            Op::St { r, idx, ext } => self.op_st(r, idx, ext),
+            // Op::St { r, idx, ext } => self.op_st(r, idx, ext),
+            Op::StX { r, ext } => self.op_st(r, LdStIndex::X, ext),
+            Op::StY { r, ext } => self.op_st(r, LdStIndex::Y, ext),
+            Op::StZ { r, ext } => self.op_st(r, LdStIndex::Z, ext),
             Op::Sts { k, r } => self.op_sts(k, r),
             Op::Sub { d, r } => self.op_sub(d, r),
             Op::Subi { d, k } => self.op_subi(d, k),
             Op::Swap { d } => self.op_swap(d),
             Op::Wdr => self.op_wdr(),
-            Op::Zzz => 1,
+            Op::Zzz => 4,
             Op::Undefined { w } => {
                 warn!(
                     "Tried to execute undefined op 0x{:04x} at address 0x{:04x}",
