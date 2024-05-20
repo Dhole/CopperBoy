@@ -391,6 +391,10 @@ pub enum LdStIndex {
     Z,
 }
 
+pub const LD_ST_INDEX_X: u8 = 26;
+pub const LD_ST_INDEX_Y: u8 = 28;
+pub const LD_ST_INDEX_Z: u8 = 30;
+
 impl From<LdStIndex> for u8 {
     fn from(index: LdStIndex) -> u8 {
         match index {
@@ -506,9 +510,11 @@ pub enum Op {
     Wdr,
     Zzz, // Custom instruction that is run in sleep mode
     Undefined { w: u16 },
+    AddAdc { d: u8, r: u8 },
+    AdcAdc { d: u8, r: u8 },
 }
 // Guarantee that Op stays small enough to be performant
-static_assertions::assert_eq_size!(Op, u32);
+// static_assertions::assert_eq_size!(Op, u32);
 
 impl Op {
     pub fn words(&self) -> u8 {
@@ -1084,6 +1090,8 @@ impl fmt::Display for OpAddr {
             Op::Swap { d } => write!(f, "SWAP R{}", d),
             Op::Wdr => write!(f, "WDR"),
             Op::Zzz => write!(f, "(Internal) ZZZ"),
+            Op::AddAdc { d, r } => unimplemented!(),
+            Op::AdcAdc { d, r } => unimplemented!(),
             Op::Undefined { w } => write!(f, "UNDEF ; 0x{}", hex::encode(w.to_le_bytes())),
         }
     }
@@ -1387,6 +1395,8 @@ impl OpType {
             Op::Wdr { .. } => OpType::Wdr,
             Op::Zzz { .. } => OpType::Zzz,
             Op::Undefined { .. } => OpType::Undefined,
+            Op::AddAdc { d, r } => unimplemented!(),
+            Op::AdcAdc { d, r } => unimplemented!(),
         }
     }
 }

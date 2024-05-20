@@ -321,13 +321,15 @@ impl Stats {
         ops.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
         writeln!(out, "\n# Ops")?;
         let width = format!("{}", ops[0].1).len();
+        let ops_len: usize = ops.iter().map(|(_, count)| count).sum();
         for (op, count) in ops.iter().take(n_ops) {
             writeln!(
                 out,
-                "{:<6}: {:width$}",
+                "{:<6}: {:width$} ({perc:.04} %)",
                 format!("{:?}", op),
                 count,
-                width = width
+                width = width,
+                perc = (*count as f64) * 100.0 / (ops_len as f64),
             )?;
         }
 
@@ -348,14 +350,16 @@ impl Stats {
             .collect();
         ops2.sort_by(|(_, a_count), (_, b_count)| b_count.cmp(a_count));
         writeln!(out, "\n# Ops x 2")?;
+        let ops2_len: usize = ops2.iter().map(|(_, count)| count).sum();
         let width = format!("{}", ops2[0].1).len();
         for (op, count) in ops2.iter().take(n_ops) {
             writeln!(
                 out,
-                "{:<16}: {:width$}",
+                "{:<16}: {:width$} ({perc:.04} %)",
                 format!("{:?}", op),
                 count,
-                width = width
+                width = width,
+                perc = (*count as f64) * 100.0 / (ops2_len as f64),
             )?;
         }
         Ok(())
@@ -396,6 +400,7 @@ pub struct Core {
     pub program: Vec<u8>,
     #[serde(skip)]
     pub program_ops: Vec<Op>,
+    // program_fast: Vec<Option<Vec<Box<dyn FnMut(Core) -> usize>>>>,
     /// Set if the previos instruction branched.  This flag is used to know if the instruction
     /// ahead must be fetched.
     branch: bool,
@@ -473,6 +478,7 @@ impl Core {
             pc: 0,
             sram: vec![0; SRAM_SIZE as usize],
             program: vec![0; PROGRAM_SIZE as usize],
+            // program_fast: vec![None; PROGRAM_SIZE as usize],
             program_ops: vec![Op::Nop; PROGRAM_SIZE as usize],
             sp: SRAM_ADDR + SRAM_SIZE - 1,
             branch: false,
@@ -566,8 +572,30 @@ impl Core {
         );
     }
 
+    pub fn optimize_op_pairs(&mut self) {
+        let mut i = 0;
+        loop {
+            if i >= self.program_ops.len() - 1 {
+                break;
+            }
+            let op0 = self.program_ops[i];
+            let op1 = self.program_ops[i + 1];
+            match (op0, op1) {
+                (Op::Add { r, d }, Op::Adc { .. }) => {
+                    self.program_ops[i] = Op::AddAdc { r, d };
+                    i += 2;
+                }
+                (Op::Adc { r, d }, Op::Adc { .. }) => {
+                    self.program_ops[i] = Op::AdcAdc { r, d };
+                    i += 2;
+                }
+                (_, _) => i += 1,
+            }
+        }
+    }
+
     pub fn op1(&self) -> Op {
-        self.program_ops[self.pc as usize + 1]
+        vec_get!(self.program_ops, self.pc as usize + 1)
     }
 
     pub fn next_op(&self) -> (u16, u16, OpAddr) {
@@ -627,9 +655,9 @@ impl Core {
         self.exec_op(op)
     }
 
-    pub fn step_n(&mut self, n: usize) -> usize {
+    pub fn step_n<const N: usize>(&mut self) -> usize {
         let mut cycles = 0;
-        for _ in 0..n {
+        for _i in 0..N {
             let op = vec_get!(self.program_ops, self.pc as usize);
             cycles += self.exec_op(op);
         }
@@ -1104,6 +1132,40 @@ impl Core {
         1
     }
 
+    #[inline(always)]
+    fn op2_adc_adc(&mut self, d: u8, r: u8, d1: u8, r1: u8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
+        let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
+        self.status_reg.c = c0 || c1;
+        self.regs[d] = res;
+
+        let (d, r) = (d1, r1);
+        let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
+        let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
+        self.aux_op_add_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        self.status_reg.c = c0 || c1;
+        self.regs[d] = res;
+
+        self.pc += 2;
+        2
+    }
+    #[inline(always)]
+    fn op2_add_adc(&mut self, d: u8, r: u8, d1: u8, r1: u8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
+        self.status_reg.c = c0;
+        self.regs[d] = res;
+
+        let (d, r) = (d1, r1);
+        let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
+        let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
+        self.aux_op_add_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        self.status_reg.c = c0 || c1;
+        self.regs[d] = res;
+
+        self.pc += 2;
+        2
+    }
+
     /// 7. Add Immediate Word (ADIW Rdl, K) OK
     #[inline(always)]
     fn op_adiw(&mut self, d: u8, k: u8) -> usize {
@@ -1532,9 +1594,9 @@ impl Core {
 
     ///  70, 71, 72. Load Indirect from Data Space to Register using Index {X, Y, Z} (LD, {-}{X,Y,Z}{+}{q}) OK
     #[inline(always)]
-    fn op_ld(&mut self, d: u8, idx: LdStIndex, ext: LdStExt) -> usize {
+    fn op_ld<const LD_ST_INDEX: u8>(&mut self, d: u8, ext: LdStExt) -> usize {
         self.pc += 1;
-        let mut addr = self.regs.ext(idx.into());
+        let mut addr = self.regs.ext(LD_ST_INDEX);
 
         let cycles = match ext {
             LdStExt::None => {
@@ -1556,7 +1618,7 @@ impl Core {
                 return 2;
             }
         };
-        self.regs.set_ext(idx.into(), addr);
+        self.regs.set_ext(LD_ST_INDEX, addr);
 
         cycles
     }
@@ -2088,6 +2150,13 @@ impl Core {
     }
     // 128. Exchange (XCH) (NOT APPLICABLE)
 
+    fn closure_op<'a>(&self, op: Op) -> Box<dyn FnMut(&mut Self) -> usize> {
+        match op {
+            Op::Adc { d, r } => Box::new(move |s: &mut Self| s.op_adc(d, r)),
+            _ => unimplemented!(),
+        }
+    }
+
     #[allow(unused_variables)]
     fn exec_op(&mut self, op: Op) -> usize {
         #[cfg(feature = "stats")]
@@ -2135,9 +2204,9 @@ impl Core {
             Op::Inc { d } => self.op_inc(d),
             Op::Jmp { k } => self.op_jmp(k as u32),
             // Op::Ld { d, idx, ext } => self.op_ld(d, idx, ext),
-            Op::LdX { d, ext } => self.op_ld(d, LdStIndex::X, ext),
-            Op::LdY { d, ext } => self.op_ld(d, LdStIndex::Y, ext),
-            Op::LdZ { d, ext } => self.op_ld(d, LdStIndex::Z, ext),
+            Op::LdX { d, ext } => self.op_ld::<{ LD_ST_INDEX_X }>(d, ext),
+            Op::LdY { d, ext } => self.op_ld::<{ LD_ST_INDEX_Y }>(d, ext),
+            Op::LdZ { d, ext } => self.op_ld::<{ LD_ST_INDEX_Z }>(d, ext),
             Op::Ldi { d, k } => self.op_ldi(d, k),
             Op::Lds { d, k } => self.op_lds(d, k),
             Op::Lpmr0 => self.op_lpm(0, false),
@@ -2182,6 +2251,22 @@ impl Core {
             Op::Swap { d } => self.op_swap(d),
             Op::Wdr => self.op_wdr(),
             Op::Zzz => 4,
+            Op::AddAdc { d, r } => {
+                let op1 = self.op1();
+                if let Op::Adc { d: d1, r: r1 } = op1 {
+                    self.op2_add_adc(d, r, d1, r1)
+                } else {
+                    unreachable!()
+                }
+            }
+            Op::AdcAdc { d, r } => {
+                let op1 = self.op1();
+                if let Op::Adc { d: d1, r: r1 } = op1 {
+                    self.op2_adc_adc(d, r, d1, r1)
+                } else {
+                    unreachable!()
+                }
+            }
             Op::Undefined { w } => {
                 warn!(
                     "Tried to execute undefined op 0x{:04x} at address 0x{:04x}",

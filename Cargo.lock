@@ -953,6 +953,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-vita"
+version = "0.1.0"
+dependencies = [
+ "arduboy",
+ "ron 0.8.1",
+ "vitasdk-sys",
+]
+
+[[package]]
 name = "textwrap"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1008,6 +1017,12 @@ dependencies = [
  "psp2-sys",
  "spin 0.7.1",
 ]
+
+[[package]]
+name = "vitasdk-sys"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "665d8a491ad572e0ebc103846c4a51e66b641c942391b7241f91c413a3a301a9"
 
 [[package]]
 name = "walkdir"

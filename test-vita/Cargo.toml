@@ -1,0 +1,35 @@
+[package]
+name = "test-vita"
+version = "0.1.0"
+authors = ["Dhole <dhole@riseup.net>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arduboy = { path = "../arduboy", features = ["std", "vec_unchecked"]}
+ron = { workspace = true }
+vitasdk-sys = { version = "0.3.3", features = ["ScePower_stub"] }
+
+[package.metadata.vita]
+# A unique identifier for your project. 9 chars, alphanumeric.
+title_id = "RUSTTST01"
+# A title that will be shown on a bubble. Optional, will take the crate name as the default
+title_name = "Rust test"
+# Optional. A path to static files relative to the project.
+# assets = "static"
+# Optional, this is the default
+build_std = "std,panic_unwind"
+# Optional, this is the default
+vita_make_fself_flags = ["-s"]
+# Optional, this is the default
+vita_mksfoex_flags = ["-d", "ATTRIBUTE2=12"]
+
+[package.metadata.vita.profile.dev]
+# Strips symbols from the vita elf in dev profile. Optional, default is false
+strip_symbols = false
+[package.metadata.vita.profile.release]
+# Strips symbols from the vita elf in release profile. Optional, default is true
+# strip_symbols = true
+strip_symbols = false
+strip_debug = false

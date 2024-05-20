@@ -20,7 +20,7 @@ fn test_serialize() {
 }
 
 fn subtest_serialize(rom: &[u8], replay_ron: &str) {
-    let replay = ron::from_str(replay_ron).unwrap();
+    let replay: Vec<KeyEvent> = ron::from_str(replay_ron).unwrap();
     let mut replay_index = 0;
     let mut emu = Emulator::new();
     emu.load_game(rom).unwrap();

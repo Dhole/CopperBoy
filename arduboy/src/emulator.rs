@@ -67,6 +67,7 @@ impl Emulator {
                 }
             }
         }
+        self.core.optimize_op_pairs(); // TODO: Enable under feature
         self.core.reset();
         Ok(())
     }
@@ -113,7 +114,7 @@ impl Emulator {
             const N_INSTS: usize = 64;
             let mut hw_step_cycles = 0;
             if !self.core.sleeping() {
-                hw_step_cycles += self.core.step_n(N_INSTS);
+                hw_step_cycles += self.core.step_n::<N_INSTS>();
             } else {
                 hw_step_cycles += N_INSTS * 2;
             }

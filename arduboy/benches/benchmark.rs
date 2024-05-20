@@ -12,7 +12,7 @@ static ROM_MB: &'static [u8] = include_bytes!("../../test-roms/Mystic-Balloon/My
 static ROM_MB_REPLAY: &'static str = include_str!("../../test-roms/Mystic-Balloon/replay.ron");
 
 pub fn setup(rom: &[u8], replay_ron: &str, frames: usize) -> Emulator {
-    let replay = ron::from_str(replay_ron).unwrap();
+    let replay: Vec<KeyEvent> = ron::from_str(replay_ron).unwrap();
     let mut emu = Emulator::new();
     emu.load_game(rom).unwrap();
 

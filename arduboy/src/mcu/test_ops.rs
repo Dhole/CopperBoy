@@ -640,20 +640,20 @@ fn test_op_ld() {
 
     core.data_store(0x0123, 0x42);
     core.regs.set_x(0x0123);
-    core.op_ld(0, LdStIndex::X, LdStExt::PostInc);
+    core.op_ld::<{ LD_ST_INDEX_X }>(0, LdStExt::PostInc);
     assert_eq!(core.pc, 0x01);
     assert_eq!(core.regs[0], 0x42);
     assert_eq!(core.regs.x(), 0x0124);
 
     core.data_store(0x0123, 0x43);
     core.regs.set_y(0x0124);
-    core.op_ld(0, LdStIndex::Y, LdStExt::PreDec);
+    core.op_ld::<{ LD_ST_INDEX_Y }>(0, LdStExt::PreDec);
     assert_eq!(core.regs[0], 0x43);
     assert_eq!(core.regs.y(), 0x0123);
 
     core.data_store(0x0126, 0x55);
     core.regs.set_z(0x0121);
-    core.op_ld(0, LdStIndex::Z, LdStExt::Displacement(5));
+    core.op_ld::<{ LD_ST_INDEX_Z }>(0, LdStExt::Displacement(5));
     assert_eq!(core.regs[0], 0x55);
     assert_eq!(core.regs.z(), 0x0121);
 }

@@ -7,6 +7,7 @@ members = [
     "libretro",
     "libretro_std",
     "libretro_psvita",
+    "test-vita"
 ]
 
 resolver = "2"
