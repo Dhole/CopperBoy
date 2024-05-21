@@ -68,6 +68,7 @@ impl Emulator {
             }
         }
         self.core.optimize_op_pairs(); // TODO: Enable under feature
+                                       // self.core.enable_lut_adc();
         self.core.reset();
         Ok(())
     }
@@ -109,7 +110,7 @@ impl Emulator {
         self.core.gpio.set_port(GPIOPort::F, port_f);
 
         while self.cycles > 0 {
-            // In each iteration, emulate N instructions of the CPU, and the emulate the
+            // In each iteration, emulate N instructions of the CPU, and then emulate the
             // corresponding cycles in the hardware
             const N_INSTS: usize = 64;
             let mut hw_step_cycles = 0;

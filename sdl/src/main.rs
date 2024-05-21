@@ -142,7 +142,9 @@ pub fn main() -> anyhow::Result<()> {
     };
 
     let mut core = Core::new();
+    // core.enable_lut_adc();
     load_hex_file(&mut core, path)?;
+    core.optimize_op_pairs();
 
     core.reset();
     let serialize_len = core.serialize_len()?;

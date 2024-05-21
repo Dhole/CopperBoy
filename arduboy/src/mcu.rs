@@ -2,6 +2,8 @@
 // use core::fmt::Write;
 #[cfg(feature = "stats")]
 use num_traits::{FromPrimitive, ToPrimitive};
+use std::mem::transmute;
+use unroll::unroll_for_loops;
 
 // #[cfg(feature = "std")]
 // use std::vec::Vec;
@@ -26,58 +28,68 @@ use super::*;
 #[cfg(feature = "stats")]
 use super::io_regs::io_reg_str;
 
+const RES_SR_N: u16 = 1 << 09;
+const RES_SR_V: u16 = 1 << 10;
+const RES_SR_S: u16 = 1 << 11;
+const RES_SR_H: u16 = 1 << 12;
+const RES_SR_Z: u16 = 1 << 13;
+const RES_SR_C: u16 = 1 << 14;
+
 #[derive(PartialEq, Serialize, Deserialize, Clone)]
 pub struct StatusRegister {
-    /// Global Interrupt Enable
-    i: bool,
-    /// Bit Copy Storage
-    t: bool,
-    /// Half Carry Flag
-    h: bool,
-    /// Sign Bit
-    s: bool,
-    /// Two's Complement Overflow Flag
-    v: bool,
-    /// Negative Flag
-    n: bool,
-    /// Zero Flag
-    z: bool,
     /// Carry Flag
     c: bool,
+    /// Zero Flag
+    z: bool,
+    /// Negative Flag
+    n: bool,
+    /// Two's Complement Overflow Flag
+    v: bool,
+    /// Sign Bit
+    s: bool,
+    /// Half Carry Flag
+    h: bool,
+    /// Bit Copy Storage
+    t: bool,
+    /// Global Interrupt Enable
+    i: bool,
 }
 // static_assertions::assert_eq_size!(StatusRegister, u8);
 
 impl Index<u8> for StatusRegister {
     type Output = bool;
 
+    #[inline(always)]
     fn index(&self, i: u8) -> &bool {
-        match i {
-            0 => &self.c,
-            1 => &self.z,
-            2 => &self.n,
-            3 => &self.v,
-            4 => &self.s,
-            5 => &self.h,
-            6 => &self.t,
-            7 => &self.i,
-            _ => unreachable!(),
-        }
+        unsafe { transmute::<&Self, &[bool; 8]>(self).get_unchecked(i as usize) }
+        // match i {
+        //     0 => &self.c,
+        //     1 => &self.z,
+        //     2 => &self.n,
+        //     3 => &self.v,
+        //     4 => &self.s,
+        //     5 => &self.h,
+        //     6 => &self.t,
+        //     7 => &self.i,
+        //     _ => unreachable!(),
+        // }
     }
 }
 
 impl IndexMut<u8> for StatusRegister {
     fn index_mut(&mut self, i: u8) -> &mut bool {
-        match i {
-            0 => &mut self.c,
-            1 => &mut self.z,
-            2 => &mut self.n,
-            3 => &mut self.v,
-            4 => &mut self.s,
-            5 => &mut self.h,
-            6 => &mut self.t,
-            7 => &mut self.i,
-            _ => unreachable!(),
-        }
+        unsafe { transmute::<&mut Self, &mut [bool; 8]>(self).get_unchecked_mut(i as usize) }
+        // match i {
+        //     0 => &mut self.c,
+        //     1 => &mut self.z,
+        //     2 => &mut self.n,
+        //     3 => &mut self.v,
+        //     4 => &mut self.s,
+        //     5 => &mut self.h,
+        //     6 => &mut self.t,
+        //     7 => &mut self.i,
+        //     _ => unreachable!(),
+        // }
     }
 }
 
@@ -419,6 +431,8 @@ pub struct Core {
     #[cfg(feature = "stats")]
     #[serde(skip)]
     pub stats: Stats,
+    #[serde(skip)]
+    lut_adc: Vec<u16>,
 }
 
 #[cfg_attr(test, derive(core::cmp::PartialEq, core::fmt::Debug))]
@@ -492,6 +506,7 @@ impl Core {
             gpio: GPIO::new(),
             #[cfg(feature = "stats")]
             stats: Stats::new(),
+            lut_adc: Vec::new(),
         }
     }
 
@@ -580,6 +595,14 @@ impl Core {
             }
             let op0 = self.program_ops[i];
             let op1 = self.program_ops[i + 1];
+            match op0 {
+                Op::Lds { d, k } => {
+                    if k >= SRAM_ADDR {
+                        self.program_ops[i] = Op::LdsSRAM { d, k };
+                    }
+                }
+                _ => {}
+            }
             match (op0, op1) {
                 (Op::Add { r, d }, Op::Adc { .. }) => {
                     self.program_ops[i] = Op::AddAdc { r, d };
@@ -587,6 +610,32 @@ impl Core {
                 }
                 (Op::Adc { r, d }, Op::Adc { .. }) => {
                     self.program_ops[i] = Op::AdcAdc { r, d };
+                    i += 2;
+                }
+                (Op::Subi { d, k }, Op::Sbci { .. }) => {
+                    self.program_ops[i] = Op::SubiSbci { d, k };
+                    i += 2;
+                }
+                (Op::Dec { d }, Op::Brbc { s, .. }) => {
+                    // 1 is flag Z
+                    if s == 1 {
+                        self.program_ops[i] = Op::DecBrbcZ { d };
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
+                }
+                // (Op::Lds { d, k }, Op::Lds { d: _, k: k1 }) => {
+                //     println!("Lds Lds {:04x} {:04x}", k, k1);
+                //     self.program_ops[i] = Op::LdsLds { d, k };
+                //     i += 2;
+                // }
+                (Op::Cp { d, r }, Op::Cpc { .. }) => {
+                    self.program_ops[i] = Op::CpCpc { d, r };
+                    i += 2;
+                }
+                (Op::Cpc { d, r }, Op::Brbs { s, .. }) => {
+                    self.program_ops[i] = Op::CpcBrbs { d, r };
                     i += 2;
                 }
                 (_, _) => i += 1,
@@ -655,6 +704,7 @@ impl Core {
         self.exec_op(op)
     }
 
+    #[unroll_for_loops]
     pub fn step_n<const N: usize>(&mut self) -> usize {
         let mut cycles = 0;
         for _i in 0..N {
@@ -1120,6 +1170,49 @@ impl Core {
         self.pc += 1;
         1
     }
+    #[inline(always)]
+    fn op_lut_adc(&mut self, d: u8, r: u8) -> usize {
+        let index = (self.regs[d] as usize)
+            | ((self.regs[r] as usize) << 8)
+            | ((self.status_reg.c as usize) << 16);
+        let result = vec_get!(self.lut_adc, index);
+        self.regs[d] = (result & 0xff) as u8;
+        self.status_reg.n = (result & RES_SR_N) != 0;
+        self.status_reg.v = (result & RES_SR_V) != 0;
+        self.status_reg.s = (result & RES_SR_S) != 0;
+        self.status_reg.h = (result & RES_SR_H) != 0;
+        self.status_reg.z = (result & RES_SR_Z) != 0;
+        self.status_reg.c = (result & RES_SR_C) != 0;
+
+        self.pc += 1;
+        1
+    }
+
+    pub fn enable_lut_adc(&mut self) {
+        self.lut_adc = vec![0; 256 * 256 * 2];
+        for a in 0u8..=255 {
+            for b in 0u8..=255 {
+                for c in [false, true] {
+                    self.pc = 0;
+                    self.regs[0] = a;
+                    self.regs[1] = b;
+                    self.status_reg.c = c;
+                    self.op_adc(0, 1);
+                    let mut result: u16 = self.regs[0] as u16;
+                    result |= if self.status_reg.n { RES_SR_N } else { 0 };
+                    result |= if self.status_reg.v { RES_SR_V } else { 0 };
+                    result |= if self.status_reg.s { RES_SR_S } else { 0 };
+                    result |= if self.status_reg.h { RES_SR_H } else { 0 };
+                    result |= if self.status_reg.z { RES_SR_Z } else { 0 };
+                    result |= if self.status_reg.c { RES_SR_C } else { 0 };
+                    let index = (a as usize) | ((b as usize) << 8) | ((c as usize) << 16);
+                    self.lut_adc[index] = result;
+                }
+            }
+        }
+        self.reset();
+    }
+
     /// 6. Add without Carry (ADD Rd, Rr) OK
     #[inline(always)]
     fn op_add(&mut self, d: u8, r: u8) -> usize {
@@ -1136,13 +1229,13 @@ impl Core {
     fn op2_adc_adc(&mut self, d: u8, r: u8, d1: u8, r1: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
         let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
-        self.status_reg.c = c0 || c1;
+        let status_reg_c = c0 || c1;
         self.regs[d] = res;
 
         let (d, r) = (d1, r1);
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
-        let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
-        self.aux_op_add_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        let (res, c1) = res.overflowing_add(status_reg_c as u8);
+        self.aux_op_add_flags(self.regs[d], self.regs[r], status_reg_c, res);
         self.status_reg.c = c0 || c1;
         self.regs[d] = res;
 
@@ -1152,18 +1245,117 @@ impl Core {
     #[inline(always)]
     fn op2_add_adc(&mut self, d: u8, r: u8, d1: u8, r1: u8) -> usize {
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
-        self.status_reg.c = c0;
+        let status_reg_c = c0;
         self.regs[d] = res;
 
         let (d, r) = (d1, r1);
         let (res, c0) = self.regs[d].overflowing_add(self.regs[r]);
-        let (res, c1) = res.overflowing_add(self.status_reg.c as u8);
-        self.aux_op_add_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        let (res, c1) = res.overflowing_add(status_reg_c as u8);
+        self.aux_op_add_flags(self.regs[d], self.regs[r], status_reg_c, res);
         self.status_reg.c = c0 || c1;
         self.regs[d] = res;
 
         self.pc += 2;
         2
+    }
+    #[inline(always)]
+    fn op2_subi_sbci(&mut self, d: u8, k: u8, d1: u8, k1: u8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(k);
+        let status_reg_z = res == 0;
+        let status_reg_c = c0;
+        self.regs[d] = res;
+
+        let (d, k) = (d1, k1);
+        let (res, c0) = self.regs[d].overflowing_sub(k);
+        let (res, c1) = res.overflowing_sub(status_reg_c as u8);
+        self.aux_op_sub_flags(self.regs[d], k, status_reg_c, res);
+        self.status_reg.c = c0 || c1;
+        if res != 0 {
+            self.status_reg.z = false;
+        } else {
+            self.status_reg.z = status_reg_z;
+        }
+        self.regs[d] = res;
+
+        self.pc += 2;
+        2
+    }
+    #[inline(always)]
+    fn op2_dec_brbc_z(&mut self, d: u8, k: i8) -> usize {
+        let (res, _) = self.regs[d].overflowing_sub(1);
+        let z = res == 0;
+        self.status_reg.z = z;
+        self.regs[d] = res;
+        self.pc += 1;
+
+        self.aux_op_branch_if(k, !z)
+    }
+    #[inline(always)]
+    fn op2_lds_lds(&mut self, d: u8, k: u16, d1: u8, k1: u16) -> usize {
+        self.regs[d] = self.data_load(k);
+        self.regs[d1] = self.data_load(k1);
+        self.pc += 4;
+        4
+    }
+    #[inline(always)]
+    fn op2_cp_cpc(&mut self, d: u8, r: u8, d1: u8, r1: u8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
+        let status_reg_z = res == 0;
+        let status_reg_c = c0;
+
+        let (d, r) = (d1, r1);
+        let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
+        let (res, c1) = res.overflowing_sub(status_reg_c as u8);
+        self.aux_op_cp_flags(self.regs[d], self.regs[r], status_reg_c, res);
+        if res != 0 {
+            self.status_reg.z = false;
+        } else {
+            self.status_reg.z = status_reg_z;
+        }
+        self.status_reg.c = c0 || c1;
+
+        self.pc += 2;
+        2
+    }
+    #[inline(always)]
+    fn op2_cpi_brbc(&mut self, d: u8, k: u8, s: u8, k1: i8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(k);
+
+        self.aux_op_cp_flags(self.regs[d], k, false, res);
+        self.status_reg.z = res == 0;
+        self.status_reg.c = c0;
+
+        self.pc += 1;
+
+        self.aux_op_branch_if(k1, !self.status_reg[s])
+    }
+    #[inline(always)]
+    fn op2_cpc_brbs(&mut self, d: u8, r: u8, s: u8, k: i8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
+        let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
+        self.aux_op_cp_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        if res != 0 {
+            self.status_reg.z = false;
+        }
+        self.status_reg.c = c0 || c1;
+
+        self.pc += 1;
+
+        self.aux_op_branch_if(k, self.status_reg[s])
+    }
+    #[inline(always)]
+    fn op2_cpc_brbc(&mut self, d: u8, r: u8, s: u8, k: i8) -> usize {
+        let (res, c0) = self.regs[d].overflowing_sub(self.regs[r]);
+        let (res, c1) = res.overflowing_sub(self.status_reg.c as u8);
+        self.aux_op_cp_flags(self.regs[d], self.regs[r], self.status_reg.c, res);
+        if res != 0 {
+            self.status_reg.z = false;
+        }
+        self.status_reg.c = c0 || c1;
+
+        self.pc += 1;
+
+        self.aux_op_branch_if(k, !self.status_reg[s])
     }
 
     /// 7. Add Immediate Word (ADIW Rdl, K) OK
@@ -1252,8 +1444,8 @@ impl Core {
     #[inline(always)]
     fn aux_op_branch_if(&mut self, k: i8, test: bool) -> usize {
         if test {
-            let (pc, _) = (self.pc as i16).overflowing_add(k as i16 + 1);
-            self.pc = pc as u16;
+            // let (pc, _) = (self.pc as i16).overflowing_add(k as i16 + 1);
+            self.pc = ((self.pc + 1) as i16 + k as i16) as u16;
             self.branch = true;
             2
         } else {
@@ -1639,6 +1831,12 @@ impl Core {
         self.pc += 2;
         2
     }
+    #[inline(always)]
+    fn op_lds_sram(&mut self, d: u8, k: u16) -> usize {
+        self.regs[d] = vec_get!(self.sram, (k - SRAM_ADDR) as usize);
+        self.pc += 2;
+        2
+    }
 
     // 75. Load Direct from Data Space (LDS Rd, k ; 16bit) (NOT APPLICABLE)
     /// 76. Load Program Memory (LPM Rd, Z) OK
@@ -1831,10 +2029,11 @@ impl Core {
     /// 91. Relative Call to Subroutione (RCALL k) OK
     #[inline(always)]
     fn op_rcall(&mut self, k: i16) -> usize {
-        self.push_u16(self.pc + 1);
-        let (pc, _) = (self.pc as i16).overflowing_add(k);
-        let (pc, _) = pc.overflowing_add(1);
-        self.pc = pc as u16;
+        let pc = self.pc + 1;
+        self.push_u16(pc);
+        // let (pc, _) = (self.pc as i16).overflowing_add(k);
+        // let (pc, _) = pc.overflowing_add(1);
+        self.pc = (pc as i16 + k) as u16;
         self.branch = true;
         3
     }
@@ -1861,8 +2060,9 @@ impl Core {
     /// 94. Relative Jump (RJMP k) OK
     #[inline(always)]
     fn op_rjmp(&mut self, k: i16) -> usize {
-        let (pc, _) = (self.pc as i16).overflowing_add(k);
-        let (pc, _) = pc.overflowing_add(1);
+        // let (pc, _) = (self.pc as i16).overflowing_add(k);
+        // let (pc, _) = pc.overflowing_add(1);
+        let pc = (self.pc + 1) as i16 + k;
         self.pc = pc as u16;
         self.branch = true;
         2
@@ -2064,9 +2264,9 @@ impl Core {
     }
     /// 118, 119, 120. Store Indirect from Register to Data Space using Index {X, Y, Z} (ST {-}{X,Y,Z}{+}{q}, Rr) OK
     #[inline(always)]
-    fn op_st(&mut self, r: u8, idx: LdStIndex, ext: LdStExt) -> usize {
+    fn op_st<const LD_ST_INDEX: u8>(&mut self, r: u8, ext: LdStExt) -> usize {
         self.pc += 1;
-        let mut addr = self.regs.ext(idx.into());
+        let mut addr = self.regs.ext(LD_ST_INDEX);
 
         let cycles = match ext {
             LdStExt::None => {
@@ -2088,7 +2288,7 @@ impl Core {
                 return 2;
             }
         };
-        self.regs.set_ext(idx.into(), addr);
+        self.regs.set_ext(LD_ST_INDEX, addr);
 
         cycles
     }
@@ -2170,6 +2370,7 @@ impl Core {
         }
         match op {
             Op::Adc { d, r } => self.op_adc(d, r),
+            // Op::Adc { d, r } => self.op_lut_adc(d, r),
             Op::Add { d, r } => self.op_add(d, r),
             Op::Adiw { d, k } => self.op_adiw(d, k),
             Op::And { d, r } => self.op_and(d, r),
@@ -2209,6 +2410,7 @@ impl Core {
             Op::LdZ { d, ext } => self.op_ld::<{ LD_ST_INDEX_Z }>(d, ext),
             Op::Ldi { d, k } => self.op_ldi(d, k),
             Op::Lds { d, k } => self.op_lds(d, k),
+            Op::LdsSRAM { d, k } => self.op_lds_sram(d, k),
             Op::Lpmr0 => self.op_lpm(0, false),
             Op::Lpm { d, inc } => self.op_lpm(d, inc),
             Op::Lsr { d } => self.op_lsr(d),
@@ -2242,9 +2444,9 @@ impl Core {
             Op::Spm => self.op_spm(),
             Op::Spm2 => self.op_spm2(),
             // Op::St { r, idx, ext } => self.op_st(r, idx, ext),
-            Op::StX { r, ext } => self.op_st(r, LdStIndex::X, ext),
-            Op::StY { r, ext } => self.op_st(r, LdStIndex::Y, ext),
-            Op::StZ { r, ext } => self.op_st(r, LdStIndex::Z, ext),
+            Op::StX { r, ext } => self.op_st::<{ LD_ST_INDEX_X }>(r, ext),
+            Op::StY { r, ext } => self.op_st::<{ LD_ST_INDEX_Y }>(r, ext),
+            Op::StZ { r, ext } => self.op_st::<{ LD_ST_INDEX_Z }>(r, ext),
             Op::Sts { k, r } => self.op_sts(k, r),
             Op::Sub { d, r } => self.op_sub(d, r),
             Op::Subi { d, k } => self.op_subi(d, k),
@@ -2253,19 +2455,48 @@ impl Core {
             Op::Zzz => 4,
             Op::AddAdc { d, r } => {
                 let op1 = self.op1();
-                if let Op::Adc { d: d1, r: r1 } = op1 {
-                    self.op2_add_adc(d, r, d1, r1)
-                } else {
-                    unreachable!()
-                }
+                let [_, d1, r1, _] = unsafe { transmute::<_, [u8; 4]>(op1) };
+                self.op2_add_adc(d, r, d1, r1)
             }
             Op::AdcAdc { d, r } => {
                 let op1 = self.op1();
-                if let Op::Adc { d: d1, r: r1 } = op1 {
-                    self.op2_adc_adc(d, r, d1, r1)
-                } else {
-                    unreachable!()
-                }
+                let [_, d1, r1, _] = unsafe { transmute::<_, [u8; 4]>(op1) };
+                self.op2_adc_adc(d, r, d1, r1)
+            }
+            Op::SubiSbci { d, k } => {
+                let op1 = self.op1();
+                let [_, d1, k1, _] = unsafe { transmute::<_, [u8; 4]>(op1) };
+                self.op2_subi_sbci(d, k, d1, k1)
+            }
+            Op::DecBrbcZ { d } => {
+                let op1 = self.op1();
+                let [_, _, k, _] = unsafe { transmute::<_, [u8; 4]>(op1) };
+                self.op2_dec_brbc_z(d, k as i8)
+            }
+            Op::LdsLds { d, k } => {
+                let op1 = self.op1();
+                let (_, d1, k1) = unsafe { transmute::<_, (u8, u8, u16)>(op1) };
+                self.op2_lds_lds(d, k, d1, k1)
+            }
+            Op::CpCpc { d, r } => {
+                let op1 = self.op1();
+                let [_, d1, r1, _] = unsafe { transmute::<_, [u8; 4]>(op1) };
+                self.op2_cp_cpc(d, r, d1, r1)
+            }
+            Op::CpiBrbc { d, k } => {
+                let op1 = self.op1();
+                let [_, s, k1, _] = unsafe { transmute::<_, [u8; 4]>(op1) };
+                self.op2_cpi_brbc(d, k, s, k1 as i8)
+            }
+            Op::CpcBrbs { d, r } => {
+                let op1 = self.op1();
+                let [_, s, k, _] = unsafe { transmute::<_, [u8; 4]>(op1) };
+                self.op2_cpc_brbs(d, r, s, k as i8)
+            }
+            Op::CpcBrbc { d, r } => {
+                let op1 = self.op1();
+                let [_, s, k, _] = unsafe { transmute::<_, [u8; 4]>(op1) };
+                self.op2_cpc_brbc(d, r, s, k as i8)
             }
             Op::Undefined { w } => {
                 warn!(

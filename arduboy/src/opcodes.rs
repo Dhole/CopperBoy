@@ -467,6 +467,7 @@ pub enum Op {
     LdZ { d: u8, ext: LdStExt }, // NOTE: Review undefined Rd combinations
     Ldi { d: u8, k: u8 },
     Lds { d: u8, k: u16 },
+    LdsSRAM { d: u8, k: u16 },
     Lpmr0,
     Lpm { d: u8, inc: bool },
     Lsr { d: u8 },
@@ -512,6 +513,13 @@ pub enum Op {
     Undefined { w: u16 },
     AddAdc { d: u8, r: u8 },
     AdcAdc { d: u8, r: u8 },
+    SubiSbci { d: u8, k: u8 },
+    DecBrbcZ { d: u8 },
+    LdsLds { d: u8, k: u16 },
+    CpCpc { d: u8, r: u8 },
+    CpiBrbc { d: u8, k: u8 },
+    CpcBrbs { d: u8, r: u8 },
+    CpcBrbc { d: u8, r: u8 },
 }
 // Guarantee that Op stays small enough to be performant
 // static_assertions::assert_eq_size!(Op, u32);
@@ -992,6 +1000,7 @@ impl fmt::Display for OpAddr {
                 }
                 Ok(())
             }
+            Op::LdsSRAM { d, k } => unimplemented!(),
             Op::Lpmr0 => write!(f, "LPM"),
             Op::Lpm { d, inc } => {
                 write!(f, "LPM R{}, Z", d)?;
@@ -1092,6 +1101,13 @@ impl fmt::Display for OpAddr {
             Op::Zzz => write!(f, "(Internal) ZZZ"),
             Op::AddAdc { d, r } => unimplemented!(),
             Op::AdcAdc { d, r } => unimplemented!(),
+            Op::SubiSbci { d, k } => unimplemented!(),
+            Op::DecBrbcZ { d } => unimplemented!(),
+            Op::LdsLds { d, k } => unimplemented!(),
+            Op::CpCpc { d, r } => unimplemented!(),
+            Op::CpiBrbc { d, k } => unimplemented!(),
+            Op::CpcBrbs { d, r } => unimplemented!(),
+            Op::CpcBrbc { d, r } => unimplemented!(),
             Op::Undefined { w } => write!(f, "UNDEF ; 0x{}", hex::encode(w.to_le_bytes())),
         }
     }
@@ -1353,6 +1369,7 @@ impl OpType {
             Op::LdZ { .. } => OpType::Ld,
             Op::Ldi { .. } => OpType::Ldi,
             Op::Lds { .. } => OpType::Lds,
+            Op::LdsSRAM { d, k } => unimplemented!(),
             Op::Lpmr0 { .. } => OpType::Lpmr0,
             Op::Lpm { .. } => OpType::Lpm,
             Op::Lsr { .. } => OpType::Lsr,
@@ -1397,6 +1414,13 @@ impl OpType {
             Op::Undefined { .. } => OpType::Undefined,
             Op::AddAdc { d, r } => unimplemented!(),
             Op::AdcAdc { d, r } => unimplemented!(),
+            Op::SubiSbci { d, k } => unimplemented!(),
+            Op::DecBrbcZ { d } => unimplemented!(),
+            Op::LdsLds { d, k } => unimplemented!(),
+            Op::CpCpc { d, r } => unimplemented!(),
+            Op::CpiBrbc { d, k } => unimplemented!(),
+            Op::CpcBrbs { d, r } => unimplemented!(),
+            Op::CpcBrbc { d, r } => unimplemented!(),
         }
     }
 }

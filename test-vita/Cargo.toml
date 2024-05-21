@@ -27,9 +27,7 @@ vita_mksfoex_flags = ["-d", "ATTRIBUTE2=12"]
 
 [package.metadata.vita.profile.dev]
 # Strips symbols from the vita elf in dev profile. Optional, default is false
-strip_symbols = false
+strip_symbols = true
 [package.metadata.vita.profile.release]
 # Strips symbols from the vita elf in release profile. Optional, default is true
-# strip_symbols = true
-strip_symbols = false
-strip_debug = false
+strip_symbols = true

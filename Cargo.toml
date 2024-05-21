@@ -24,3 +24,5 @@ hex = { version = "0.4", default-features = false }
 # lto = "fat"
 # codegen-units = 1
 
+[profile.bench]
+debug = true # Only for profiling
